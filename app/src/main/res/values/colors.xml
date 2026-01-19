@@ -1,0 +1,9 @@
+<resources>
+    <color name="mql_bg">#0B0F14</color>
+    <color name="mql_panel">#121823</color>
+    <color name="mql_panel_focused">#1A2230</color>
+    <color name="mql_text_primary">#FFFFFF</color>
+    <color name="mql_text_secondary">#B7C0CC</color>
+    <color name="mql_accent">#1E88E5</color>
+    <color name="mql_focus">#2D2D2D</color>
+</resources>

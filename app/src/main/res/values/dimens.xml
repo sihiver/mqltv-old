@@ -1,0 +1,6 @@
+<resources>
+    <dimen name="nav_width_collapsed">72dp</dimen>
+    <dimen name="nav_width_expanded">280dp</dimen>
+    <dimen name="nav_item_height">56dp</dimen>
+    <dimen name="nav_icon_size">24dp</dimen>
+</resources>

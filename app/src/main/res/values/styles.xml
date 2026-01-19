@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.MQLTV" parent="Theme.Leanback">
+        <item name="android:windowBackground">@drawable/window_background</item>
+    </style>
+</resources>

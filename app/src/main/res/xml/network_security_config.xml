@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow HTTP HLS streams for dens.tv subdomains (required for some sample IPTV links). -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">dens.tv</domain>
+    </domain-config>
+</network-security-config>

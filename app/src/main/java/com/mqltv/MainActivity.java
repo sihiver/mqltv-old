@@ -168,12 +168,6 @@ public class MainActivity extends FragmentActivity implements NavAdapter.Listene
     }
 
     @Override
-    public void onDestinationFocused(NavDestination destination) {
-        // Auto-update page saat fokus pindah (sesuai requirement)
-        showDestination(destination);
-    }
-
-    @Override
     public void onDestinationClicked(NavDestination destination) {
         showDestination(destination);
     }

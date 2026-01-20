@@ -14,7 +14,6 @@ import java.util.List;
 public class NavAdapter extends RecyclerView.Adapter<NavAdapter.VH> {
 
     public interface Listener {
-        void onDestinationFocused(NavDestination destination);
         void onDestinationClicked(NavDestination destination);
     }
 
@@ -54,12 +53,6 @@ public class NavAdapter extends RecyclerView.Adapter<NavAdapter.VH> {
         holder.text.setText(item.getTitle());
         holder.text.setVisibility(expanded ? View.VISIBLE : View.GONE);
         holder.root.setActivated(item.getDestination() == selected);
-
-        holder.root.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus && listener != null) {
-                listener.onDestinationFocused(item.getDestination());
-            }
-        });
         holder.root.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onDestinationClicked(item.getDestination());

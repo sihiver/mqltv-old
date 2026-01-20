@@ -3,5 +3,10 @@
     <dimen name="nav_width_expanded">280dp</dimen>
     <dimen name="nav_item_height">56dp</dimen>
     <dimen name="nav_icon_size">24dp</dimen>
+    <dimen name="nav_icon_container_size">32dp</dimen>
     <dimen name="nav_item_spacing">10dp</dimen>
+
+    <dimen name="nav_panel_padding_h_collapsed">8dp</dimen>
+    <dimen name="nav_panel_padding_h_expanded">12dp</dimen>
+    <dimen name="nav_panel_padding_v">12dp</dimen>
 </resources>

@@ -12,7 +12,10 @@
         android:layout_height="0dp"
         android:orientation="vertical"
         android:background="@color/mql_panel"
-        android:padding="12dp"
+        android:paddingStart="@dimen/nav_panel_padding_h_collapsed"
+        android:paddingEnd="@dimen/nav_panel_padding_h_collapsed"
+        android:paddingTop="@dimen/nav_panel_padding_v"
+        android:paddingBottom="@dimen/nav_panel_padding_v"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent">
@@ -31,8 +34,11 @@
 
             <ImageView
                 android:id="@+id/nav_logo"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="@dimen/nav_icon_container_size"
+                android:layout_height="@dimen/nav_icon_container_size"
+                android:padding="4dp"
+                android:scaleType="centerInside"
+                android:background="@drawable/logo_circle_bg"
                 android:src="@mipmap/ic_launcher"
                 android:contentDescription="@string/app_name" />
 
@@ -87,8 +93,10 @@
                 android:paddingEnd="12dp">
 
                 <ImageView
-                    android:layout_width="@dimen/nav_icon_size"
-                    android:layout_height="@dimen/nav_icon_size"
+                    android:layout_width="@dimen/nav_icon_container_size"
+                    android:layout_height="@dimen/nav_icon_container_size"
+                    android:padding="4dp"
+                    android:scaleType="centerInside"
                     android:src="@android:drawable/ic_menu_manage"
                     android:contentDescription="Settings" />
 
@@ -120,8 +128,10 @@
                 android:paddingEnd="12dp">
 
                 <ImageView
-                    android:layout_width="@dimen/nav_icon_size"
-                    android:layout_height="@dimen/nav_icon_size"
+                    android:layout_width="@dimen/nav_icon_container_size"
+                    android:layout_height="@dimen/nav_icon_container_size"
+                    android:padding="4dp"
+                    android:scaleType="centerInside"
                     android:src="@android:drawable/ic_menu_info_details"
                     android:contentDescription="Help" />
 

@@ -138,6 +138,13 @@ public class MainActivity extends FragmentActivity implements NavAdapter.Listene
     }
 
     private void applyExpandedState(boolean expanded) {
+        if (navPanel != null) {
+            int padH = getResources().getDimensionPixelSize(
+                    expanded ? R.dimen.nav_panel_padding_h_expanded : R.dimen.nav_panel_padding_h_collapsed
+            );
+            int padV = getResources().getDimensionPixelSize(R.dimen.nav_panel_padding_v);
+            navPanel.setPadding(padH, padV, padH, padV);
+        }
         navTitle.setVisibility(expanded ? View.VISIBLE : View.GONE);
         settingsText.setVisibility(expanded ? View.VISIBLE : View.GONE);
         helpText.setVisibility(expanded ? View.VISIBLE : View.GONE);

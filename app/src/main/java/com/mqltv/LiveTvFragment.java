@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -29,19 +30,21 @@ public class LiveTvFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_live_tv, container, false);
 
+        final Context appContext = v.getContext().getApplicationContext();
+
         RecyclerView list = v.findViewById(R.id.channel_list);
-        list.setLayoutManager(new LinearLayoutManager(requireContext()));
+        list.setLayoutManager(new LinearLayoutManager(v.getContext()));
         adapter = new ChannelListAdapter();
         list.setAdapter(adapter);
 
-        load();
+        load(appContext);
 
         return v;
     }
 
-    private void load() {
+    private void load(Context context) {
         executor.execute(() -> {
-            List<Channel> channels = new PlaylistRepository().loadDefault(requireContext());
+            List<Channel> channels = new PlaylistRepository().loadDefault(context);
             mainHandler.post(() -> {
                 if (adapter != null) adapter.submit(channels);
             });

@@ -4,4 +4,9 @@
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">dens.tv</domain>
     </domain-config>
+
+    <!-- Local playlist server (LAN). -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">192.168.15.1</domain>
+    </domain-config>
 </network-security-config>

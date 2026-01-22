@@ -9,4 +9,6 @@
     <dimen name="nav_panel_padding_h_collapsed">8dp</dimen>
     <dimen name="nav_panel_padding_h_expanded">12dp</dimen>
     <dimen name="nav_panel_padding_v">12dp</dimen>
+    <dimen name="home_card_width">170dp</dimen>
+    <dimen name="home_card_height">96dp</dimen>
 </resources>

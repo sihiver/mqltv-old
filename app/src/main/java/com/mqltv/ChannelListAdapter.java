@@ -34,9 +34,7 @@ public class ChannelListAdapter extends RecyclerView.Adapter<ChannelListAdapter.
         Channel c = items.get(position);
         holder.title.setText(c.getTitle());
         holder.title.setOnClickListener(v -> {
-            Intent intent = new Intent(v.getContext(), PlayerActivity.class);
-            intent.putExtra(Constants.EXTRA_TITLE, c.getTitle());
-            intent.putExtra(Constants.EXTRA_URL, c.getUrl());
+            Intent intent = PlayerIntents.createPlayIntent(v.getContext(), c.getTitle(), c.getUrl());
             v.getContext().startActivity(intent);
         });
     }

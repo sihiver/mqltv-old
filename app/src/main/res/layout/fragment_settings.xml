@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@color/mql_bg">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pengaturan"
+        android:textColor="@color/mql_text_primary"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Switch player untuk debug (OK untuk memilih)."
+        android:textColor="@color/mql_text_secondary"
+        android:textSize="14sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="Playback Engine"
+        android:textColor="@color/mql_text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/player_mode_group"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/player_mode_auto"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Auto (recommended)"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/player_mode_exo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ExoPlayer"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/player_mode_vlc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="VLC (LibVLC)"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+    </RadioGroup>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Catatan: setelah ganti player, buka channel lagi."
+        android:textColor="@color/mql_text_secondary"
+        android:textSize="14sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Debug Options"
+        android:textColor="@color/mql_text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <Switch
+        android:id="@+id/setting_exo_limit_480p"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Exo: limit to 480p (reduce FHD lag)"
+        android:textColor="@color/mql_text_primary"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="VLC hardware decoding"
+        android:textColor="@color/mql_text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/vlc_hw_group"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/vlc_hw_auto"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Auto"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vlc_hw_on"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="HW ON (mediacodec)"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vlc_hw_off"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="HW OFF (software)"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+    </RadioGroup>
+
+    <Switch
+        android:id="@+id/setting_vlc_texture"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="VLC output: TextureView (uncheck = SurfaceView)"
+        android:textColor="@color/mql_text_primary"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
+</LinearLayout>

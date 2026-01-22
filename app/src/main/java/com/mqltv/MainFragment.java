@@ -33,9 +33,7 @@ public class MainFragment extends BrowseSupportFragment {
             if (!(item instanceof Channel)) return;
             Channel channel = (Channel) item;
 
-            Intent intent = new Intent(requireContext(), PlayerActivity.class);
-            intent.putExtra(Constants.EXTRA_TITLE, channel.getTitle());
-            intent.putExtra(Constants.EXTRA_URL, channel.getUrl());
+            Intent intent = PlayerIntents.createPlayIntent(requireContext(), channel.getTitle(), channel.getUrl());
             startActivity(intent);
         });
 

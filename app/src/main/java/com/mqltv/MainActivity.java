@@ -69,7 +69,12 @@ public class MainActivity extends FragmentActivity implements NavAdapter.Listene
         });
 
         View settings = findViewById(R.id.nav_action_settings);
-        settings.setOnClickListener(v -> showPlaceholder("Settings"));
+        settings.setOnClickListener(v -> {
+            getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.content_container, new SettingsFragment())
+                .commit();
+        });
 
         View help = findViewById(R.id.nav_action_help);
         help.setOnClickListener(v -> showPlaceholder("Help"));

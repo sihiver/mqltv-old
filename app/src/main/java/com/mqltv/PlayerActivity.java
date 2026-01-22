@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Toast;
@@ -10,6 +11,8 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.ExoPlaybackException;
 import androidx.media3.exoplayer.video.MediaCodecVideoDecoderException;
@@ -42,16 +45,32 @@ public class PlayerActivity extends FragmentActivity {
         if (url == null || url.trim().isEmpty()) return;
 
         DefaultTrackSelector trackSelector = new DefaultTrackSelector(this);
-        if (isProbablyEmulator()) {
+        boolean limit480p = PlaybackPrefs.isExoLimit480p(this);
+        if (isProbablyEmulator() || android.os.Build.VERSION.SDK_INT <= 19 || limit480p) {
             trackSelector.setParameters(
-                    trackSelector.buildUponParameters()
-                            .setForceLowestBitrate(true)
-                            .setMaxVideoSize(854, 480)
+                trackSelector.buildUponParameters()
+                    .setForceLowestBitrate(true)
+                    .setMaxVideoSize(854, 480)
             );
         }
 
+        DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
+            .setEnableDecoderFallback(true);
+
+        DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+            // Slightly larger buffers help avoid rebuffering on unstable streams.
+            .setBufferDurationsMs(
+                15_000,
+                60_000,
+                2_000,
+                4_000
+            )
+            .build();
+
         player = new ExoPlayer.Builder(this)
                 .setTrackSelector(trackSelector)
+            .setRenderersFactory(renderersFactory)
+            .setLoadControl(loadControl)
                 .build();
         playerView.setPlayer(player);
 
@@ -60,17 +79,30 @@ public class PlayerActivity extends FragmentActivity {
             public void onPlayerError(PlaybackException error) {
                 String msg = "Playback error: " + error.getErrorCodeName();
                 Throwable cause = error.getCause();
+                boolean codecNotSupported = false;
                 if (cause instanceof MediaCodecVideoDecoderException) {
                     msg = "Video codec not supported on this device";
+                    codecNotSupported = true;
                 } else if (error instanceof ExoPlaybackException) {
                     // Heuristic: common when stream is H.264 High Profile beyond emulator codec.
                     String detail = error.getMessage();
                     if (detail != null && detail.contains("NO_EXCEEDS_CAPABILITIES")) {
                         msg = "Stream not supported by device decoder";
+                        codecNotSupported = true;
                     }
                 }
 
                 Toast.makeText(PlayerActivity.this, msg, Toast.LENGTH_LONG).show();
+
+                // If ExoPlayer can't decode, try LibVLC as a fallback (often more tolerant on STBs).
+                if (codecNotSupported && !PlayerIntents.shouldUseVlc(PlayerActivity.this)) {
+                    String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
+                    String url = getIntent().getStringExtra(Constants.EXTRA_URL);
+                    startActivity(new Intent(PlayerActivity.this, VlcPlayerActivity.class)
+                            .putExtra(Constants.EXTRA_TITLE, title)
+                            .putExtra(Constants.EXTRA_URL, url));
+                    finish();
+                }
             }
         });
 

@@ -71,9 +71,18 @@ public class MainActivity extends FragmentActivity implements NavAdapter.Listene
         View settings = findViewById(R.id.nav_action_settings);
         settings.setOnClickListener(v -> {
             getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.content_container, new SettingsFragment())
-                .commit();
+                    .beginTransaction()
+                    .replace(R.id.content_container, new SettingsFragment())
+                    .runOnCommit(() -> {
+                        View root = getWindow().getDecorView();
+                        root.post(() -> {
+                            View auto = root.findViewById(R.id.player_mode_auto);
+                            if (auto != null) {
+                                auto.requestFocus();
+                            }
+                        });
+                    })
+                    .commit();
         });
 
         View help = findViewById(R.id.nav_action_help);

@@ -23,11 +23,14 @@ public class SettingsFragment extends Fragment {
         RadioGroup group = v.findViewById(R.id.player_mode_group);
         RadioButton auto = v.findViewById(R.id.player_mode_auto);
         RadioButton exo = v.findViewById(R.id.player_mode_exo);
+        RadioButton exoLegacy = v.findViewById(R.id.player_mode_exo_legacy);
         RadioButton vlc = v.findViewById(R.id.player_mode_vlc);
 
         int mode = PlayerIntents.getPlayerMode(v.getContext());
         if (mode == PlayerIntents.PLAYER_MODE_VLC) {
             vlc.setChecked(true);
+        } else if (mode == PlayerIntents.PLAYER_MODE_EXO_LEGACY) {
+            exoLegacy.setChecked(true);
         } else if (mode == PlayerIntents.PLAYER_MODE_EXO) {
             exo.setChecked(true);
         } else {
@@ -39,7 +42,10 @@ public class SettingsFragment extends Fragment {
             String label = "Auto";
             if (checkedId == R.id.player_mode_exo) {
                 newMode = PlayerIntents.PLAYER_MODE_EXO;
-                label = "ExoPlayer";
+                label = "ExoPlayer (Media3)";
+            } else if (checkedId == R.id.player_mode_exo_legacy) {
+                newMode = PlayerIntents.PLAYER_MODE_EXO_LEGACY;
+                label = "ExoPlayer 2.13.3";
             } else if (checkedId == R.id.player_mode_vlc) {
                 newMode = PlayerIntents.PLAYER_MODE_VLC;
                 label = "VLC";
@@ -86,8 +92,37 @@ public class SettingsFragment extends Fragment {
             Toast.makeText(v.getContext(), isChecked ? "VLC output: Texture" : "VLC output: Surface", Toast.LENGTH_SHORT).show();
         });
 
-        // Make sure something is focusable for TV.
-        auto.requestFocus();
+        RadioGroup voutGroup = v.findViewById(R.id.vlc_vout_group);
+        int vout = PlaybackPrefs.getVlcVout(v.getContext());
+        if (vout == PlaybackPrefs.VLC_VOUT_ANDROID_DISPLAY) {
+            ((RadioButton) v.findViewById(R.id.vlc_vout_android_display)).setChecked(true);
+        } else if (vout == PlaybackPrefs.VLC_VOUT_ANDROID_SURFACE) {
+            ((RadioButton) v.findViewById(R.id.vlc_vout_android_surface)).setChecked(true);
+        } else if (vout == PlaybackPrefs.VLC_VOUT_GLES2) {
+            ((RadioButton) v.findViewById(R.id.vlc_vout_gles2)).setChecked(true);
+        } else {
+            ((RadioButton) v.findViewById(R.id.vlc_vout_auto)).setChecked(true);
+        }
+        voutGroup.setOnCheckedChangeListener((g, checkedId) -> {
+            int newVout = PlaybackPrefs.VLC_VOUT_AUTO;
+            String label = "Auto";
+            if (checkedId == R.id.vlc_vout_android_display) {
+                newVout = PlaybackPrefs.VLC_VOUT_ANDROID_DISPLAY;
+                label = "android_display";
+            } else if (checkedId == R.id.vlc_vout_android_surface) {
+                newVout = PlaybackPrefs.VLC_VOUT_ANDROID_SURFACE;
+                label = "android_surface";
+            } else if (checkedId == R.id.vlc_vout_gles2) {
+                newVout = PlaybackPrefs.VLC_VOUT_GLES2;
+                label = "gles2";
+            }
+
+            PlaybackPrefs.setVlcVout(v.getContext(), newVout);
+            Toast.makeText(v.getContext(), "VLC vout: " + label, Toast.LENGTH_SHORT).show();
+        });
+
+        // Make sure something is focusable for TV (post so fragment is committed & laid out).
+        v.post(auto::requestFocus);
         return v;
     }
 }

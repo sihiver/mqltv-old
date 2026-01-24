@@ -41,6 +41,13 @@ dependencies {
     implementation 'androidx.media3:media3-ui:1.2.1'
     implementation 'androidx.media3:media3-exoplayer-hls:1.2.1'
 
+    // Local FFmpeg audio decoder extension (adds support for MP2/etc on devices where platform decoders are missing)
+    implementation files('libs/lib-decoder-ffmpeg-release.aar')
+
+    // Oldest ExoPlayer still available on Google's Maven (2.13.3)
+    // (2.4.2 / r2.4.2 is no longer published there)
+    implementation 'com.google.android.exoplayer:exoplayer:2.13.3'
+
     // VLC engine (useful on older/quirky STBs where MediaCodec/ExoPlayer struggles)
     implementation 'org.videolan.android:libvlc-all:3.5.1'
 }

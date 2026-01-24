@@ -51,7 +51,16 @@
             android:id="@+id/player_mode_exo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ExoPlayer"
+            android:text="ExoPlayer (Media3)"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/player_mode_exo_legacy"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ExoPlayer 2.13.3 (legacy)"
             android:textColor="@color/mql_text_primary"
             android:focusable="true"
             android:focusableInTouchMode="true" />
@@ -148,5 +157,59 @@
         android:textColor="@color/mql_text_primary"
         android:focusable="true"
         android:focusableInTouchMode="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="VLC video output (vout)"
+        android:textColor="@color/mql_text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/vlc_vout_group"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/vlc_vout_auto"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Auto"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vlc_vout_android_display"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="android_display (recommended for some STB)"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vlc_vout_android_surface"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="android_surface"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vlc_vout_gles2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="gles2 (OpenGL)"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+    </RadioGroup>
 
 </LinearLayout>

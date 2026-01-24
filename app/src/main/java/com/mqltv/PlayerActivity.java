@@ -9,6 +9,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentActivity;
 
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.DefaultLoadControl;
@@ -55,16 +56,20 @@ public class PlayerActivity extends FragmentActivity {
         }
 
         DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
-            .setEnableDecoderFallback(true);
+            .setEnableDecoderFallback(true)
+            // Prefer extension decoders when available (e.g., FFmpeg for MP2 audio).
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
-            // Slightly larger buffers help avoid rebuffering on unstable streams.
+            // Larger buffers help avoid rebuffering on unstable IPTV streams.
             .setBufferDurationsMs(
-                15_000,
-                60_000,
-                2_000,
-                4_000
+                30_000,
+                120_000,
+                2_500,
+                5_000
             )
+            .setBackBuffer(10_000, true)
+            .setPrioritizeTimeOverSizeThresholds(true)
             .build();
 
         player = new ExoPlayer.Builder(this)
@@ -72,6 +77,10 @@ public class PlayerActivity extends FragmentActivity {
             .setRenderersFactory(renderersFactory)
             .setLoadControl(loadControl)
                 .build();
+
+        // Helps with correct audio routing & focus behavior on modern Android.
+        player.setAudioAttributes(AudioAttributes.DEFAULT, true);
+        player.setHandleAudioBecomingNoisy(true);
         playerView.setPlayer(player);
 
         player.addListener(new Player.Listener() {
@@ -94,14 +103,17 @@ public class PlayerActivity extends FragmentActivity {
 
                 Toast.makeText(PlayerActivity.this, msg, Toast.LENGTH_LONG).show();
 
-                // If ExoPlayer can't decode, try LibVLC as a fallback (often more tolerant on STBs).
-                if (codecNotSupported && !PlayerIntents.shouldUseVlc(PlayerActivity.this)) {
-                    String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
-                    String url = getIntent().getStringExtra(Constants.EXTRA_URL);
-                    startActivity(new Intent(PlayerActivity.this, VlcPlayerActivity.class)
-                            .putExtra(Constants.EXTRA_TITLE, title)
-                            .putExtra(Constants.EXTRA_URL, url));
-                    finish();
+                // If ExoPlayer can't decode, try the legacy ExoPlayer engine first (and only then VLC).
+                if (codecNotSupported) {
+                    int mode = PlaybackPrefs.getPlayerMode(PlayerActivity.this);
+                    if (mode != PlaybackPrefs.PLAYER_MODE_VLC) {
+                        String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
+                        String playUrl = getIntent().getStringExtra(Constants.EXTRA_URL);
+                        startActivity(new Intent(PlayerActivity.this, LegacyExoPlayerActivity.class)
+                                .putExtra(Constants.EXTRA_TITLE, title)
+                                .putExtra(Constants.EXTRA_URL, playUrl));
+                        finish();
+                    }
                 }
             }
         });

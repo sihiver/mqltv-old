@@ -5,10 +5,12 @@ import android.content.Context;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.Collections;
 import java.util.List;
+
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 public final class PlaylistRepository {
     private static final String DEFAULT_ASSET = "channels.m3u";
@@ -35,24 +37,23 @@ public final class PlaylistRepository {
             return Collections.emptyList();
         }
 
-        HttpURLConnection conn = null;
         InputStream inputStream = null;
         try {
-            URL url = new URL(playlistUrl);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(15000);
-            conn.setInstanceFollowRedirects(true);
-            conn.setRequestProperty("User-Agent", "MQLTV/1.0");
-            conn.connect();
-
-            int code = conn.getResponseCode();
-            if (code < 200 || code >= 300) {
-                return Collections.emptyList();
+            Request request = new Request.Builder()
+                    .url(playlistUrl)
+                    .header("User-Agent", "MQLTV/1.0")
+                    .build();
+            try (Response response = NetworkClient.getClient().newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    return Collections.emptyList();
+                }
+                ResponseBody body = response.body();
+                if (body == null) {
+                    return Collections.emptyList();
+                }
+                inputStream = new BufferedInputStream(body.byteStream());
+                return M3UParser.parse(inputStream);
             }
-
-            inputStream = new BufferedInputStream(conn.getInputStream());
-            return M3UParser.parse(inputStream);
         } catch (IOException e) {
             return Collections.emptyList();
         } finally {
@@ -61,9 +62,6 @@ public final class PlaylistRepository {
                     inputStream.close();
                 } catch (IOException ignored) {
                 }
-            }
-            if (conn != null) {
-                conn.disconnect();
             }
         }
     }

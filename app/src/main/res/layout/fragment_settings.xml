@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp"
     android:background="@color/mql_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
 
     <TextView
         android:layout_width="wrap_content"
@@ -138,6 +142,15 @@
             android:focusableInTouchMode="true" />
 
         <RadioButton
+            android:id="@+id/vlc_hw_plus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="HW+ (mediacodec direct render)"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
             android:id="@+id/vlc_hw_off"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -148,12 +161,77 @@
 
     </RadioGroup>
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="VLC HW decoder impl"
+        android:textColor="@color/mql_text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/vlc_hw_impl_group"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/vlc_hw_impl_auto"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Auto"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vlc_hw_impl_mediacodec"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="mediacodec"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vlc_hw_impl_mediacodec_ndk"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="mediacodec_ndk"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+    </RadioGroup>
+
+    <Switch
+        android:id="@+id/setting_vlc_hw_force_only"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Force HW only (disable SW fallback)"
+        android:textColor="@color/mql_text_primary"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
     <Switch
         android:id="@+id/setting_vlc_texture"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:text="VLC output: TextureView (uncheck = SurfaceView)"
+        android:textColor="@color/mql_text_primary"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
+    <Switch
+        android:id="@+id/setting_vlc_deinterlace"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="VLC deinterlace (untuk video interlaced)"
         android:textColor="@color/mql_text_primary"
         android:focusable="true"
         android:focusableInTouchMode="true" />
@@ -212,4 +290,69 @@
 
     </RadioGroup>
 
-</LinearLayout>
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="VLC Network Caching"
+        android:textColor="@color/mql_text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/vlc_caching_group"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/vlc_caching_1500"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1500 ms (default)"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vlc_caching_3000"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="3000 ms"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vlc_caching_5000"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="5000 ms"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vlc_caching_10000"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="10000 ms (max buffer)"
+            android:textColor="@color/mql_text_primary"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+    </RadioGroup>
+
+    <Button
+        android:id="@+id/vlc_reset_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Reset VLC Settings"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
+    </LinearLayout>
+
+</ScrollView>

@@ -67,7 +67,8 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
         }
 
         RenderersFactory renderersFactory = new DefaultRenderersFactory(this)
-            .setEnableDecoderFallback(true);
+            .setEnableDecoderFallback(true)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
             .setBufferDurationsMs(

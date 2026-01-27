@@ -3,11 +3,25 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <org.videolan.libvlc.util.VLCVideoLayout
-        android:id="@+id/vlc_video_layout"
+    <FrameLayout
+        android:id="@+id/vlc_video_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:keepScreenOn="true" />
+        android:layout_height="match_parent">
+
+        <SurfaceView
+            android:id="@+id/vlc_surface_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:keepScreenOn="true" />
+
+        <TextureView
+            android:id="@+id/vlc_texture_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:keepScreenOn="true"
+            android:visibility="gone" />
+
+    </FrameLayout>
 
     <ProgressBar
         android:id="@+id/vlc_loading"

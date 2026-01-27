@@ -17,13 +17,15 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.VH> {
 
@@ -112,31 +114,20 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
     }
 
     private static Bitmap downloadBitmap(String urlString) {
-        HttpURLConnection conn = null;
-        InputStream is = null;
         try {
-            URL url = new URL(urlString);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(15000);
-            conn.setInstanceFollowRedirects(true);
-            conn.connect();
-            int code = conn.getResponseCode();
-            if (code < 200 || code >= 300) return null;
-            is = conn.getInputStream();
-            return BitmapFactory.decodeStream(is);
-        } catch (Exception ignored) {
+            Request request = new Request.Builder()
+                    .url(urlString)
+                    .header("User-Agent", "MQLTV/1.0")
+                    .build();
+            try (Response response = NetworkClient.getClient().newCall(request).execute()) {
+                if (!response.isSuccessful()) return null;
+                ResponseBody body = response.body();
+                if (body == null) return null;
+                byte[] bytes = body.bytes();
+                return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            }
+        } catch (IOException ignored) {
             return null;
-        } finally {
-            if (is != null) {
-                try {
-                    is.close();
-                } catch (Exception ignored) {
-                }
-            }
-            if (conn != null) {
-                conn.disconnect();
-            }
         }
     }
 }

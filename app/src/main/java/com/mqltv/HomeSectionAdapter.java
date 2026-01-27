@@ -40,7 +40,7 @@ public class HomeSectionAdapter extends RecyclerView.Adapter<HomeSectionAdapter.
 
         if (holder.rowList.getLayoutManager() == null) {
             holder.rowList.setLayoutManager(new LinearLayoutManager(holder.rowList.getContext(), RecyclerView.HORIZONTAL, false));
-            holder.rowList.setHasFixedSize(true);
+            holder.rowList.setHasFixedSize(false);
             holder.rowList.setItemViewCacheSize(18);
         }
 

@@ -2,9 +2,18 @@ plugins {
     id 'com.android.application'
 }
 
+def keystorePropsFile = rootProject.file('keystore/keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
 android {
     namespace 'com.mqltv'
     compileSdk 34
+
+    // APK base name
+    setProperty("archivesBaseName", "MQLTV")
 
     defaultConfig {
         applicationId 'com.mqltv'
@@ -14,14 +23,47 @@ android {
         versionName "1.0"
 
         multiDexEnabled true
+
+        // ABI splits control the outputs; no abiFilters here
+    }
+
+    // Output APK per ABI (4 files)
+    splits {
+        abi {
+            enable true
+            reset()
+            include 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+            universalApk false
+        }
+    }
+
+    packagingOptions {
+        jniLibs {
+            pickFirsts += ['**/libvlc.so', '**/libvlcjni.so', '**/libc++_shared.so']
+        }
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
+
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -37,6 +79,9 @@ dependencies {
 
     implementation 'androidx.multidex:multidex:2.0.1'
 
+    // OkHttp 3.12.x is the last branch supporting Android 4.0–4.4 (minSdk 14)
+    implementation 'com.squareup.okhttp3:okhttp:3.12.13'
+
     implementation 'androidx.media3:media3-exoplayer:1.2.1'
     implementation 'androidx.media3:media3-ui:1.2.1'
     implementation 'androidx.media3:media3-exoplayer-hls:1.2.1'
@@ -48,6 +93,6 @@ dependencies {
     // (2.4.2 / r2.4.2 is no longer published there)
     implementation 'com.google.android.exoplayer:exoplayer:2.13.3'
 
-    // VLC engine (useful on older/quirky STBs where MediaCodec/ExoPlayer struggles)
-    implementation 'org.videolan.android:libvlc-all:3.5.1'
+    // VLC engine (local AAR)
+    implementation files('libs/libvlc-release.aar')
 }

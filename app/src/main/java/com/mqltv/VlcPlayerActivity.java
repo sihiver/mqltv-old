@@ -7,6 +7,9 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.SurfaceView;
+import android.view.TextureView;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
@@ -19,7 +22,7 @@ import androidx.fragment.app.FragmentActivity;
 import org.videolan.libvlc.LibVLC;
 import org.videolan.libvlc.Media;
 import org.videolan.libvlc.MediaPlayer;
-import org.videolan.libvlc.util.VLCVideoLayout;
+import org.videolan.libvlc.interfaces.IVLCVout;
 
 import java.util.ArrayList;
 
@@ -29,7 +32,10 @@ public class VlcPlayerActivity extends FragmentActivity {
 
     private LibVLC libVLC;
     private MediaPlayer mediaPlayer;
-    private VLCVideoLayout videoLayout;
+    private SurfaceView surfaceView;
+    private TextureView textureView;
+    private IVLCVout vlcVout;
+    private FrameLayout videoContainer;
 
     private View controls;
     private ImageButton playPause;
@@ -38,6 +44,60 @@ public class VlcPlayerActivity extends FragmentActivity {
     private TextView durationText;
     private View liveBadge;
     private ProgressBar loading;
+    private boolean released = false;
+
+    private final IVLCVout.Callback vlcVoutCallback = new IVLCVout.Callback() {
+        @Override
+        public void onSurfacesCreated(IVLCVout vout) {
+            Log.i(TAG, "VLC surfaces created");
+        }
+
+        @Override
+        public void onSurfacesDestroyed(IVLCVout vout) {
+            Log.i(TAG, "VLC surfaces destroyed");
+        }
+    };
+
+    private final IVLCVout.OnNewVideoLayoutListener voutLayoutListener = new IVLCVout.OnNewVideoLayoutListener() {
+        @Override
+        public void onNewVideoLayout(IVLCVout vout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
+            if (width * height == 0 || videoContainer == null) return;
+            if (sarNum == 0 || sarDen == 0) {
+                sarNum = 1;
+                sarDen = 1;
+            }
+
+            final int containerW = videoContainer.getWidth();
+            final int containerH = videoContainer.getHeight();
+            if (containerW == 0 || containerH == 0) return;
+
+            final int visibleW = visibleWidth * sarNum / sarDen;
+            final float videoAR = (float) visibleW / (float) visibleHeight;
+            final float containerAR = (float) containerW / (float) containerH;
+
+            int displayW = containerW;
+            int displayH = containerH;
+            if (containerAR < videoAR) {
+                displayH = (int) (containerW / videoAR);
+            } else {
+                displayW = (int) (containerH * videoAR);
+            }
+
+            final int finalW = displayW;
+            final int finalH = displayH;
+            runOnUiThread(() -> {
+                FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(finalW, finalH);
+                lp.leftMargin = (containerW - finalW) / 2;
+                lp.topMargin = (containerH - finalH) / 2;
+                if (surfaceView != null && surfaceView.getVisibility() == View.VISIBLE) {
+                    surfaceView.setLayoutParams(lp);
+                }
+                if (textureView != null && textureView.getVisibility() == View.VISIBLE) {
+                    textureView.setLayoutParams(lp);
+                }
+            });
+        }
+    };
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private final Runnable hideControlsRunnable = () -> {
@@ -56,7 +116,9 @@ public class VlcPlayerActivity extends FragmentActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_vlc_player);
 
-        videoLayout = findViewById(R.id.vlc_video_layout);
+        surfaceView = findViewById(R.id.vlc_surface_view);
+        textureView = findViewById(R.id.vlc_texture_view);
+        videoContainer = findViewById(R.id.vlc_video_container);
 
         loading = findViewById(R.id.vlc_loading);
         controls = findViewById(R.id.vlc_controls_container);
@@ -117,34 +179,55 @@ public class VlcPlayerActivity extends FragmentActivity {
         ArrayList<String> options = new ArrayList<>();
         // Increase logging to help diagnose HW vs SW decoding in logcat.
         options.add("-vvv");
-        // Network buffering options; tune if needed.
-        options.add("--network-caching=1500");
-        options.add("--clock-jitter=0");
-        options.add("--clock-synchro=0");
+        // Network buffering options; read from preferences.
+        int cachingMs = PlaybackPrefs.getVlcNetworkCaching(this);
+        options.add("--network-caching=" + cachingMs);
+        options.add("--live-caching=" + cachingMs);
+        options.add("--file-caching=" + cachingMs);
+        boolean legacySdk = android.os.Build.VERSION.SDK_INT <= 19;
+        // Reduce freeze by allowing late frames to be dropped (disable on legacy 4.4).
+        if (!legacySdk) {
+            options.add("--drop-late-frames");
+            options.add("--skip-frames");
+        }
+        // Tuning for old CPUs: fewer threads + lighter deblocking filter.
+        options.add("--avcodec-threads=1");
+        options.add(legacySdk ? "--avcodec-skiploopfilter=nonref" : "--avcodec-skiploopfilter=all");
         int hwMode = PlaybackPrefs.getVlcHwDecoderMode(this);
         boolean useHw = hwMode != PlaybackPrefs.VLC_HW_OFF;
         boolean useTexture = PlaybackPrefs.isVlcUseTexture(this);
+        boolean deinterlace = PlaybackPrefs.isVlcDeinterlaceEnabled(this);
+        int hwImpl = PlaybackPrefs.getVlcHwDecoderImpl(this);
+        boolean forceHwOnly = PlaybackPrefs.isVlcHwForceOnly(this);
 
         int vout = PlaybackPrefs.getVlcVout(this);
-        if (vout == PlaybackPrefs.VLC_VOUT_ANDROID_DISPLAY) {
-            options.add("--vout=android_display");
+        // Force android_display on this device; gles2 crashes with EGL config error.
+        String voutName = "android_display";
+        if (vout == PlaybackPrefs.VLC_VOUT_GLES2) {
+            Log.w(TAG, "VLC vout gles2 causes EGL crash; forcing android_display");
         } else if (vout == PlaybackPrefs.VLC_VOUT_ANDROID_SURFACE) {
-            options.add("--vout=android_surface");
-        } else if (vout == PlaybackPrefs.VLC_VOUT_GLES2) {
-            options.add("--vout=gles2");
+            Log.w(TAG, "VLC vout android_surface not available; forcing android_display");
+        }
+        options.add("--vout=" + voutName);
+        options.add("--android-display-chroma=RV16");
+
+        if (deinterlace) {
+            options.add("--deinterlace=1");
+            options.add("--deinterlace-mode=discard");
+        } else {
+            options.add("--deinterlace=0");
         }
 
-        Log.i(TAG, "Starting VLC: hwMode=" + hwMode + " useHw=" + useHw + " useTexture=" + useTexture + " vout=" + vout);
-        if (hwMode == PlaybackPrefs.VLC_HW_OFF) {
-            options.add("--avcodec-hw=none");
-        } else {
-            // AUTO/ON: prefer hardware decoding.
-            options.add("--avcodec-hw=mediacodec");
-        }
+        final String hwImplName = !useHw ? null
+            : (hwImpl == PlaybackPrefs.VLC_HW_IMPL_MEDIACODEC_NDK ? "mediacodec_ndk"
+            : (android.os.Build.VERSION.SDK_INT >= 21 ? "mediacodec_ndk" : "mediacodec_jni"));
+        final String hwCodecList = (hwImplName != null) ? hwImplName : (android.os.Build.VERSION.SDK_INT >= 21 ? "mediacodec_ndk" : "mediacodec_jni");
+
+        Log.i(TAG, "Starting VLC: hwMode=" + hwMode + " useHw=" + useHw + " useTexture=" + useTexture + " vout=" + vout + " hwImpl=" + hwImplName + " forceHwOnly=" + forceHwOnly);
 
         libVLC = new LibVLC(this, options);
         mediaPlayer = new MediaPlayer(libVLC);
-        mediaPlayer.setVideoScale(MediaPlayer.ScaleType.SURFACE_BEST_FIT);
+        // Video scale is handled by SurfaceView/TextureView layout.
         mediaPlayer.setEventListener(new MediaPlayer.EventListener() {
             @Override
             public void onEvent(MediaPlayer.Event event) {
@@ -168,18 +251,58 @@ public class VlcPlayerActivity extends FragmentActivity {
         });
 
         // Important for some STBs: attach views only after the layout is attached/measured.
-        videoLayout.post(() -> {
+        surfaceView.post(() -> {
             if (isFinishing() || mediaPlayer == null || libVLC == null) return;
 
-            mediaPlayer.attachViews(videoLayout, null, false, useTexture);
+            vlcVout = mediaPlayer.getVLCVout();
+            if (useTexture) {
+                if (textureView != null) textureView.setVisibility(View.VISIBLE);
+                if (surfaceView != null) surfaceView.setVisibility(View.GONE);
+                if (textureView != null) {
+                    vlcVout.setVideoView(textureView);
+                    vlcVout.setSubtitlesView(textureView);
+                }
+            } else {
+                if (textureView != null) textureView.setVisibility(View.GONE);
+                if (surfaceView != null) surfaceView.setVisibility(View.VISIBLE);
+                if (surfaceView != null) {
+                    vlcVout.setVideoView(surfaceView);
+                    vlcVout.setSubtitlesView(surfaceView);
+                }
+            }
+            vlcVout.addCallback(vlcVoutCallback);
+            if (surfaceView != null) {
+                vlcVout.setWindowSize(surfaceView.getWidth(), surfaceView.getHeight());
+            }
+            vlcVout.attachViews(voutLayoutListener);
 
             Media media = new Media(libVLC, Uri.parse(url));
-            media.setHWDecoderEnabled(useHw, false);
+            media.addOption(":network-caching=" + cachingMs);
+            media.addOption(":live-caching=" + cachingMs);
+            media.addOption(":file-caching=" + cachingMs);
+            if (!legacySdk) {
+                media.addOption(":drop-late-frames");
+                media.addOption(":skip-frames");
+            }
+            media.addOption(":avcodec-threads=1");
+            media.addOption(legacySdk ? ":avcodec-skiploopfilter=nonref" : ":avcodec-skiploopfilter=all");
+            media.addOption(":android-display-chroma=RV16");
+            if (deinterlace) {
+                media.addOption(":deinterlace=1");
+                media.addOption(":deinterlace-mode=discard");
+            } else {
+                media.addOption(":deinterlace=0");
+            }
+            boolean forceHw = hwMode == PlaybackPrefs.VLC_HW_PLUS;
+            media.setHWDecoderEnabled(useHw, forceHw);
+            if (forceHwOnly && useHw) {
+                media.addOption(":codec=" + hwCodecList);
+            }
             mediaPlayer.setMedia(media);
             media.release();
 
             mediaPlayer.play();
-            mediaPlayer.updateVideoSurfaces();
+            // No updateVideoSurfaces() in older LibVLC API.
 
             showControlsTemporarily();
             uiHandler.removeCallbacks(progressRunnable);
@@ -280,31 +403,37 @@ public class VlcPlayerActivity extends FragmentActivity {
     @Override
     protected void onStop() {
         super.onStop();
+        releasePlayer();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        releasePlayer();
+    }
+
+    private void releasePlayer() {
+        if (released) return;
+        released = true;
 
         uiHandler.removeCallbacks(progressRunnable);
         uiHandler.removeCallbacks(hideControlsRunnable);
 
         if (mediaPlayer != null) {
+            try { mediaPlayer.setEventListener(null); } catch (Exception ignored) {}
+            try { mediaPlayer.stop(); } catch (Exception ignored) {}
             try {
-                mediaPlayer.stop();
-            } catch (Exception ignored) {
-            }
-            try {
-                mediaPlayer.detachViews();
-            } catch (Exception ignored) {
-            }
-            try {
-                mediaPlayer.release();
-            } catch (Exception ignored) {
-            }
+                if (vlcVout != null) {
+                    vlcVout.removeCallback(vlcVoutCallback);
+                    vlcVout.detachViews();
+                }
+            } catch (Exception ignored) {}
+            try { mediaPlayer.release(); } catch (Exception ignored) {}
             mediaPlayer = null;
         }
 
         if (libVLC != null) {
-            try {
-                libVLC.release();
-            } catch (Exception ignored) {
-            }
+            try { libVLC.release(); } catch (Exception ignored) {}
             libVLC = null;
         }
     }

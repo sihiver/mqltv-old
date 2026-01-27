@@ -82,6 +82,9 @@ dependencies {
     // OkHttp 3.12.x is the last branch supporting Android 4.0–4.4 (minSdk 14)
     implementation 'com.squareup.okhttp3:okhttp:3.12.13'
 
+    // Conscrypt provides modern TLS on Android 4.x devices
+    implementation 'org.conscrypt:conscrypt-android:2.5.2'
+
     implementation 'androidx.media3:media3-exoplayer:1.2.1'
     implementation 'androidx.media3:media3-ui:1.2.1'
     implementation 'androidx.media3:media3-exoplayer-hls:1.2.1'

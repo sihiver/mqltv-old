@@ -7,12 +7,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.util.LruCache;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.net.Uri;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -28,6 +30,8 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.VH> {
+
+    private static final String TAG = "ChannelLogo";
 
     private static final ExecutorService IMAGE_EXECUTOR = Executors.newFixedThreadPool(3);
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
@@ -114,19 +118,38 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
     }
 
     private static Bitmap downloadBitmap(String urlString) {
+        Bitmap bmp = downloadBitmapOnce(urlString);
+        if (bmp == null && urlString != null && urlString.startsWith("https://")) {
+            String httpUrl = "http://" + urlString.substring("https://".length());
+            Log.w(TAG, "Retry logo over HTTP: " + httpUrl);
+            bmp = downloadBitmapOnce(httpUrl);
+        }
+        return bmp;
+    }
+
+    private static Bitmap downloadBitmapOnce(String urlString) {
         try {
+            String host = null;
+            try {
+                host = Uri.parse(urlString).getHost();
+            } catch (Exception ignored) {
+            }
             Request request = new Request.Builder()
                     .url(urlString)
                     .header("User-Agent", "MQLTV/1.0")
                     .build();
-            try (Response response = NetworkClient.getClient().newCall(request).execute()) {
-                if (!response.isSuccessful()) return null;
+            try (Response response = NetworkClient.getLogoClient(host).newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    Log.w(TAG, "Logo HTTP " + response.code() + " for " + urlString);
+                    return null;
+                }
                 ResponseBody body = response.body();
                 if (body == null) return null;
                 byte[] bytes = body.bytes();
                 return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
             }
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            Log.w(TAG, "Logo download failed for " + urlString + ": " + e.getMessage());
             return null;
         }
     }

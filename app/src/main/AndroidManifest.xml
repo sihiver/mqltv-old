@@ -37,6 +37,7 @@
         <activity
             android:name=".MainActivity"
             android:theme="@style/Theme.MQLTV"
+            android:launchMode="singleTask"
             android:exported="true">
             <!-- Phone/Tablet launcher (Android 4.2+) -->
             <intent-filter>
@@ -48,6 +49,13 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+
+            <!-- Act as a Home/Launcher app (user must select as default Home) -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 

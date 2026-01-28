@@ -192,4 +192,20 @@ public class MainActivity extends FragmentActivity implements NavAdapter.Listene
     public void onDestinationClicked(NavDestination destination) {
         showDestination(destination);
     }
+
+    @Override
+    public void onBackPressed() {
+        // Launcher-style behavior: don't finish the Home activity.
+        if (currentDestination != null && currentDestination != NavDestination.HOME) {
+            showDestination(NavDestination.HOME);
+            if (navList != null) {
+                navList.post(() -> {
+                    View header = findViewById(R.id.nav_header);
+                    if (header != null) header.requestFocus();
+                });
+            }
+            return;
+        }
+        // At root: ignore back to avoid blank screen when set as default HOME.
+    }
 }

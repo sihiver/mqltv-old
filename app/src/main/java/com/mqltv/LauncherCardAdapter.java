@@ -1,5 +1,8 @@
 package com.mqltv;
 
+import android.content.Context;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,9 +24,15 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
 
     private final List<LauncherCard> items = new ArrayList<>();
     private final Listener listener;
+    private LauncherCardStyle cardStyle;
 
     public LauncherCardAdapter(Listener listener) {
         this.listener = listener;
+    }
+
+    public void setCardStyle(LauncherCardStyle style) {
+        this.cardStyle = style;
+        notifyDataSetChanged();
     }
 
     public void submit(List<LauncherCard> cards) {
@@ -51,6 +60,12 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         int colorSecondary = ContextCompat.getColor(holder.itemView.getContext(), R.color.mql_text_secondary);
         holder.icon.setColorFilter(colorSecondary);
 
+        if (cardStyle != null) {
+            holder.itemView.setBackground(createCardBackground(holder.itemView.getContext(), cardStyle));
+        } else {
+            holder.itemView.setBackgroundResource(R.drawable.launcher_card_bg);
+        }
+
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onCardClicked(card);
         });
@@ -59,6 +74,10 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             float s = hasFocus ? 1.03f : 1.0f;
             v.animate().scaleX(s).scaleY(s).setDuration(120).start();
             v.setActivated(hasFocus);
+            // Ensure stateful background updates when we drive activated.
+            if (v.getBackground() != null) {
+                v.getBackground().setState(v.getDrawableState());
+            }
             if (holder.indicator != null) {
                 holder.indicator.setVisibility(hasFocus ? View.VISIBLE : View.INVISIBLE);
             }
@@ -77,6 +96,42 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
                 holder.icon.setColorFilter(colorSecondary);
             }
         });
+    }
+
+    private static StateListDrawable createCardBackground(Context context, LauncherCardStyle style) {
+        int radius = dp(context, 18);
+        int strokeW = dp(context, 2);
+
+        GradientDrawable focused = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] { style.focusTop, style.focusBottom }
+        );
+        focused.setCornerRadius(radius);
+        focused.setStroke(strokeW, style.stroke);
+
+        GradientDrawable activated = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] { style.focusTop, style.focusBottom }
+        );
+        activated.setCornerRadius(radius);
+        activated.setStroke(strokeW, style.stroke);
+
+        GradientDrawable normal = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] { style.normalTop, style.normalBottom }
+        );
+        normal.setCornerRadius(radius);
+
+        StateListDrawable s = new StateListDrawable();
+        s.addState(new int[] { android.R.attr.state_activated }, activated);
+        s.addState(new int[] { android.R.attr.state_focused }, focused);
+        s.addState(new int[] {}, normal);
+        return (StateListDrawable) s.mutate();
+    }
+
+    private static int dp(Context context, int dp) {
+        float d = context != null ? context.getResources().getDisplayMetrics().density : 1f;
+        return Math.max(1, (int) (dp * d + 0.5f));
     }
 
     @Override

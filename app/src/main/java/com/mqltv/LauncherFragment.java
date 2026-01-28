@@ -47,6 +47,16 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                         } catch (Exception ignored) {
                         }
                     });
+
+                    // Derive card gradient colors from wallpaper.
+                    LauncherCardStyle style = LauncherCardStyle.fromWallpaper(appContext, bmp);
+                    if (style != null) {
+                        mainHandler.post(() -> {
+                            if (adapter != null) {
+                                adapter.setCardStyle(style);
+                            }
+                        });
+                    }
                 }
             });
         }

@@ -31,6 +31,8 @@ public class HomeFragment extends Fragment {
     private ProgressBar progress;
     private TextView errorText;
 
+    private volatile List<Channel> lastChannels;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -58,7 +60,8 @@ public class HomeFragment extends Fragment {
                 channels = repo.loadDefault(appContext);
             }
 
-            List<HomeSection> sections = buildSections(channels);
+            lastChannels = channels;
+            List<HomeSection> sections = buildSections(appContext, channels);
 
             mainHandler.post(() -> {
                 if (adapter == null) return;
@@ -81,12 +84,17 @@ public class HomeFragment extends Fragment {
         if (errorText != null && loading) errorText.setVisibility(View.GONE);
     }
 
-    private static List<HomeSection> buildSections(List<Channel> channels) {
+    private static List<HomeSection> buildSections(Context appContext, List<Channel> channels) {
         List<HomeSection> result = new ArrayList<>();
         if (channels == null || channels.isEmpty()) return result;
 
-        int recentCount = Math.min(5, channels.size());
-        result.add(new HomeSection("Recent", new ArrayList<>(channels.subList(0, recentCount))));
+        List<Channel> recent = RecentChannelsStore.load(appContext);
+        if (recent != null && !recent.isEmpty()) {
+            result.add(new HomeSection("Recent", recent));
+        } else {
+            int recentCount = Math.min(5, channels.size());
+            result.add(new HomeSection("Recent", new ArrayList<>(channels.subList(0, recentCount))));
+        }
 
         Map<String, List<Channel>> byGroup = new LinkedHashMap<>();
         for (Channel c : channels) {
@@ -117,6 +125,16 @@ public class HomeFragment extends Fragment {
         adapter = null;
         progress = null;
         errorText = null;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (adapter == null) return;
+        List<Channel> snapshot = lastChannels;
+        if (snapshot == null || snapshot.isEmpty()) return;
+        Context appContext = requireContext().getApplicationContext();
+        adapter.submit(buildSections(appContext, snapshot));
     }
 
     @Override

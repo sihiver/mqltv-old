@@ -78,6 +78,7 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
 
         View clickTarget = holder.card != null ? holder.card : holder.itemView;
         clickTarget.setOnClickListener(v -> {
+            RecentChannelsStore.record(v.getContext(), c);
             Intent intent = PlayerIntents.createPlayIntent(v.getContext(), c.getTitle(), c.getUrl());
             v.getContext().startActivity(intent);
         });

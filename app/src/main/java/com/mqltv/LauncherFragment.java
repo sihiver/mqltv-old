@@ -1,6 +1,12 @@
 package com.mqltv;
 
+import android.app.AlertDialog;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -8,6 +14,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import android.graphics.Bitmap;
 
@@ -29,6 +36,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
     private RecyclerView cardsList;
     private LauncherCardAdapter adapter;
+
+    private RecyclerView appsList;
+    private LauncherAppsAdapter appsAdapter;
+    private List<LauncherAppEntry> allLaunchableAppsCache;
 
     @Nullable
     @Override
@@ -88,6 +99,35 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         adapter = new LauncherCardAdapter(this);
         cardsList.setAdapter(adapter);
 
+        appsList = v.findViewById(R.id.launcher_apps);
+        if (appsList != null) {
+            appsList.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
+            appsList.setHasFixedSize(false);
+            appsList.setItemViewCacheSize(16);
+            appsList.setClipToPadding(false);
+            appsList.setClipChildren(false);
+
+            appsAdapter = new LauncherAppsAdapter(new LauncherAppsAdapter.Listener() {
+                @Override
+                public void onAppClicked(LauncherAppEntry entry) {
+                    if (entry == null) return;
+                    Intent intent = entry.buildLaunchIntent();
+                    if (intent == null) return;
+                    try {
+                        startActivity(intent);
+                    } catch (Exception e) {
+                        Toast.makeText(getContext(), "Gagal buka app", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onAddClicked() {
+                    showAddAppDialog(appContext);
+                }
+            });
+            appsList.setAdapter(appsAdapter);
+        }
+
         // Seed cards with placeholders; subtitles will be updated after loading.
         List<LauncherCard> cards = new ArrayList<>();
         cards.add(new LauncherCard("Live TV's", "+0 Channels", android.R.drawable.ic_media_play, NavDestination.LIVE_TV));
@@ -104,12 +144,16 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         });
 
         loadCounts(appContext);
+        loadLauncherApps(appContext);
         return v;
     }
 
     @Override
     public void onResume() {
         super.onResume();
+        if (getContext() != null) {
+            loadLauncherApps(getContext().getApplicationContext());
+        }
     }
 
     @Override
@@ -139,6 +183,193 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     public void onDestroy() {
         super.onDestroy();
         executor.shutdownNow();
+    }
+
+    private void loadLauncherApps(Context appContext) {
+        if (appsAdapter == null) return;
+
+        executor.execute(() -> {
+            PackageManager pm = appContext.getPackageManager();
+            List<LauncherAppEntry> all = queryAllLaunchableApps(pm, appContext);
+            allLaunchableAppsCache = all;
+
+            // Load pinned (user selected). If empty, seed with a few system apps.
+            List<String> pinned = PinnedAppsStore.load(appContext);
+            if (pinned.isEmpty()) {
+                pinned = seedDefaultSystemApps(appContext, all);
+            }
+
+            List<LauncherAppEntry> row = new ArrayList<>();
+            for (String flat : pinned) {
+                ComponentName cn = ComponentName.unflattenFromString(flat);
+                if (cn == null) continue;
+                LauncherAppEntry e = findByComponent(all, cn);
+                if (e != null) row.add(e);
+            }
+
+            // Add the plus button.
+            row.add(new LauncherAppEntry("Tambah", null, null, true));
+
+            List<LauncherAppEntry> finalRow = row;
+            mainHandler.post(() -> {
+                if (appsAdapter != null) appsAdapter.submit(finalRow);
+            });
+        });
+    }
+
+    private void showAddAppDialog(Context appContext) {
+        executor.execute(() -> {
+            PackageManager pm = appContext.getPackageManager();
+            List<LauncherAppEntry> all = allLaunchableAppsCache != null ? allLaunchableAppsCache : queryAllLaunchableApps(pm, appContext);
+
+            List<String> pinned = PinnedAppsStore.load(appContext);
+
+            // Only show "external" apps by default: non-system.
+            List<LauncherAppEntry> candidates = new ArrayList<>();
+            for (LauncherAppEntry e : all) {
+                if (e == null || e.component == null) continue;
+                if (appContext.getPackageName().equals(e.component.getPackageName())) continue;
+                if (pinned.contains(e.component.flattenToString())) continue;
+
+                boolean isSystem = false;
+                try {
+                    ApplicationInfo ai = pm.getApplicationInfo(e.component.getPackageName(), 0);
+                    isSystem = ai != null && (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+                } catch (Exception ignored) {
+                }
+                if (!isSystem) {
+                    candidates.add(e);
+                }
+            }
+
+            // If no external apps found, fall back to any not pinned.
+            if (candidates.isEmpty()) {
+                for (LauncherAppEntry e : all) {
+                    if (e == null || e.component == null) continue;
+                    if (appContext.getPackageName().equals(e.component.getPackageName())) continue;
+                    if (pinned.contains(e.component.flattenToString())) continue;
+                    candidates.add(e);
+                }
+            }
+
+            final CharSequence[] labels = new CharSequence[candidates.size()];
+            for (int i = 0; i < candidates.size(); i++) {
+                labels[i] = candidates.get(i).label;
+            }
+
+            mainHandler.post(() -> {
+                if (getActivity() == null) return;
+                if (candidates.isEmpty()) {
+                    Toast.makeText(getContext(), "Tidak ada app untuk ditambahkan", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                new AlertDialog.Builder(getActivity())
+                        .setTitle("Tambah App")
+                        .setItems(labels, (d, which) -> {
+                            try {
+                                LauncherAppEntry picked = candidates.get(which);
+                                if (picked != null && picked.component != null) {
+                                    PinnedAppsStore.add(appContext, picked.component.flattenToString());
+                                    loadLauncherApps(appContext);
+                                }
+                            } catch (Exception ignored) {
+                            }
+                        })
+                        .setNegativeButton("Batal", (d, w) -> d.dismiss())
+                        .show();
+            });
+        });
+    }
+
+    private static List<String> seedDefaultSystemApps(Context appContext, List<LauncherAppEntry> all) {
+        List<String> pinned = new ArrayList<>();
+        if (all == null) return pinned;
+        PackageManager pm = appContext.getPackageManager();
+
+        // Prefer Settings if present.
+        for (LauncherAppEntry e : all) {
+            if (e != null && e.component != null && "com.android.settings".equals(e.component.getPackageName())) {
+                pinned.add(e.component.flattenToString());
+                break;
+            }
+        }
+
+        // Add a few system apps.
+        for (LauncherAppEntry e : all) {
+            if (e == null || e.component == null) continue;
+            if (appContext.getPackageName().equals(e.component.getPackageName())) continue;
+            if (pinned.contains(e.component.flattenToString())) continue;
+
+            boolean isSystem = false;
+            try {
+                ApplicationInfo ai = pm.getApplicationInfo(e.component.getPackageName(), 0);
+                isSystem = ai != null && (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+            } catch (Exception ignored) {
+            }
+            if (isSystem) {
+                pinned.add(e.component.flattenToString());
+                if (pinned.size() >= 6) break;
+            }
+        }
+
+        if (!pinned.isEmpty()) {
+            PinnedAppsStore.save(appContext, pinned);
+        }
+        return pinned;
+    }
+
+    private static LauncherAppEntry findByComponent(List<LauncherAppEntry> all, ComponentName cn) {
+        if (all == null || cn == null) return null;
+        for (LauncherAppEntry e : all) {
+            if (e != null && cn.equals(e.component)) return e;
+        }
+        return null;
+    }
+
+    private static List<LauncherAppEntry> queryAllLaunchableApps(PackageManager pm, Context ctx) {
+        List<LauncherAppEntry> out = new ArrayList<>();
+        if (pm == null || ctx == null) return out;
+
+        // Query LAUNCHER and LEANBACK_LAUNCHER and merge.
+        List<ResolveInfo> resolved = new ArrayList<>();
+        try {
+            Intent i1 = new Intent(Intent.ACTION_MAIN);
+            i1.addCategory(Intent.CATEGORY_LAUNCHER);
+            resolved.addAll(pm.queryIntentActivities(i1, 0));
+        } catch (Exception ignored) {
+        }
+        try {
+            Intent i2 = new Intent(Intent.ACTION_MAIN);
+            i2.addCategory("android.intent.category.LEANBACK_LAUNCHER");
+            resolved.addAll(pm.queryIntentActivities(i2, 0));
+        } catch (Exception ignored) {
+        }
+
+        // Dedup by component.
+        List<String> seen = new ArrayList<>();
+        for (ResolveInfo ri : resolved) {
+            if (ri == null || ri.activityInfo == null) continue;
+            ComponentName cn = new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name);
+            String key = cn.flattenToString();
+            if (key == null || seen.contains(key)) continue;
+            seen.add(key);
+            try {
+                LauncherAppEntry e = LauncherAppEntry.fromResolveInfo(ri, pm);
+                // Exclude our own app.
+                if (ctx.getPackageName().equals(cn.getPackageName())) continue;
+                out.add(e);
+            } catch (Exception ignored) {
+            }
+        }
+
+        // Sort by label (avoid List.sort for Android 4.x compatibility).
+        java.util.Collections.sort(out, (a, b) -> {
+            String la = a != null && a.label != null ? a.label : "";
+            String lb = b != null && b.label != null ? b.label : "";
+            return la.compareToIgnoreCase(lb);
+        });
+
+        return out;
     }
 
     @Override

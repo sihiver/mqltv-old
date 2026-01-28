@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="240dp"
+    android:layout_height="300dp"
+    android:layout_marginEnd="18dp"
+    android:orientation="vertical"
+    android:background="@drawable/launcher_card_bg"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="16dp"
+    android:paddingBottom="16dp"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:clickable="true"
+    android:descendantFocusability="blocksDescendants">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <ImageView
+        android:id="@+id/launcher_card_icon"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_gravity="start"
+        android:src="@android:drawable/ic_media_play"
+        android:tint="@color/mql_text_secondary"
+        android:duplicateParentState="true"
+        android:contentDescription="Icon" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="10dp" />
+
+    <TextView
+        android:id="@+id/launcher_card_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Live TV's"
+        android:textColor="@color/mql_text_primary"
+        android:textSize="20sp"
+        android:duplicateParentState="true"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/launcher_card_subtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="+5000 Channels"
+        android:textColor="@color/mql_text_secondary"
+        android:duplicateParentState="true"
+        android:textSize="14sp" />
+
+    <View
+        android:id="@+id/launcher_card_indicator"
+        android:layout_width="56dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="12dp"
+        android:background="@color/mql_accent"
+        android:duplicateParentState="true"
+        android:visibility="invisible" />
+
+</LinearLayout>

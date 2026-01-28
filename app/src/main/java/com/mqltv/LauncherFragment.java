@@ -9,6 +9,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
+import android.graphics.Bitmap;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -33,6 +35,21 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_launcher, container, false);
         Context appContext = v.getContext().getApplicationContext();
+
+        ImageView wallpaper = v.findViewById(R.id.launcher_wallpaper);
+        if (wallpaper != null) {
+            executor.execute(() -> {
+                Bitmap bmp = LauncherWallpaper.tryLoad(appContext);
+                if (bmp != null) {
+                    mainHandler.post(() -> {
+                        try {
+                            wallpaper.setImageBitmap(bmp);
+                        } catch (Exception ignored) {
+                        }
+                    });
+                }
+            });
+        }
 
         View search = v.findViewById(R.id.launcher_search);
         search.setOnClickListener(view -> {

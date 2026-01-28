@@ -1,9 +1,19 @@
 package com.mqltv;
 
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Switch;
@@ -13,12 +23,28 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import java.io.File;
+import java.io.InputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import okhttp3.Request;
+import okhttp3.Response;
+
 public class SettingsFragment extends Fragment {
+
+    private static final int REQ_PICK_WALLPAPER = 501;
+
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    private TextView wallpaperStatus;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
+        Context appContext = v.getContext().getApplicationContext();
 
         RadioGroup group = v.findViewById(R.id.player_mode_group);
         RadioButton auto = v.findViewById(R.id.player_mode_auto);
@@ -61,6 +87,28 @@ public class SettingsFragment extends Fragment {
             PlaybackPrefs.setExoLimit480p(v.getContext(), isChecked);
             Toast.makeText(v.getContext(), isChecked ? "Exo: limit 480p ON" : "Exo: limit 480p OFF", Toast.LENGTH_SHORT).show();
         });
+
+        wallpaperStatus = v.findViewById(R.id.wallpaper_status);
+        updateWallpaperStatus(appContext);
+
+        View pickBtn = v.findViewById(R.id.wallpaper_pick_button);
+        if (pickBtn != null) {
+            pickBtn.setOnClickListener(view -> pickWallpaperFile());
+        }
+
+        View urlBtn = v.findViewById(R.id.wallpaper_set_url_button);
+        if (urlBtn != null) {
+            urlBtn.setOnClickListener(view -> showWallpaperUrlDialog(appContext));
+        }
+
+        View resetBtn = v.findViewById(R.id.wallpaper_reset_button);
+        if (resetBtn != null) {
+            resetBtn.setOnClickListener(view -> {
+                boolean ok = LauncherWallpaper.clear(appContext);
+                updateWallpaperStatus(appContext);
+                Toast.makeText(v.getContext(), ok ? "Wallpaper di-reset" : "Gagal reset wallpaper", Toast.LENGTH_SHORT).show();
+            });
+        }
 
         RadioGroup vlcHwGroup = v.findViewById(R.id.vlc_hw_group);
         int hw = PlaybackPrefs.getVlcHwDecoderMode(v.getContext());
@@ -215,5 +263,130 @@ public class SettingsFragment extends Fragment {
         // Make sure something is focusable for TV (post so fragment is committed & laid out).
         v.post(auto::requestFocus);
         return v;
+    }
+
+    private void updateWallpaperStatus(Context appContext) {
+        if (wallpaperStatus == null) return;
+        try {
+            File f = LauncherWallpaper.getFile(appContext);
+            if (f != null && f.exists() && f.length() > 0) {
+                long kb = Math.max(1, f.length() / 1024);
+                wallpaperStatus.setText("Status: Custom (" + kb + " KB)");
+            } else {
+                wallpaperStatus.setText("Status: Default");
+            }
+        } catch (Exception ignored) {
+            wallpaperStatus.setText("Status: Default");
+        }
+    }
+
+    private void pickWallpaperFile() {
+        try {
+            Intent intent;
+            if (Build.VERSION.SDK_INT >= 19) {
+                intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+            } else {
+                intent = new Intent(Intent.ACTION_GET_CONTENT);
+            }
+            intent.setType("image/*");
+            startActivityForResult(Intent.createChooser(intent, "Pilih wallpaper"), REQ_PICK_WALLPAPER);
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "Tidak ada aplikasi untuk pilih file", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showWallpaperUrlDialog(Context appContext) {
+        if (getActivity() == null) return;
+
+        final EditText input = new EditText(getActivity());
+        input.setHint("https://example.com/wallpaper.jpg");
+        input.setSingleLine(true);
+
+        new AlertDialog.Builder(getActivity())
+                .setTitle("Set Wallpaper dari URL")
+                .setMessage("Masukkan URL gambar (jpg/png).")
+                .setView(input)
+                .setNegativeButton("Batal", (d, w) -> d.dismiss())
+                .setPositiveButton("Download", (d, w) -> {
+                    String url = input.getText() != null ? input.getText().toString().trim() : "";
+                    if (url.isEmpty() || !(url.startsWith("http://") || url.startsWith("https://"))) {
+                        Toast.makeText(getContext(), "URL tidak valid", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    Toast.makeText(getContext(), "Downloading wallpaper...", Toast.LENGTH_SHORT).show();
+                    downloadWallpaperUrl(appContext, url);
+                })
+                .show();
+    }
+
+    private void downloadWallpaperUrl(Context appContext, String url) {
+        executor.execute(() -> {
+            boolean ok = false;
+            String error = null;
+            Response resp = null;
+            try {
+                Request req = new Request.Builder().url(url).get().build();
+                resp = NetworkClient.getClient().newCall(req).execute();
+                if (!resp.isSuccessful() || resp.body() == null) {
+                    error = "HTTP " + (resp != null ? resp.code() : 0);
+                } else {
+                    long len = resp.body().contentLength();
+                    if (len > 0 && len > 25L * 1024L * 1024L) {
+                        error = "File terlalu besar";
+                    } else {
+                        try (InputStream is = resp.body().byteStream()) {
+                            ok = LauncherWallpaper.save(appContext, is);
+                        }
+                        if (!ok) error = "Gagal simpan file";
+                    }
+                }
+            } catch (Exception e) {
+                error = e.getMessage();
+            } finally {
+                try { if (resp != null) resp.close(); } catch (Exception ignored) {}
+            }
+
+            final boolean finalOk = ok;
+            final String finalError = error;
+            mainHandler.post(() -> {
+                updateWallpaperStatus(appContext);
+                Toast.makeText(getContext(), finalOk ? "Wallpaper tersimpan" : ("Gagal: " + (finalError != null ? finalError : "unknown")), Toast.LENGTH_SHORT).show();
+            });
+        });
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQ_PICK_WALLPAPER && resultCode == Activity.RESULT_OK && data != null) {
+            Uri uri = data.getData();
+            if (uri == null || getContext() == null) return;
+
+            Context appContext = getContext().getApplicationContext();
+            Toast.makeText(getContext(), "Menyimpan wallpaper...", Toast.LENGTH_SHORT).show();
+
+            executor.execute(() -> {
+                boolean ok = false;
+                try (InputStream is = appContext.getContentResolver().openInputStream(uri)) {
+                    ok = LauncherWallpaper.save(appContext, is);
+                } catch (Exception ignored) {
+                    ok = false;
+                }
+
+                final boolean finalOk = ok;
+                mainHandler.post(() -> {
+                    updateWallpaperStatus(appContext);
+                    Toast.makeText(getContext(), finalOk ? "Wallpaper tersimpan" : "Gagal simpan wallpaper", Toast.LENGTH_SHORT).show();
+                });
+            });
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        executor.shutdownNow();
     }
 }

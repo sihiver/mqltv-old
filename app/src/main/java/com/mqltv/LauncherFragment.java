@@ -154,7 +154,6 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         // Seed cards with placeholders; subtitles will be updated after loading.
         List<LauncherCard> cards = new ArrayList<>();
         cards.add(new LauncherCard("Live TV's", "+0 Channels", R.drawable.tv_play_icon, NavDestination.LIVE_TV));
-        cards.add(new LauncherCard("Movies", "+0 Items", android.R.drawable.ic_menu_slideshow, NavDestination.MOVIES));
         cards.add(new LauncherCard("Radios", "+0 Stations", android.R.drawable.ic_btn_speak_now, NavDestination.SHOWS));
         adapter.submit(cards);
 
@@ -175,6 +174,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     @Override
     public void onResume() {
         super.onResume();
+        if (adapter != null) adapter.setHostActive(true);
         if (getContext() != null) {
             loadLauncherApps(getContext().getApplicationContext());
             loadRecentLive(getContext().getApplicationContext());
@@ -184,6 +184,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     @Override
     public void onPause() {
         super.onPause();
+        if (adapter != null) adapter.setHostActive(false);
     }
 
     private void loadCounts(Context appContext) {
@@ -196,7 +197,6 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 if (adapter == null) return;
                 List<LauncherCard> cards = new ArrayList<>();
                 cards.add(new LauncherCard("Live TV's", "+" + liveCount + " Channels", R.drawable.tv_play_icon, NavDestination.LIVE_TV));
-                cards.add(new LauncherCard("Movies", "+0 Items", android.R.drawable.ic_menu_slideshow, NavDestination.MOVIES));
                 cards.add(new LauncherCard("Radios", "+0 Stations", android.R.drawable.ic_btn_speak_now, NavDestination.SHOWS));
                 adapter.submit(cards);
             });
@@ -206,7 +206,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if (adapter != null) adapter.release();
         executor.shutdownNow();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (adapter != null) adapter.release();
     }
 
     private void loadLauncherApps(Context appContext) {

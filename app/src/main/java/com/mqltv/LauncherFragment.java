@@ -154,7 +154,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         // Seed cards with placeholders; subtitles will be updated after loading.
         List<LauncherCard> cards = new ArrayList<>();
         cards.add(new LauncherCard("Live TV's", "+0 Channels", R.drawable.tv_play_icon, NavDestination.LIVE_TV));
-        cards.add(new LauncherCard("Radios", "+0 Stations", android.R.drawable.ic_btn_speak_now, NavDestination.SHOWS));
+        cards.add(new LauncherCard("Radios", "+0 Stations", R.drawable.internet_radio_icon, NavDestination.SHOWS));
         adapter.submit(cards);
 
         // Default focus to first card.
@@ -197,7 +197,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 if (adapter == null) return;
                 List<LauncherCard> cards = new ArrayList<>();
                 cards.add(new LauncherCard("Live TV's", "+" + liveCount + " Channels", R.drawable.tv_play_icon, NavDestination.LIVE_TV));
-                cards.add(new LauncherCard("Radios", "+0 Stations", android.R.drawable.ic_btn_speak_now, NavDestination.SHOWS));
+                cards.add(new LauncherCard("Radios", "+0 Stations", R.drawable.internet_radio_icon, NavDestination.SHOWS));
                 adapter.submit(cards);
             });
         });

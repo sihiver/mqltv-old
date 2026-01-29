@@ -1,51 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:background="@drawable/live_tv_bg"
+    android:paddingStart="28dp"
+    android:paddingEnd="28dp"
+    android:paddingTop="18dp"
+    android:paddingBottom="18dp">
 
     <TextView
+        android:id="@+id/live_tv_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Live TV"
+        android:text="Semua Saluran"
         android:textColor="@color/mql_text_primary"
         android:textSize="22sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/live_tv_subtitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="Pilih channel"
-        android:textColor="@color/mql_text_secondary"
-        android:textSize="14sp" />
-
-    <TextView
-        android:id="@+id/recent_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Recent"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="16sp"
         android:textStyle="bold"
-        android:visibility="gone" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageView
+        android:id="@+id/live_tv_search"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:src="@android:drawable/ic_menu_search"
+        android:tint="@color/mql_text_primary"
+        android:contentDescription="Search"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:clickable="true"
+        app:layout_constraintEnd_toStartOf="@id/live_tv_time"
+        app:layout_constraintTop_toTopOf="@id/live_tv_title"
+        app:layout_constraintBottom_toBottomOf="@id/live_tv_title"
+        android:layout_marginEnd="14dp" />
+
+    <TextView
+        android:id="@+id/live_tv_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="00:00 AM"
+        android:textColor="#D9E2F2"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/live_tv_title"
+        app:layout_constraintBottom_toBottomOf="@id/live_tv_title" />
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recent_list"
-        android:layout_width="match_parent"
-        android:layout_height="120dp"
-        android:layout_marginTop="8dp"
+        android:id="@+id/live_tv_categories"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
         android:overScrollMode="never"
-        android:visibility="gone" />
+        android:clipToPadding="false"
+        android:paddingTop="14dp"
+        android:paddingBottom="8dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/live_tv_title" />
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/channel_list"
-        android:layout_width="match_parent"
+        android:id="@+id/live_tv_grid"
+        android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="16dp"
-        android:overScrollMode="never" />
+        android:overScrollMode="never"
+        android:scrollbars="vertical"
+        android:fadeScrollbars="false"
+        android:clipToPadding="false"
+        android:paddingTop="14dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/live_tv_categories"
+        app:layout_constraintBottom_toBottomOf="parent" />
 
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

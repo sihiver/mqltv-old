@@ -156,53 +156,87 @@
 
     </LinearLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/launcher_cards"
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/launcher_scroll"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:clipToPadding="false"
-        android:clipChildren="false"
+        android:fillViewport="true"
         android:overScrollMode="never"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
+        android:clipToPadding="false"
+        android:paddingBottom="12dp"
         app:layout_constraintStart_toStartOf="@id/launcher_safe_left"
         app:layout_constraintEnd_toEndOf="@id/launcher_safe_right"
         app:layout_constraintTop_toBottomOf="@id/launcher_logo"
-        app:layout_constraintBottom_toTopOf="@id/launcher_apps_title"
-        app:layout_constraintVertical_bias="0.0"
-        android:layout_marginTop="24dp"
-        android:layout_marginBottom="16dp" />
+        app:layout_constraintBottom_toTopOf="@id/launcher_safe_bottom"
+        android:layout_marginTop="24dp">
 
-    <TextView
-        android:id="@+id/launcher_apps_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Apps"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        app:layout_constraintStart_toStartOf="@id/launcher_safe_left"
-        app:layout_constraintTop_toBottomOf="@id/launcher_cards"
-        app:layout_constraintBottom_toTopOf="@id/launcher_apps"
-        android:layout_marginTop="6dp"
-        android:layout_marginBottom="10dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/launcher_apps"
-            android:layout_width="0dp"
-            android:layout_height="110dp"
-            android:clipToPadding="false"
-            android:clipChildren="false"
-            android:overScrollMode="never"
-            android:paddingStart="24dp"
-            android:paddingEnd="24dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
-            app:layout_constraintStart_toStartOf="@id/launcher_safe_left"
-            app:layout_constraintEnd_toEndOf="@id/launcher_safe_right"
-            app:layout_constraintTop_toBottomOf="@id/launcher_apps_title"
-            app:layout_constraintBottom_toTopOf="@id/launcher_safe_bottom" />
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/launcher_cards"
+                android:layout_width="match_parent"
+                android:layout_height="260dp"
+                android:clipToPadding="false"
+                android:clipChildren="false"
+                android:overScrollMode="never"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp" />
+
+            <TextView
+                android:id="@+id/launcher_apps_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/launcher_apps_title"
+                android:textColor="@color/mql_text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="10dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/launcher_apps"
+                android:layout_width="match_parent"
+                android:layout_height="110dp"
+                android:clipToPadding="false"
+                android:clipChildren="false"
+                android:overScrollMode="never"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp" />
+
+            <TextView
+                android:id="@+id/launcher_recent_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/launcher_recent_live_title"
+                android:textColor="@color/mql_text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="10dp"
+                android:visibility="gone" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/launcher_recent_live"
+                android:layout_width="match_parent"
+                android:layout_height="140dp"
+                android:clipToPadding="false"
+                android:clipChildren="false"
+                android:overScrollMode="never"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

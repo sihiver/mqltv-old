@@ -14,6 +14,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import android.graphics.Bitmap;
@@ -40,6 +41,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private RecyclerView appsList;
     private LauncherAppsAdapter appsAdapter;
     private List<LauncherAppEntry> allLaunchableAppsCache;
+
+    private TextView recentTitle;
+    private RecyclerView recentList;
+    private ChannelCardAdapter recentAdapter;
 
     @Nullable
     @Override
@@ -134,6 +139,18 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             appsList.setAdapter(appsAdapter);
         }
 
+        recentTitle = v.findViewById(R.id.launcher_recent_title);
+        recentList = v.findViewById(R.id.launcher_recent_live);
+        if (recentList != null) {
+            recentList.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
+            recentList.setHasFixedSize(false);
+            recentList.setItemViewCacheSize(16);
+            recentList.setClipToPadding(false);
+            recentList.setClipChildren(false);
+            recentAdapter = new ChannelCardAdapter();
+            recentList.setAdapter(recentAdapter);
+        }
+
         // Seed cards with placeholders; subtitles will be updated after loading.
         List<LauncherCard> cards = new ArrayList<>();
         cards.add(new LauncherCard("Live TV's", "+0 Channels", R.drawable.tv_play_icon, NavDestination.LIVE_TV));
@@ -151,6 +168,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
         loadCounts(appContext);
         loadLauncherApps(appContext);
+        loadRecentLive(appContext);
         return v;
     }
 
@@ -159,6 +177,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         super.onResume();
         if (getContext() != null) {
             loadLauncherApps(getContext().getApplicationContext());
+            loadRecentLive(getContext().getApplicationContext());
         }
     }
 
@@ -218,6 +237,24 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             List<LauncherAppEntry> finalRow = row;
             mainHandler.post(() -> {
                 if (appsAdapter != null) appsAdapter.submit(finalRow);
+            });
+        });
+    }
+
+    private void loadRecentLive(Context appContext) {
+        if (recentAdapter == null) return;
+
+        executor.execute(() -> {
+            List<Channel> recent = RecentChannelsStore.load(appContext);
+            mainHandler.post(() -> {
+                boolean has = recent != null && !recent.isEmpty();
+                if (recentTitle != null) recentTitle.setVisibility(has ? View.VISIBLE : View.GONE);
+                if (recentList != null) recentList.setVisibility(has ? View.VISIBLE : View.GONE);
+                if (has) {
+                    recentAdapter.submit(recent);
+                } else {
+                    recentAdapter.submit(new ArrayList<>());
+                }
             });
         });
     }

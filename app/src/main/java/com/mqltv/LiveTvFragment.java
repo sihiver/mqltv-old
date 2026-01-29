@@ -24,14 +24,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class LiveTvFragment extends Fragment {
 
     private static final String CAT_ALL = "__ALL__";
-    private static final String CAT_RECENT = "__RECENT__";
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -47,7 +45,6 @@ public class LiveTvFragment extends Fragment {
     private final List<String> categoryLabels = new ArrayList<>();
 
     private volatile List<Channel> allChannels;
-    private volatile List<Channel> recentChannels;
 
     private final Runnable timeTicker = new Runnable() {
         @Override
@@ -105,19 +102,6 @@ public class LiveTvFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        Context ctx = getContext();
-        if (ctx == null) return;
-
-        // Refresh Recent tab content if present.
-        executor.execute(() -> {
-            recentChannels = RecentChannelsStore.load(ctx.getApplicationContext());
-            mainHandler.post(() -> {
-                int idx = indexOfKey(CAT_RECENT);
-                if (idx >= 0 && categoryAdapter != null) {
-                    applyCategory(ctx.getApplicationContext(), idx);
-                }
-            });
-        });
     }
 
     private void load(Context context) {
@@ -128,9 +112,8 @@ public class LiveTvFragment extends Fragment {
                 channels = repo.loadDefault(context);
             }
             allChannels = channels;
-            recentChannels = RecentChannelsStore.load(context);
 
-            final CategoryData cats = buildCategories(channels, recentChannels);
+            final CategoryData cats = buildCategories(channels);
             mainHandler.post(() -> {
                 if (categoryKeys != null) {
                     categoryKeys.clear();
@@ -181,9 +164,6 @@ public class LiveTvFragment extends Fragment {
 
         if (CAT_ALL.equals(key)) {
             if (base != null) out.addAll(base);
-        } else if (CAT_RECENT.equals(key)) {
-            List<Channel> recent = recentChannels;
-            if (recent != null) out.addAll(recent);
         } else {
             if (base != null) {
                 for (Channel c : base) {
@@ -211,18 +191,12 @@ public class LiveTvFragment extends Fragment {
         }
     }
 
-    private static CategoryData buildCategories(List<Channel> channels, List<Channel> recent) {
+    private static CategoryData buildCategories(List<Channel> channels) {
         List<String> keys = new ArrayList<>();
         List<String> labels = new ArrayList<>();
 
         keys.add(CAT_ALL);
         labels.add("ALL CHANNELS");
-
-        boolean hasRecent = recent != null && !recent.isEmpty();
-        if (hasRecent) {
-            keys.add(CAT_RECENT);
-            labels.add("RECENT");
-        }
 
         // Keep insertion order; de-dupe by display label (case-insensitive).
         Map<String, String> seen = new LinkedHashMap<>();
@@ -245,14 +219,6 @@ public class LiveTvFragment extends Fragment {
             labels.add(e.getKey());
         }
         return new CategoryData(keys, labels);
-    }
-
-    private int indexOfKey(String key) {
-        if (key == null) return -1;
-        for (int i = 0; i < categoryKeys.size(); i++) {
-            if (key.equals(categoryKeys.get(i))) return i;
-        }
-        return -1;
     }
 
     private static int dpToPx(View v, int dp) {

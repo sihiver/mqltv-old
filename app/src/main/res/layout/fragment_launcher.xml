@@ -182,8 +182,8 @@
                 android:clipToPadding="false"
                 android:clipChildren="false"
                 android:overScrollMode="never"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp" />
 
@@ -205,8 +205,8 @@
                 android:clipToPadding="false"
                 android:clipChildren="false"
                 android:overScrollMode="never"
-                android:paddingStart="24dp"
-                android:paddingEnd="24dp"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp" />
 
@@ -229,8 +229,8 @@
                 android:clipToPadding="false"
                 android:clipChildren="false"
                 android:overScrollMode="never"
-                android:paddingStart="24dp"
-                android:paddingEnd="24dp"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp"
                 android:visibility="gone" />

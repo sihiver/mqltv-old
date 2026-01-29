@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -13,6 +14,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -39,12 +41,16 @@ public class SettingsFragment extends Fragment {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private TextView wallpaperStatus;
+    private ImageView wallpaperBg;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
         Context appContext = v.getContext().getApplicationContext();
+
+        wallpaperBg = v.findViewById(R.id.settings_wallpaper);
+        loadSettingsWallpaper(appContext);
 
         RadioGroup group = v.findViewById(R.id.player_mode_group);
         RadioButton auto = v.findViewById(R.id.player_mode_auto);
@@ -106,6 +112,7 @@ public class SettingsFragment extends Fragment {
             resetBtn.setOnClickListener(view -> {
                 boolean ok = LauncherWallpaper.clear(appContext);
                 updateWallpaperStatus(appContext);
+                loadSettingsWallpaper(appContext);
                 Toast.makeText(v.getContext(), ok ? "Wallpaper di-reset" : "Gagal reset wallpaper", Toast.LENGTH_SHORT).show();
             });
         }
@@ -351,6 +358,7 @@ public class SettingsFragment extends Fragment {
             final String finalError = error;
             mainHandler.post(() -> {
                 updateWallpaperStatus(appContext);
+                loadSettingsWallpaper(appContext);
                 Toast.makeText(getContext(), finalOk ? "Wallpaper tersimpan" : ("Gagal: " + (finalError != null ? finalError : "unknown")), Toast.LENGTH_SHORT).show();
             });
         });
@@ -378,15 +386,41 @@ public class SettingsFragment extends Fragment {
                 final boolean finalOk = ok;
                 mainHandler.post(() -> {
                     updateWallpaperStatus(appContext);
+                    loadSettingsWallpaper(appContext);
                     Toast.makeText(getContext(), finalOk ? "Wallpaper tersimpan" : "Gagal simpan wallpaper", Toast.LENGTH_SHORT).show();
                 });
             });
         }
     }
 
+    private void loadSettingsWallpaper(Context appContext) {
+        final ImageView target = wallpaperBg;
+        if (target == null) return;
+
+        executor.execute(() -> {
+            Bitmap bmp = LauncherWallpaper.tryLoad(appContext);
+            mainHandler.post(() -> {
+                if (wallpaperBg == null) return;
+                if (bmp != null) {
+                    try {
+                        wallpaperBg.setImageBitmap(bmp);
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
+        });
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
         executor.shutdownNow();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        wallpaperBg = null;
+        wallpaperStatus = null;
     }
 }

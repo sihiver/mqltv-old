@@ -84,4 +84,13 @@
 
     </LinearLayout>
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/launcher_card_focus_frame"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no"
+        android:duplicateParentState="true" />
+
 </FrameLayout>

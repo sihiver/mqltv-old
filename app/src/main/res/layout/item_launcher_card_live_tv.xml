@@ -3,7 +3,7 @@
     android:layout_width="320dp"
     android:layout_height="180dp"
     android:layout_marginEnd="18dp"
-    android:background="@drawable/launcher_card_bg"
+    android:background="@drawable/launcher_card_bg_square"
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:clickable="true"
@@ -83,5 +83,14 @@
             android:visibility="invisible" />
 
     </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/launcher_card_focus_frame_square"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no"
+        android:duplicateParentState="true" />
 
 </FrameLayout>

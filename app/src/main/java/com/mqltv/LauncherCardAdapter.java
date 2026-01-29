@@ -16,6 +16,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.exoplayer2.ExoPlaybackException;
@@ -116,6 +117,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
     @Override
     public void onBindViewHolder(@NonNull VH holder, int position) {
         LauncherCard card = items.get(position);
+        boolean isLiveTv = card != null && card.getDestination() == NavDestination.LIVE_TV;
         holder.title.setText(card.getTitle());
         holder.subtitle.setText(card.getSubtitle() != null ? card.getSubtitle() : "");
         holder.icon.setImageResource(card.getIconRes());
@@ -126,9 +128,9 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         holder.icon.setColorFilter(colorSecondary);
 
         if (cardStyle != null) {
-            holder.itemView.setBackground(createCardBackground(holder.itemView.getContext(), cardStyle));
+            holder.itemView.setBackground(createCardBackground(holder.itemView.getContext(), cardStyle, isLiveTv ? 0 : 18));
         } else {
-            holder.itemView.setBackgroundResource(R.drawable.launcher_card_bg);
+            holder.itemView.setBackgroundResource(isLiveTv ? R.drawable.launcher_card_bg_square : R.drawable.launcher_card_bg);
         }
 
         bindLiveTvVideo(holder, card);
@@ -138,8 +140,13 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         });
 
         holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
-            float s = hasFocus ? 1.03f : 1.0f;
+            float s = (isLiveTv ? 1.0f : (hasFocus ? 1.03f : 1.0f));
             v.animate().scaleX(s).scaleY(s).setDuration(120).start();
+
+            // Live TV card: keep flat (no shadow-like elevation on focus).
+            if (isLiveTv) {
+                ViewCompat.setElevation(v, 0f);
+            }
             v.setActivated(hasFocus);
             // Ensure stateful background updates when we drive activated.
             if (v.getBackground() != null) {
@@ -351,23 +358,20 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         }
     }
 
-    private static StateListDrawable createCardBackground(Context context, LauncherCardStyle style) {
-        int radius = dp(context, 18);
-        int strokeW = dp(context, 2);
+    private static StateListDrawable createCardBackground(Context context, LauncherCardStyle style, int radiusDp) {
+        int radius = dp(context, radiusDp);
 
         GradientDrawable focused = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[] { style.focusTop, style.focusBottom }
         );
         focused.setCornerRadius(radius);
-        focused.setStroke(strokeW, style.stroke);
 
         GradientDrawable activated = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[] { style.focusTop, style.focusBottom }
         );
         activated.setCornerRadius(radius);
-        activated.setStroke(strokeW, style.stroke);
 
         GradientDrawable normal = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,

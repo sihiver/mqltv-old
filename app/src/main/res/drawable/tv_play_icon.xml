@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="56dp"
+    android:height="56dp"
+    android:viewportWidth="741"
+    android:viewportHeight="630.5">
+
+    <!-- TV outer frame (rounded rect) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="9"
+        android:pathData="M39.17,191 H701.83 A34.67,34.67 0 0 1 736.5,225.67 V591.33 A34.67,34.67 0 0 1 701.83,626 H39.17 A34.67,34.67 0 0 1 4.5,591.33 V225.67 A34.67,34.67 0 0 1 39.17,191 Z" />
+
+    <!-- Screen (rounded rect) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="8"
+        android:pathData="M72.78,219.5 H667.22 A37.78,37.78 0 0 1 705,257.28 V529.72 A37.78,37.78 0 0 1 667.22,567.5 H72.78 A37.78,37.78 0 0 1 35,529.72 V257.28 A37.78,37.78 0 0 1 72.78,219.5 Z" />
+
+    <!-- Stand/top bar -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M300,124.5 H454 A66,66 0 0 1 520,190.5 V190.5 H234 V190.5 A66,66 0 0 1 300,124.5 Z" />
+
+    <!-- Antenna lines -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="8"
+        android:strokeLineCap="round"
+        android:pathData="M399.5,138 L520.5,19" />
+
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="8"
+        android:strokeLineCap="round"
+        android:pathData="M354.64,137.92 L233.64,18.92" />
+
+    <!-- Antenna tips -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M227.5,0 a17,17 0 1,0 0,34 a17,17 0 1,0 0,-34" />
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M520.5,0 a17,17 0 1,0 0,34 a17,17 0 1,0 0,-34" />
+
+    <!-- Play icon -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M324.5,313.7 L393.91,353.77 L463.32,393.85 L393.91,433.93 L324.5,474 Z" />
+
+    <!-- Bottom button (filled) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M377,584.5 a12,12 0 1,0 0,24 a12,12 0 1,0 0,-24" />
+
+    <!-- Bottom button ring -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="9"
+        android:pathData="M377,580 a16.5,16.5 0 1,0 0,33 a16.5,16.5 0 1,0 0,-33" />
+
+</vector>

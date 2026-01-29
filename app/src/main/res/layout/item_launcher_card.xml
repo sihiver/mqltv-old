@@ -24,7 +24,7 @@
         android:layout_width="56dp"
         android:layout_height="56dp"
         android:layout_gravity="start"
-        android:src="@android:drawable/ic_media_play"
+        android:src="@drawable/tv_play_icon"
         android:tint="@color/mql_text_secondary"
         android:duplicateParentState="true"
         android:contentDescription="Icon" />

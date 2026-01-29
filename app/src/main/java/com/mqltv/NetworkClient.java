@@ -101,20 +101,23 @@ public final class NetworkClient {
                 // Prefer Conscrypt trust store on old Android (bundled modern CAs).
                 java.security.Provider provider = Conscrypt.newProvider();
                 trustManager = getTrustManager(provider, context);
-                sslContext = SSLContext.getInstance("TLS", provider);
-                if (trustManager != null) {
-                    sslContext.init(null, new TrustManager[] { trustManager }, null);
-                } else {
-                    sslContext.init(null, null, null);
+                if (trustManager == null) {
+                    // Some builds/devices don't expose TrustManagerFactory through Conscrypt.
+                    // Fall back to platform TMF instead of silently proceeding with null.
+                    throw new IllegalStateException("Conscrypt TrustManager unavailable");
                 }
+
+                sslContext = SSLContext.getInstance("TLS", provider);
+                sslContext.init(null, new TrustManager[] { trustManager }, null);
             } catch (Throwable ignored) {
                 // Fallback to platform SSLContext.
                 trustManager = getTrustManager(null, context);
-                sslContext = SSLContext.getInstance("TLSv1.2");
+                sslContext = SSLContext.getInstance("TLS");
                 if (trustManager != null) {
                     sslContext.init(null, new TrustManager[] { trustManager }, null);
                 } else {
                     sslContext.init(null, null, null);
+                    Log.w(TAG, "TLS12: TrustManager unavailable (sdk=" + Build.VERSION.SDK_INT + ")");
                 }
             }
 
@@ -159,16 +162,14 @@ public final class NetworkClient {
 
     private static X509TrustManager buildExtraTrustManager(java.security.Provider provider, Context context) {
         if (context == null) return null;
-        try (InputStream is = context.getResources().openRawResource(R.raw.digicert_indihome_ca)) {
+        try {
             CertificateFactory cf = CertificateFactory.getInstance("X.509");
             KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
             ks.load(null, null);
 
             int index = 0;
-            for (Certificate ca : cf.generateCertificates(is)) {
-                ks.setCertificateEntry("extra_ca_" + index, ca);
-                index++;
-            }
+            index = loadExtraCaFromRaw(context, cf, ks, R.raw.digicert_indihome_ca, index);
+            index = loadExtraCaFromRaw(context, cf, ks, R.raw.digicert_global_root_g3, index);
             Log.d(TAG, "extra CA loaded count=" + index);
 
             TrustManagerFactory tmf = provider == null
@@ -185,6 +186,19 @@ public final class NetworkClient {
             Log.w(TAG, "extra CA load failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
         }
         return null;
+    }
+
+    private static int loadExtraCaFromRaw(Context context, CertificateFactory cf, KeyStore ks, int resId, int index) {
+        if (context == null || cf == null || ks == null) return index;
+        try (InputStream is = context.getResources().openRawResource(resId)) {
+            for (Certificate ca : cf.generateCertificates(is)) {
+                ks.setCertificateEntry("extra_ca_" + index, ca);
+                index++;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "extra CA raw=" + resId + " load failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+        }
+        return index;
     }
 
     private static OkHttpClient buildUnsafeLogoClient() {

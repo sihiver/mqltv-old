@@ -275,13 +275,29 @@ public class SettingsFragment extends Fragment {
     private void updateWallpaperStatus(Context appContext) {
         if (wallpaperStatus == null) return;
         try {
-            File f = LauncherWallpaper.getFile(appContext);
-            if (f != null && f.exists() && f.length() > 0) {
-                long kb = Math.max(1, f.length() / 1024);
+            String src = LauncherWallpaper.getSource(appContext);
+            File cf = LauncherWallpaper.getFile(appContext);
+            File bf = LauncherWallpaper.getBingFile(appContext);
+
+            if (LauncherWallpaper.SOURCE_CUSTOM.equals(src) && cf != null && cf.exists() && cf.length() > 0) {
+                long kb = Math.max(1, cf.length() / 1024);
                 wallpaperStatus.setText("Status: Custom (" + kb + " KB)");
-            } else {
-                wallpaperStatus.setText("Status: Default");
+                return;
             }
+
+            if (bf != null && bf.exists() && bf.length() > 0) {
+                String date = LauncherWallpaper.getBingDate(appContext);
+                wallpaperStatus.setText(date != null && !date.isEmpty() ? ("Status: Bing (" + date + ")") : "Status: Bing");
+                return;
+            }
+
+            if (cf != null && cf.exists() && cf.length() > 0) {
+                long kb = Math.max(1, cf.length() / 1024);
+                wallpaperStatus.setText("Status: Custom (Legacy) (" + kb + " KB)");
+                return;
+            }
+
+            wallpaperStatus.setText("Status: Default");
         } catch (Exception ignored) {
             wallpaperStatus.setText("Status: Default");
         }

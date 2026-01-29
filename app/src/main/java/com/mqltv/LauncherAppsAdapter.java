@@ -5,7 +5,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -18,6 +17,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
 
     public interface Listener {
         void onAppClicked(LauncherAppEntry entry);
+        void onAppLongPressed(LauncherAppEntry entry);
         void onAddClicked();
     }
 
@@ -44,7 +44,9 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
     @Override
     public void onBindViewHolder(@NonNull VH holder, int position) {
         LauncherAppEntry e = items.get(position);
-        holder.label.setText(e.label);
+        if (holder.icon != null) {
+            holder.icon.setContentDescription(e.label);
+        }
 
         if (e.isAddButton) {
             holder.icon.setImageResource(android.R.drawable.ic_input_add);
@@ -62,12 +64,17 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
             }
         });
 
+        holder.itemView.setOnLongClickListener(v -> {
+            if (e.isAddButton) return true;
+            if (listener != null) listener.onAppLongPressed(e);
+            return true;
+        });
+
         holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
             float s = hasFocus ? 1.05f : 1.0f;
             v.animate().scaleX(s).scaleY(s).setDuration(120).start();
             v.setActivated(hasFocus);
             if (v.getBackground() != null) v.getBackground().setState(v.getDrawableState());
-            holder.label.setTextColor(ContextCompat.getColor(v.getContext(), hasFocus ? R.color.mql_text_primary : R.color.mql_text_secondary));
         });
     }
 
@@ -78,12 +85,10 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
 
     static class VH extends RecyclerView.ViewHolder {
         final ImageView icon;
-        final TextView label;
 
         VH(@NonNull View itemView) {
             super(itemView);
             icon = itemView.findViewById(R.id.launcher_app_icon);
-            label = itemView.findViewById(R.id.launcher_app_label);
         }
     }
 }

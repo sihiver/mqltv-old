@@ -121,6 +121,12 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 }
 
                 @Override
+                public void onAppLongPressed(LauncherAppEntry entry) {
+                    if (entry == null || entry.component == null) return;
+                    showPinnedAppActions(appContext, entry);
+                }
+
+                @Override
                 public void onAddClicked() {
                     showAddAppDialog(appContext);
                 }
@@ -195,7 +201,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
             // Load pinned (user selected). If empty, seed with a few system apps.
             List<String> pinned = PinnedAppsStore.load(appContext);
-            if (pinned.isEmpty()) {
+            if (pinned.isEmpty() && !PinnedAppsStore.isInitialized(appContext)) {
                 pinned = seedDefaultSystemApps(appContext, all);
             }
 
@@ -281,6 +287,61 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         });
     }
 
+    private void showPinnedAppActions(Context appContext, LauncherAppEntry entry) {
+        if (getActivity() == null || entry == null || entry.component == null) return;
+
+        executor.execute(() -> {
+            List<String> pinned = PinnedAppsStore.load(appContext);
+            String key = entry.component.flattenToString();
+            int idx = pinned.indexOf(key);
+
+            mainHandler.post(() -> {
+                if (idx < 0) {
+                    Toast.makeText(getContext(), "App tidak ada di pinned list", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                List<String> actions = new ArrayList<>();
+                if (idx > 0) actions.add("Move Left");
+                if (idx < pinned.size() - 1) actions.add("Move Right");
+                actions.add("Hapus");
+
+                CharSequence[] items = new CharSequence[actions.size()];
+                for (int i = 0; i < actions.size(); i++) items[i] = actions.get(i);
+
+                new AlertDialog.Builder(getActivity())
+                        .setTitle(entry.label != null ? entry.label : "App")
+                        .setItems(items, (d, which) -> {
+                            String action = actions.get(which);
+                            executor.execute(() -> {
+                                List<String> list = PinnedAppsStore.load(appContext);
+                                int pos = list.indexOf(key);
+                                if (pos < 0) return;
+
+                                if ("Move Left".equals(action) && pos > 0) {
+                                    String tmp = list.get(pos - 1);
+                                    list.set(pos - 1, list.get(pos));
+                                    list.set(pos, tmp);
+                                    PinnedAppsStore.save(appContext, list);
+                                } else if ("Move Right".equals(action) && pos < list.size() - 1) {
+                                    String tmp = list.get(pos + 1);
+                                    list.set(pos + 1, list.get(pos));
+                                    list.set(pos, tmp);
+                                    PinnedAppsStore.save(appContext, list);
+                                } else if ("Hapus".equals(action)) {
+                                    list.remove(pos);
+                                    PinnedAppsStore.save(appContext, list);
+                                }
+
+                                mainHandler.post(() -> loadLauncherApps(appContext));
+                            });
+                        })
+                        .setNegativeButton("Batal", (d, w) -> d.dismiss())
+                        .show();
+            });
+        });
+    }
+
     private static List<String> seedDefaultSystemApps(Context appContext, List<LauncherAppEntry> all) {
         List<String> pinned = new ArrayList<>();
         if (all == null) return pinned;
@@ -357,6 +418,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 LauncherAppEntry e = LauncherAppEntry.fromResolveInfo(ri, pm);
                 // Exclude our own app.
                 if (ctx.getPackageName().equals(cn.getPackageName())) continue;
+                if (e == null || e.icon == null) continue;
                 out.add(e);
             } catch (Exception ignored) {
             }

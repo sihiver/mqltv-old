@@ -12,6 +12,7 @@ import java.util.List;
 public final class PinnedAppsStore {
     private static final String PREFS = "mql_pinned_apps";
     private static final String KEY_LIST = "components";
+    private static final String KEY_INITIALIZED = "initialized";
 
     private PinnedAppsStore() {}
 
@@ -32,6 +33,16 @@ public final class PinnedAppsStore {
         return out;
     }
 
+    public static boolean isInitialized(Context context) {
+        if (context == null) return false;
+        try {
+            SharedPreferences sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+            return sp.getBoolean(KEY_INITIALIZED, false);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     public static void save(Context context, List<String> components) {
         if (context == null) return;
         try {
@@ -44,6 +55,7 @@ public final class PinnedAppsStore {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                     .edit()
                     .putString(KEY_LIST, arr.toString())
+                    .putBoolean(KEY_INITIALIZED, true)
                     .apply();
         } catch (Exception ignored) {
         }

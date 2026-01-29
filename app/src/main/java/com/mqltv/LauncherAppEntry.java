@@ -2,6 +2,7 @@ package com.mqltv;
 
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
 
@@ -22,8 +23,36 @@ public final class LauncherAppEntry {
 
     public static LauncherAppEntry fromResolveInfo(ResolveInfo ri, android.content.pm.PackageManager pm) {
         String label = ri.loadLabel(pm) != null ? ri.loadLabel(pm).toString() : "App";
-        Drawable icon = ri.loadIcon(pm);
         ComponentName cn = new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name);
+
+        Drawable icon = null;
+        try {
+            int iconRes = ri.activityInfo != null ? ri.activityInfo.getIconResource() : 0;
+            if (iconRes != 0) {
+                icon = pm.getDrawable(ri.activityInfo.packageName, iconRes, ri.activityInfo.applicationInfo);
+            }
+        } catch (Exception ignored) {
+        }
+
+        if (icon == null) {
+            try {
+                ApplicationInfo ai = ri.activityInfo != null ? ri.activityInfo.applicationInfo : null;
+                if (ai != null && ai.icon != 0) {
+                    icon = pm.getApplicationIcon(ai);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        // Final fallback: ResolveInfo may still provide a generic icon.
+        if (icon == null) {
+            try {
+                icon = ri.loadIcon(pm);
+            } catch (Exception ignored) {
+                icon = null;
+            }
+        }
+
         return new LauncherAppEntry(label, icon, cn, false);
     }
 

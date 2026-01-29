@@ -36,6 +36,7 @@ public class LiveTvFragment extends Fragment {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    private TextView title;
     private TextView time;
     private LiveTvCategoryAdapter categoryAdapter;
     private LiveTvChannelGridAdapter gridAdapter;
@@ -69,6 +70,7 @@ public class LiveTvFragment extends Fragment {
 
         final Context appContext = v.getContext().getApplicationContext();
 
+        title = v.findViewById(R.id.live_tv_title);
         time = v.findViewById(R.id.live_tv_time);
         mainHandler.removeCallbacks(timeTicker);
         mainHandler.post(timeTicker);
@@ -162,6 +164,17 @@ public class LiveTvFragment extends Fragment {
         if (categoryAdapter != null) categoryAdapter.setSelected(position);
 
         String key = categoryKeys.get(position);
+
+        if (title != null && position < categoryLabels.size()) {
+            String label = categoryLabels.get(position);
+            if (label != null) {
+                if ("ALL CHANNELS".equalsIgnoreCase(label)) {
+                    title.setText("Semua Saluran");
+                } else {
+                    title.setText(label);
+                }
+            }
+        }
 
         List<Channel> base = allChannels;
         List<Channel> out = new ArrayList<>();
@@ -280,6 +293,7 @@ public class LiveTvFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         mainHandler.removeCallbacks(timeTicker);
+        title = null;
         time = null;
         categoryAdapter = null;
         gridAdapter = null;

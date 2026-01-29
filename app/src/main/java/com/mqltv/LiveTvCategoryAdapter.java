@@ -59,6 +59,14 @@ public final class LiveTvCategoryAdapter extends RecyclerView.Adapter<LiveTvCate
         holder.text.setOnFocusChangeListener((v, hasFocus) -> {
             float s = hasFocus ? 1.04f : 1.0f;
             v.animate().scaleX(s).scaleY(s).setDuration(120).start();
+
+            // Auto-select on DPAD navigation (focus movement).
+            if (hasFocus && listener != null) {
+                int pos = holder.getBindingAdapterPosition();
+                if (pos != RecyclerView.NO_POSITION && pos != selected) {
+                    listener.onCategorySelected(pos);
+                }
+            }
         });
     }
 

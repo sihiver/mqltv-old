@@ -189,20 +189,20 @@
         android:layout_marginTop="6dp"
         android:layout_marginBottom="10dp" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/launcher_apps"
-        android:layout_width="0dp"
-        android:layout_height="96dp"
-        android:clipToPadding="false"
-        android:clipChildren="false"
-        android:overScrollMode="never"
-        android:paddingStart="24dp"
-        android:paddingEnd="24dp"
-        android:paddingTop="5dp"
-        android:paddingBottom="5dp"
-        app:layout_constraintStart_toStartOf="@id/launcher_safe_left"
-        app:layout_constraintEnd_toEndOf="@id/launcher_safe_right"
-        app:layout_constraintTop_toBottomOf="@id/launcher_apps_title"
-        app:layout_constraintBottom_toTopOf="@id/launcher_safe_bottom" />
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/launcher_apps"
+            android:layout_width="0dp"
+            android:layout_height="110dp"
+            android:clipToPadding="false"
+            android:clipChildren="false"
+            android:overScrollMode="never"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            app:layout_constraintStart_toStartOf="@id/launcher_safe_left"
+            app:layout_constraintEnd_toEndOf="@id/launcher_safe_right"
+            app:layout_constraintTop_toBottomOf="@id/launcher_apps_title"
+            app:layout_constraintBottom_toTopOf="@id/launcher_safe_bottom" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

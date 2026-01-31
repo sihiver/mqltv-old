@@ -55,7 +55,7 @@ public class HomeFragment extends Fragment {
         setLoading(true);
         executor.execute(() -> {
             PlaylistRepository repo = new PlaylistRepository();
-            List<Channel> channels = repo.loadFromUrl(appContext, Constants.HOME_PLAYLIST_URL);
+            List<Channel> channels = repo.loadFromUrls(appContext, Constants.HOME_PLAYLIST_URLS);
             if (channels == null || channels.isEmpty()) {
                 channels = repo.loadDefault(appContext);
             }

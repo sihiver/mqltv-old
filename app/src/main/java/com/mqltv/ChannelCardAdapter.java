@@ -1,4 +1,4 @@
-package com.mqltv;
+``````package com.mqltv;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -79,8 +79,13 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
         View clickTarget = holder.card != null ? holder.card : holder.itemView;
         clickTarget.setOnClickListener(v -> {
             RecentChannelsStore.record(v.getContext(), c);
-            Intent intent = PlayerIntents.createPlayIntent(v.getContext(), c.getTitle(), c.getUrl());
-            v.getContext().startActivity(intent);
+            Intent intent = PlayerIntents.createPreferredPlayIntent(v.getContext(), c.getTitle(), c.getUrl());
+            try {
+                v.getContext().startActivity(intent);
+            } catch (Exception e) {
+                // Fallback to internal player if external launch fails for any reason.
+                v.getContext().startActivity(PlayerIntents.createPlayIntent(v.getContext(), c.getTitle(), c.getUrl()));
+            }
         });
     }
 

@@ -130,6 +130,19 @@
         android:textColor="@color/mql_text_secondary"
         android:textSize="14sp" />
 
+    <Switch
+        android:id="@+id/setting_use_mx_player"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/settings_option_bg"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:text="Putar di MX Player (jika ada)"
+        android:textColor="@color/mql_text_primary"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

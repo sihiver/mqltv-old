@@ -21,6 +21,7 @@ import android.widget.RadioGroup;
 import android.widget.Switch;
 import android.widget.Toast;
 
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -48,6 +49,17 @@ public class SettingsFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
         Context appContext = v.getContext().getApplicationContext();
+
+        // MX Player toggle
+        Switch mxSwitch = v.findViewById(R.id.setting_use_mx_player);
+        if (mxSwitch != null) {
+            boolean enabled = PlaybackPrefs.isUseMxPlayer(appContext);
+            mxSwitch.setChecked(enabled);
+            mxSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                PlaybackPrefs.setUseMxPlayer(appContext, isChecked);
+                Toast.makeText(v.getContext(), isChecked ? "Akan putar di MX Player" : "Putar di player internal", Toast.LENGTH_SHORT).show();
+            });
+        }
 
         wallpaperBg = v.findViewById(R.id.settings_wallpaper);
         loadSettingsWallpaper(appContext);

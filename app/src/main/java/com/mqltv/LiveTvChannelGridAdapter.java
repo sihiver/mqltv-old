@@ -80,8 +80,12 @@ public final class LiveTvChannelGridAdapter extends RecyclerView.Adapter<LiveTvC
         holder.itemView.setOnClickListener(v -> {
             if (c == null) return;
             RecentChannelsStore.record(v.getContext(), c);
-            Intent intent = PlayerIntents.createPlayIntent(v.getContext(), c.getTitle(), c.getUrl());
-            v.getContext().startActivity(intent);
+            Intent intent = PlayerIntents.createPreferredPlayIntent(v.getContext(), c.getTitle(), c.getUrl());
+            try {
+                v.getContext().startActivity(intent);
+            } catch (Exception e) {
+                v.getContext().startActivity(PlayerIntents.createPlayIntent(v.getContext(), c.getTitle(), c.getUrl()));
+            }
         });
 
         holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {

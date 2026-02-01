@@ -7,6 +7,10 @@ import android.preference.PreferenceManager;
 public final class PlaybackPrefs {
     private PlaybackPrefs() {}
 
+    // External player (MX Player)
+    public static final String PREFS_EXTERNAL_PLAYER = "mqltv_settings";
+    public static final String PREF_USE_MX_PLAYER = "use_mx_player";
+
     public static final String PREF_PLAYER_MODE = "pref_player_mode";
     public static final int PLAYER_MODE_AUTO = 0;
     // Media3 ExoPlayer
@@ -36,6 +40,18 @@ public final class PlaybackPrefs {
 
     private static SharedPreferences sp(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context.getApplicationContext());
+    }
+
+    private static SharedPreferences spExternalPlayer(Context context) {
+        return context.getApplicationContext().getSharedPreferences(PREFS_EXTERNAL_PLAYER, Context.MODE_PRIVATE);
+    }
+
+    public static boolean isUseMxPlayer(Context context) {
+        return spExternalPlayer(context).getBoolean(PREF_USE_MX_PLAYER, false);
+    }
+
+    public static void setUseMxPlayer(Context context, boolean enabled) {
+        spExternalPlayer(context).edit().putBoolean(PREF_USE_MX_PLAYER, enabled).apply();
     }
 
     public static int getPlayerMode(Context context) {

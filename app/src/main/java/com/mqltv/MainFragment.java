@@ -33,8 +33,12 @@ public class MainFragment extends BrowseSupportFragment {
             if (!(item instanceof Channel)) return;
             Channel channel = (Channel) item;
 
-            Intent intent = PlayerIntents.createPlayIntent(requireContext(), channel.getTitle(), channel.getUrl());
-            startActivity(intent);
+            Intent intent = PlayerIntents.createPreferredPlayIntent(requireContext(), channel.getTitle(), channel.getUrl());
+            try {
+                startActivity(intent);
+            } catch (Exception e) {
+                startActivity(PlayerIntents.createPlayIntent(requireContext(), channel.getTitle(), channel.getUrl()));
+            }
         });
 
         loadChannels();

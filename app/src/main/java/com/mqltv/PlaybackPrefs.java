@@ -18,6 +18,8 @@ public final class PlaybackPrefs {
     public static final int PLAYER_MODE_VLC = 2;
     // ExoPlayer v2.4.2 (legacy)
     public static final int PLAYER_MODE_EXO_LEGACY = 3;
+    // Native Android MediaPlayer (Stagefright/OMX on older devices)
+    public static final int PLAYER_MODE_NATIVE = 4;
 
     public static final String PREF_VLC_USE_TEXTURE = "pref_vlc_use_texture";
     public static final String PREF_VLC_HW_DECODER = "pref_vlc_hw_decoder"; // 0=auto, 1=on, 2=off, 3=hw+
@@ -95,7 +97,10 @@ public final class PlaybackPrefs {
     }
 
     public static int getVlcNetworkCaching(Context context) {
-        return sp(context).getInt(PREF_VLC_NETWORK_CACHING, 1500);
+        // Legacy STBs (SDK<=19) often need higher preroll to avoid A/V clock starting too early,
+        // which can make every decoded frame appear "too late" and look stuck.
+        final int def = android.os.Build.VERSION.SDK_INT <= 19 ? 5000 : 1500;
+        return sp(context).getInt(PREF_VLC_NETWORK_CACHING, def);
     }
 
     public static void setVlcNetworkCaching(Context context, int cachingMs) {
@@ -103,7 +108,8 @@ public final class PlaybackPrefs {
     }
 
     public static boolean isVlcDeinterlaceEnabled(Context context) {
-        return sp(context).getBoolean(PREF_VLC_DEINTERLACE, false);
+        boolean def = DeviceQuirks.isHuaweiEc6108v9() || DeviceQuirks.isZteB760H();
+        return sp(context).getBoolean(PREF_VLC_DEINTERLACE, def);
     }
 
     public static void setVlcDeinterlaceEnabled(Context context, boolean enabled) {

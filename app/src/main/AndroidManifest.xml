@@ -35,6 +35,11 @@
             android:exported="false" />
 
         <activity
+            android:name=".NativePlayerActivity"
+            android:hardwareAccelerated="true"
+            android:exported="false" />
+
+        <activity
             android:name=".MainActivity"
             android:theme="@style/Theme.MQLTV"
             android:launchMode="singleTask"

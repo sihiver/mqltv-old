@@ -1,0 +1,1 @@
+set -euo pipefail; cd /home/dindin/AndroidStudioProjects/MQLTV-OLD; DEV=192.168.15.193:5555; APK=app/build/outputs/apk/debug/MQLTV-armeabi-v7a-debug.apk; if [ ! -f "$APK" ]; then APK=app/build/outputs/apk/debug/app-debug.apk; fi; adb -s "$DEV" shell su -c 'setenforce 0' >/dev/null 2>&1 || true; adb -s "$DEV" install -r -d -t "$APK"

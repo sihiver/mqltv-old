@@ -56,7 +56,7 @@ public class PlayerActivity extends FragmentActivity {
         }
 
         DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
-            .setEnableDecoderFallback(true)
+            .setEnableDecoderFallback(!DeviceQuirks.isHuaweiEc6108v9())
             // Prefer extension decoders when available (e.g., FFmpeg for MP2 audio).
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
 

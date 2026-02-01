@@ -1,4 +1,4 @@
-``````package com.mqltv;
+package com.mqltv;
 
 import android.content.Intent;
 import android.graphics.Bitmap;

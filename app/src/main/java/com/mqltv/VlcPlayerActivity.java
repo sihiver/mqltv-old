@@ -177,23 +177,42 @@ public class VlcPlayerActivity extends FragmentActivity {
         }
 
         ArrayList<String> options = new ArrayList<>();
-        // Increase logging to help diagnose HW vs SW decoding in logcat.
-        options.add("-vvv");
+        // Keep logging lightweight on legacy STBs.
+        boolean legacySdk = android.os.Build.VERSION.SDK_INT <= 19;
+        options.add(legacySdk ? "-vv" : "-vvv");
+
         // Network buffering options; read from preferences.
         int cachingMs = PlaybackPrefs.getVlcNetworkCaching(this);
-        options.add("--network-caching=" + cachingMs);
-        options.add("--live-caching=" + cachingMs);
-        options.add("--file-caching=" + cachingMs);
-        boolean legacySdk = android.os.Build.VERSION.SDK_INT <= 19;
-        // Reduce freeze by allowing late frames to be dropped (disable on legacy 4.4).
-        if (!legacySdk) {
-            options.add("--drop-late-frames");
-            options.add("--skip-frames");
-        }
-        // Tuning for old CPUs: fewer threads + lighter deblocking filter.
-        options.add("--avcodec-threads=1");
+        // Safety floor for legacy devices to prevent "clock started too soon" lateness.
+        if (legacySdk && cachingMs < 3000) cachingMs = 5000;
+        final int cachingMsFinal = cachingMs;
+        options.add("--network-caching=" + cachingMsFinal);
+        options.add("--live-caching=" + cachingMsFinal);
+        options.add("--file-caching=" + cachingMsFinal);
+
+        // On slow STBs (incl. Android 4.4), letting VLC drop/skip late video frames is
+        // often required to prevent the video from falling behind and appearing stuck.
+        options.add("--drop-late-frames");
+        options.add("--skip-frames");
+        // Tuning for old CPUs: fewer threads + lighter decode.
+        int cores = 1;
+        try { cores = Math.max(1, Runtime.getRuntime().availableProcessors()); } catch (Exception ignored) {}
+        int avThreads = legacySdk ? Math.min(2, cores) : Math.min(4, cores);
+        final int avThreadsFinal = avThreads;
+        options.add("--avcodec-threads=" + avThreadsFinal);
         options.add(legacySdk ? "--avcodec-skiploopfilter=nonref" : "--avcodec-skiploopfilter=all");
+        if (legacySdk) {
+            // Reduce CPU load when HW decode falls back to SW on legacy devices.
+            options.add("--avcodec-fast");
+            options.add("--avcodec-skip-frame=nonref");
+            options.add("--avcodec-skip-idct=nonref");
+        }
         int hwMode = PlaybackPrefs.getVlcHwDecoderMode(this);
+        if (DeviceQuirks.isHuaweiEc6108v9() && hwMode == PlaybackPrefs.VLC_HW_PLUS) {
+            Log.w(TAG, "EC6108V9: disabling VLC HW+; using HW ON");
+            hwMode = PlaybackPrefs.VLC_HW_ON;
+        }
+        final int hwModeFinal = hwMode;
         boolean useHw = hwMode != PlaybackPrefs.VLC_HW_OFF;
         boolean useTexture = PlaybackPrefs.isVlcUseTexture(this);
         boolean deinterlace = PlaybackPrefs.isVlcDeinterlaceEnabled(this);
@@ -213,7 +232,7 @@ public class VlcPlayerActivity extends FragmentActivity {
 
         if (deinterlace) {
             options.add("--deinterlace=1");
-            options.add("--deinterlace-mode=discard");
+            options.add("--deinterlace-mode=yadif");
         } else {
             options.add("--deinterlace=0");
         }
@@ -223,7 +242,7 @@ public class VlcPlayerActivity extends FragmentActivity {
             : (android.os.Build.VERSION.SDK_INT >= 21 ? "mediacodec_ndk" : "mediacodec_jni"));
         final String hwCodecList = (hwImplName != null) ? hwImplName : (android.os.Build.VERSION.SDK_INT >= 21 ? "mediacodec_ndk" : "mediacodec_jni");
 
-        Log.i(TAG, "Starting VLC: hwMode=" + hwMode + " useHw=" + useHw + " useTexture=" + useTexture + " vout=" + vout + " hwImpl=" + hwImplName + " forceHwOnly=" + forceHwOnly);
+        Log.i(TAG, "Starting VLC: hwMode=" + hwMode + " useHw=" + useHw + " useTexture=" + useTexture + " vout=" + vout + " hwImpl=" + hwImplName + " forceHwOnly=" + forceHwOnly + " cachingMs=" + cachingMsFinal + " avThreads=" + avThreadsFinal);
 
         libVLC = new LibVLC(this, options);
         mediaPlayer = new MediaPlayer(libVLC);
@@ -251,8 +270,20 @@ public class VlcPlayerActivity extends FragmentActivity {
         });
 
         // Important for some STBs: attach views only after the layout is attached/measured.
-        surfaceView.post(() -> {
-            if (isFinishing() || mediaPlayer == null || libVLC == null) return;
+        final int[] attachTries = new int[] {0};
+        surfaceView.post(new Runnable() {
+            @Override
+            public void run() {
+                if (isFinishing() || mediaPlayer == null || libVLC == null) return;
+
+                View videoView = useTexture ? textureView : surfaceView;
+                int vw = videoView != null ? videoView.getWidth() : 0;
+                int vh = videoView != null ? videoView.getHeight() : 0;
+                if ((vw <= 0 || vh <= 0) && attachTries[0] < 30) {
+                    attachTries[0]++;
+                    if (surfaceView != null) surfaceView.postDelayed(this, 50);
+                    return;
+                }
 
             vlcVout = mediaPlayer.getVLCVout();
             if (useTexture) {
@@ -271,29 +302,32 @@ public class VlcPlayerActivity extends FragmentActivity {
                 }
             }
             vlcVout.addCallback(vlcVoutCallback);
-            if (surfaceView != null) {
-                vlcVout.setWindowSize(surfaceView.getWidth(), surfaceView.getHeight());
+            if (videoView != null) {
+                vlcVout.setWindowSize(videoView.getWidth(), videoView.getHeight());
             }
             vlcVout.attachViews(voutLayoutListener);
 
             Media media = new Media(libVLC, Uri.parse(url));
-            media.addOption(":network-caching=" + cachingMs);
-            media.addOption(":live-caching=" + cachingMs);
-            media.addOption(":file-caching=" + cachingMs);
-            if (!legacySdk) {
-                media.addOption(":drop-late-frames");
-                media.addOption(":skip-frames");
-            }
-            media.addOption(":avcodec-threads=1");
+            media.addOption(":network-caching=" + cachingMsFinal);
+            media.addOption(":live-caching=" + cachingMsFinal);
+            media.addOption(":file-caching=" + cachingMsFinal);
+            media.addOption(":drop-late-frames");
+            media.addOption(":skip-frames");
+            media.addOption(":avcodec-threads=" + avThreadsFinal);
             media.addOption(legacySdk ? ":avcodec-skiploopfilter=nonref" : ":avcodec-skiploopfilter=all");
+            if (legacySdk) {
+                media.addOption(":avcodec-fast");
+                media.addOption(":avcodec-skip-frame=nonref");
+                media.addOption(":avcodec-skip-idct=nonref");
+            }
             media.addOption(":android-display-chroma=RV16");
             if (deinterlace) {
                 media.addOption(":deinterlace=1");
-                media.addOption(":deinterlace-mode=discard");
+                media.addOption(":deinterlace-mode=yadif");
             } else {
                 media.addOption(":deinterlace=0");
             }
-            boolean forceHw = hwMode == PlaybackPrefs.VLC_HW_PLUS;
+            boolean forceHw = hwModeFinal == PlaybackPrefs.VLC_HW_PLUS;
             media.setHWDecoderEnabled(useHw, forceHw);
             if (forceHwOnly && useHw) {
                 media.addOption(":codec=" + hwCodecList);
@@ -307,6 +341,7 @@ public class VlcPlayerActivity extends FragmentActivity {
             showControlsTemporarily();
             uiHandler.removeCallbacks(progressRunnable);
             uiHandler.post(progressRunnable);
+            }
         });
     }
 

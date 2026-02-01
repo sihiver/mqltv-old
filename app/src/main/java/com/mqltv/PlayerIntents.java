@@ -15,6 +15,7 @@ public final class PlayerIntents {
     public static final int PLAYER_MODE_EXO = PlaybackPrefs.PLAYER_MODE_EXO;
     public static final int PLAYER_MODE_VLC = PlaybackPrefs.PLAYER_MODE_VLC;
     public static final int PLAYER_MODE_EXO_LEGACY = PlaybackPrefs.PLAYER_MODE_EXO_LEGACY;
+    public static final int PLAYER_MODE_NATIVE = PlaybackPrefs.PLAYER_MODE_NATIVE;
 
     public static Intent createPlayIntent(Context context, String title, String url) {
         Class<?> target = getTargetPlayerActivity(context);
@@ -76,9 +77,14 @@ public final class PlayerIntents {
         if (mode == PlaybackPrefs.PLAYER_MODE_VLC) return VlcPlayerActivity.class;
         if (mode == PlaybackPrefs.PLAYER_MODE_EXO_LEGACY) return LegacyExoPlayerActivity.class;
         if (mode == PlaybackPrefs.PLAYER_MODE_EXO) return PlayerActivity.class;
+        if (mode == PlaybackPrefs.PLAYER_MODE_NATIVE) return NativePlayerActivity.class;
 
         // AUTO: prefer legacy Exo on older Android (matches STB troubleshooting)
-        if (android.os.Build.VERSION.SDK_INT <= 19) return LegacyExoPlayerActivity.class;
+        if (android.os.Build.VERSION.SDK_INT <= 19) {
+            // ZTE B760H has better results with the platform pipeline (Stagefright/OMX)
+            if (DeviceQuirks.isZteB760H()) return NativePlayerActivity.class;
+            return LegacyExoPlayerActivity.class;
+        }
         return PlayerActivity.class;
     }
 

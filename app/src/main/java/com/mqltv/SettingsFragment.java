@@ -68,11 +68,14 @@ public class SettingsFragment extends Fragment {
         RadioButton auto = v.findViewById(R.id.player_mode_auto);
         RadioButton exo = v.findViewById(R.id.player_mode_exo);
         RadioButton exoLegacy = v.findViewById(R.id.player_mode_exo_legacy);
+        RadioButton nativePlayer = v.findViewById(R.id.player_mode_native);
         RadioButton vlc = v.findViewById(R.id.player_mode_vlc);
 
         int mode = PlayerIntents.getPlayerMode(v.getContext());
         if (mode == PlayerIntents.PLAYER_MODE_VLC) {
             vlc.setChecked(true);
+        } else if (mode == PlayerIntents.PLAYER_MODE_NATIVE) {
+            nativePlayer.setChecked(true);
         } else if (mode == PlayerIntents.PLAYER_MODE_EXO_LEGACY) {
             exoLegacy.setChecked(true);
         } else if (mode == PlayerIntents.PLAYER_MODE_EXO) {
@@ -90,6 +93,9 @@ public class SettingsFragment extends Fragment {
             } else if (checkedId == R.id.player_mode_exo_legacy) {
                 newMode = PlayerIntents.PLAYER_MODE_EXO_LEGACY;
                 label = "ExoPlayer 2.13.3";
+            } else if (checkedId == R.id.player_mode_native) {
+                newMode = PlayerIntents.PLAYER_MODE_NATIVE;
+                label = "Native (MediaPlayer)";
             } else if (checkedId == R.id.player_mode_vlc) {
                 newMode = PlayerIntents.PLAYER_MODE_VLC;
                 label = "VLC";
@@ -131,6 +137,20 @@ public class SettingsFragment extends Fragment {
 
         RadioGroup vlcHwGroup = v.findViewById(R.id.vlc_hw_group);
         int hw = PlaybackPrefs.getVlcHwDecoderMode(v.getContext());
+
+        if (DeviceQuirks.isHuaweiEc6108v9()) {
+            RadioButton hwPlus = v.findViewById(R.id.vlc_hw_plus);
+            if (hwPlus != null) {
+                hwPlus.setEnabled(false);
+                hwPlus.setAlpha(0.5f);
+            }
+            if (hw == PlaybackPrefs.VLC_HW_PLUS) {
+                PlaybackPrefs.setVlcHwDecoderMode(v.getContext(), PlaybackPrefs.VLC_HW_ON);
+                hw = PlaybackPrefs.VLC_HW_ON;
+                Toast.makeText(v.getContext(), "EC6108V9: HW+ dimatikan, pakai HW ON", Toast.LENGTH_SHORT).show();
+            }
+        }
+
         if (hw == PlaybackPrefs.VLC_HW_ON) {
             ((RadioButton) v.findViewById(R.id.vlc_hw_on)).setChecked(true);
         } else if (hw == PlaybackPrefs.VLC_HW_PLUS) {
@@ -153,6 +173,13 @@ public class SettingsFragment extends Fragment {
                 hwMode = PlaybackPrefs.VLC_HW_OFF;
                 label = "HW OFF";
             }
+
+            if (DeviceQuirks.isHuaweiEc6108v9() && hwMode == PlaybackPrefs.VLC_HW_PLUS) {
+                hwMode = PlaybackPrefs.VLC_HW_ON;
+                label = "HW ON";
+                Toast.makeText(v.getContext(), "EC6108V9: HW+ tidak didukung", Toast.LENGTH_SHORT).show();
+            }
+
             PlaybackPrefs.setVlcHwDecoderMode(v.getContext(), hwMode);
             Toast.makeText(v.getContext(), "VLC: " + label, Toast.LENGTH_SHORT).show();
         });

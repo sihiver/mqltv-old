@@ -67,7 +67,7 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
         }
 
         RenderersFactory renderersFactory = new DefaultRenderersFactory(this)
-            .setEnableDecoderFallback(true)
+            .setEnableDecoderFallback(!DeviceQuirks.isHuaweiEc6108v9())
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()

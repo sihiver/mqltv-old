@@ -45,6 +45,20 @@ public class NativePlayerActivity extends Activity {
     private boolean started = false;
     private boolean didResyncSeek = false;
 
+    private final Runnable showBufferingIfStillBuffering = new Runnable() {
+        @Override
+        public void run() {
+            if (mediaPlayer == null) return;
+            if (!isBuffering) return;
+            // If we're already playing smoothly, don't re-show spinner.
+            try {
+                if (firstVideoFrameRendered && mediaPlayer.isPlaying()) return;
+            } catch (Throwable ignored) {
+            }
+            showLoading(true);
+        }
+    };
+
     // Basic freeze watchdog: restart if position doesn't advance for a while.
     private long lastPositionMs = -1;
     private long lastPositionChangedAtMs = 0;
@@ -57,6 +71,16 @@ public class NativePlayerActivity extends Activity {
             }
 
             try {
+                // Fallback: if video is playing, spinner should not be visible.
+                if (started && firstVideoFrameRendered) {
+                    try {
+                        if (mediaPlayer.isPlaying()) {
+                            showLoading(false);
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                }
+
                 if (started && mediaPlayer.isPlaying()) {
                     long pos = mediaPlayer.getCurrentPosition();
                     long now = android.os.SystemClock.elapsedRealtime();
@@ -109,9 +133,7 @@ public class NativePlayerActivity extends Activity {
         if (controls != null) {
             controls.setVisibility(View.GONE);
         }
-        if (loading != null) {
-            loading.setVisibility(View.VISIBLE);
-        }
+        showLoading(true);
 
         if (playPause != null) {
             playPause.setOnClickListener(v -> togglePlayPause());
@@ -179,13 +201,20 @@ public class NativePlayerActivity extends Activity {
             mp.setOnInfoListener((player, what, extra) -> {
                 if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) {
                     isBuffering = true;
-                    if (loading != null) loading.setVisibility(View.VISIBLE);
+                    mainHandler.removeCallbacks(showBufferingIfStillBuffering);
+                    // After video has started, only show spinner if buffering persists.
+                    if (firstVideoFrameRendered) {
+                        mainHandler.postDelayed(showBufferingIfStillBuffering, 500);
+                    } else {
+                        showLoading(true);
+                    }
                     setMuted(true);
                 } else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END) {
                     isBuffering = false;
+                    mainHandler.removeCallbacks(showBufferingIfStillBuffering);
                     // If video has rendered, hide loading. Some devices may not send this reliably,
                     // so VIDEO_RENDERING_START also hides the spinner unconditionally.
-                    if (firstVideoFrameRendered && loading != null) loading.setVisibility(View.GONE);
+                    if (firstVideoFrameRendered) showLoading(false);
                     // Don't unmute yet unless we already have video rendering.
                     // Some STBs report BUFFERING_END before the first frame, which causes audio lead.
                     if (firstVideoFrameRendered) {
@@ -196,7 +225,8 @@ public class NativePlayerActivity extends Activity {
                     // Standard UX: hide loading when the first frame is actually being rendered.
                     // Do this unconditionally; some devices never report BUFFERING_END.
                     isBuffering = false;
-                    if (loading != null) loading.setVisibility(View.GONE);
+                    mainHandler.removeCallbacks(showBufferingIfStillBuffering);
+                    showLoading(false);
                     // ZTE B760H sometimes has persistent A/V offset (audio leads).
                     // A seek-to-current-position forces a pipeline flush and often re-aligns.
                     if (DeviceQuirks.isZteB760H() && !didResyncSeek) {
@@ -255,6 +285,11 @@ public class NativePlayerActivity extends Activity {
         }
     }
 
+    private void showLoading(boolean show) {
+        if (loading == null) return;
+        loading.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
     private void startNow(MediaPlayer player) {
         if (player == null) return;
         // Keep loading visible until VIDEO_RENDERING_START.
@@ -293,7 +328,8 @@ public class NativePlayerActivity extends Activity {
 
         try {
             setMuted(true);
-            if (loading != null) loading.setVisibility(View.VISIBLE);
+            isBuffering = true;
+            showLoading(true);
             final int pos = Math.max(0, player.getCurrentPosition());
             Log.w(TAG, "Resync: seekTo currentPosition=" + pos);
 
@@ -301,7 +337,8 @@ public class NativePlayerActivity extends Activity {
                 if (mediaPlayer != player) return;
                 mainHandler.postDelayed(() -> {
                     setMuted(false);
-                    if (firstVideoFrameRendered && loading != null) loading.setVisibility(View.GONE);
+                    isBuffering = false;
+                    if (firstVideoFrameRendered) showLoading(false);
                 }, 120);
             };
 

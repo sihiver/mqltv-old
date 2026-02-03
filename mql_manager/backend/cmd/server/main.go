@@ -20,6 +20,7 @@ import (
 	"mqltv.local/mql_manager/backend/internal/playlists"
 	"mqltv.local/mql_manager/backend/internal/users"
 	"mqltv.local/mql_manager/backend/internal/util"
+	"mqltv.local/mql_manager/backend/internal/webui"
 )
 
 func main() {
@@ -49,6 +50,9 @@ func main() {
 		AuthRequired: !cfg.AuthDisabled,
 	}
 	api.Register(mux)
+
+	// Serve embedded admin UI (Vite dist) for non-API routes.
+	mux.Handle("/", webui.Handler())
 
 	h := util.Logging(mux)
 	h = httpapi.CORS{AllowedOrigins: cfg.CORSOrigins}.Middleware(h)

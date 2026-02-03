@@ -12,15 +12,13 @@ type TokenAuth struct {
 
 func (a TokenAuth) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Only protect admin API routes. Public endpoints and static UI must be accessible
+		// without an Authorization header (UI will authenticate via /api/* calls).
+		if !strings.HasPrefix(r.URL.Path, "/api/") {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if r.URL.Path == "/api/health" {
-			next.ServeHTTP(w, r)
-			return
-		}
-		if r.URL.Path == "/playlist.m3u" {
-			next.ServeHTTP(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, "/public/") {
 			next.ServeHTTP(w, r)
 			return
 		}

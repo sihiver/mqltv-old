@@ -17,7 +17,7 @@ type Config struct {
 
 func Load() (Config, error) {
 	cfg := Config{
-		Addr:       getenvDefault("MQLM_ADDR", "127.0.0.1:8080"),
+		Addr:       getenvDefault("MQLM_ADDR", "127.0.0.1:8088"),
 		DBPath:     getenvDefault("MQLM_DB_PATH", "./data/mql_manager.db"),
 		AdminToken: os.Getenv("MQLM_ADMIN_TOKEN"),
 	}

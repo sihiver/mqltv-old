@@ -19,7 +19,7 @@ go run ./cmd/server
 ```
 
 Backend defaults:
-- URL: http://127.0.0.1:8080
+- URL: http://127.0.0.1:8088
 - DB: `backend/data/mql_manager.db`
 
 ### 2) Run UI (Node)
@@ -50,15 +50,15 @@ npm run dev
 
 Admin UI defaults:
 - URL: http://127.0.0.1:3001
-- API proxied to backend: `/api` and `/public` → `http://127.0.0.1:8080`
+- API proxied to backend: `/api` and `/public` → `http://127.0.0.1:8088`
 
 ## Single binary (recommended for deployment)
 
 You can build **one executable file** that serves:
 
-- Admin UI at `http://<host>:8080/`
-- Backend API at `http://<host>:8080/api/*`
-- Public endpoints at `http://<host>:8080/public/*`
+- Admin UI at `http://<host>:8088/`
+- Backend API at `http://<host>:8088/api/*`
+- Public endpoints at `http://<host>:8088/public/*`
 
 ### Build (on your dev machine)
 
@@ -81,7 +81,7 @@ Copy just the binary (and optionally a `.env`). No Node/NPM needed.
 ```
 
 Important env vars:
-- `MQLM_ADDR` (default `127.0.0.1:8080`)
+- `MQLM_ADDR` (default `127.0.0.1:8088`)
 - `MQLM_DB_PATH` (default `./data/mql_manager.db`)
 - `MQLM_ADMIN_TOKEN`
 	- If empty **and** binding to localhost, auth is disabled (dev mode)

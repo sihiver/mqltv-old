@@ -14,11 +14,11 @@ export default defineConfig({
     port: 3001,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:8080',
+        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:8088',
         changeOrigin: true
       },
       '/public': {
-        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:8080',
+        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:8088',
         changeOrigin: true
       }
     }

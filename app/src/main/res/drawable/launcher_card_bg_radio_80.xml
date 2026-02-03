@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 80% opacity variants of launcher_card_bg colors (0xCC alpha) -->
+    <item android:state_activated="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#CC1A2230" />
+            <corners android:radius="18dp" />
+        </shape>
+    </item>
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#CC18202C" />
+            <corners android:radius="18dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#CC141B26" />
+            <corners android:radius="18dp" />
+        </shape>
+    </item>
+</selector>

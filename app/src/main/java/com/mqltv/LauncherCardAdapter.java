@@ -118,6 +118,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
     public void onBindViewHolder(@NonNull VH holder, int position) {
         LauncherCard card = items.get(position);
         boolean isLiveTv = card != null && card.getDestination() == NavDestination.LIVE_TV;
+        boolean isRadio = card != null && card.getDestination() == NavDestination.SHOWS;
         holder.title.setText(card.getTitle());
         holder.subtitle.setText(card.getSubtitle() != null ? card.getSubtitle() : "");
         holder.icon.setImageResource(card.getIconRes());
@@ -127,10 +128,20 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         int colorSecondary = ContextCompat.getColor(holder.itemView.getContext(), R.color.mql_text_secondary);
         holder.icon.setColorFilter(colorSecondary);
 
-        if (cardStyle != null) {
-            holder.itemView.setBackground(createCardBackground(holder.itemView.getContext(), cardStyle, isLiveTv ? 0 : 18));
+        if (isRadio) {
+            if (cardStyle != null) {
+                StateListDrawable bg = createCardBackground(holder.itemView.getContext(), cardStyle, 18);
+                bg.setAlpha(204); // ~80% opacity
+                holder.itemView.setBackground(bg);
+            } else {
+                holder.itemView.setBackgroundResource(R.drawable.launcher_card_bg_radio_80);
+            }
         } else {
-            holder.itemView.setBackgroundResource(isLiveTv ? R.drawable.launcher_card_bg_square : R.drawable.launcher_card_bg);
+            if (cardStyle != null) {
+                holder.itemView.setBackground(createCardBackground(holder.itemView.getContext(), cardStyle, isLiveTv ? 0 : 18));
+            } else {
+                holder.itemView.setBackgroundResource(isLiveTv ? R.drawable.launcher_card_bg_square : R.drawable.launcher_card_bg);
+            }
         }
 
         bindLiveTvVideo(holder, card);

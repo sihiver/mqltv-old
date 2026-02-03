@@ -54,12 +54,19 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
         ImageView wallpaper = v.findViewById(R.id.launcher_wallpaper);
         if (wallpaper != null) {
+            try {
+                // Avoid showing a temporary fallback image; fade in when wallpaper is ready.
+                wallpaper.setImageDrawable(null);
+                wallpaper.setAlpha(0f);
+            } catch (Exception ignored) {
+            }
             executor.execute(() -> {
                 Bitmap bmp = LauncherWallpaper.tryLoad(appContext);
                 if (bmp != null) {
                     mainHandler.post(() -> {
                         try {
                             wallpaper.setImageBitmap(bmp);
+                            wallpaper.animate().alpha(1f).setDuration(250).start();
                         } catch (Exception ignored) {
                         }
                     });

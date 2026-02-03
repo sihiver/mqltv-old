@@ -17,11 +17,12 @@ type Repo struct {
 type Package struct {
 	ID        int64  `json:"id"`
 	Name      string `json:"name"`
+	Price     int64  `json:"price"`
 	CreatedAt string `json:"createdAt"`
 }
 
 func (r Repo) List(ctx context.Context) ([]Package, error) {
-	rows, err := r.DB.QueryContext(ctx, `SELECT id, name, created_at FROM packages ORDER BY id DESC`)
+	rows, err := r.DB.QueryContext(ctx, `SELECT id, name, price, created_at FROM packages ORDER BY id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +31,7 @@ func (r Repo) List(ctx context.Context) ([]Package, error) {
 	out := make([]Package, 0)
 	for rows.Next() {
 		var p Package
-		if err := rows.Scan(&p.ID, &p.Name, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.Price, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
@@ -40,19 +41,22 @@ func (r Repo) List(ctx context.Context) ([]Package, error) {
 
 func (r Repo) Get(ctx context.Context, id int64) (Package, error) {
 	var p Package
-	err := r.DB.QueryRowContext(ctx, `SELECT id, name, created_at FROM packages WHERE id = ?`, id).
-		Scan(&p.ID, &p.Name, &p.CreatedAt)
+	err := r.DB.QueryRowContext(ctx, `SELECT id, name, price, created_at FROM packages WHERE id = ?`, id).
+		Scan(&p.ID, &p.Name, &p.Price, &p.CreatedAt)
 	return p, err
 }
 
-func (r Repo) Create(ctx context.Context, name string) (Package, error) {
+func (r Repo) Create(ctx context.Context, name string, price int64) (Package, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return Package{}, errors.New("name is required")
 	}
+	if price < 0 {
+		return Package{}, errors.New("price must be >= 0")
+	}
 
 	createdAt := time.Now().UTC().Format(time.RFC3339)
-	res, err := r.DB.ExecContext(ctx, `INSERT INTO packages(name, created_at) VALUES(?, ?)`, name, createdAt)
+	res, err := r.DB.ExecContext(ctx, `INSERT INTO packages(name, price, created_at) VALUES(?, ?, ?)`, name, price, createdAt)
 	if err != nil {
 		return Package{}, err
 	}

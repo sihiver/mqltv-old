@@ -39,7 +39,7 @@
               </span>
               <el-button size="small" style="margin-left: 8px" @click="copy(publicPlaylistUrl)">Copy</el-button>
             </p>
-            <p style="color:#64748b; font-size:12px">Created: {{ user.createdAt }}</p>
+            <p style="color:#64748b; font-size:12px">Created: {{ formatDateTimeID(user.createdAt) }}</p>
           </el-col>
         </el-row>
       </div>
@@ -141,7 +141,11 @@
         <el-table :data="assignedPackages" style="width: 100%" border>
           <el-table-column prop="id" label="ID" width="90" />
           <el-table-column prop="name" label="Name" min-width="240" />
-          <el-table-column prop="createdAt" label="Created" width="240" />
+          <el-table-column label="Created" width="240">
+            <template #default="scope">
+              <span>{{ formatDateTimeID(scope.row.createdAt) }}</span>
+            </template>
+          </el-table-column>
         </el-table>
       </el-tab-pane>
 
@@ -193,8 +197,16 @@
               <el-table :data="subs" v-loading="loading">
                 <el-table-column prop="id" label="ID" width="90" />
                 <el-table-column prop="plan" label="Plan" />
-                <el-table-column prop="expiresAt" label="Expires" width="240" />
-                <el-table-column prop="createdAt" label="Created" width="240" />
+                <el-table-column label="Expires" width="240">
+                  <template #default="scope">
+                    <span>{{ formatDateTimeID(scope.row.expiresAt) }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="Created" width="240">
+                  <template #default="scope">
+                    <span>{{ formatDateTimeID(scope.row.createdAt) }}</span>
+                  </template>
+                </el-table-column>
                 <el-table-column label="Actions" width="140">
                   <template #default="scope">
                     <el-button
@@ -223,6 +235,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AdminShell from '@/components/AdminShell.vue'
 import { api, type Channel, type Package, type Playlist, type Subscription, type User } from '@/lib/api'
+import { formatDateTimeID } from '@/lib/datetime'
 
 const route = useRoute()
 const router = useRouter()

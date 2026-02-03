@@ -1,0 +1,3 @@
+PRAGMA foreign_keys = ON;
+
+ALTER TABLE packages ADD COLUMN price INTEGER NOT NULL DEFAULT 0;

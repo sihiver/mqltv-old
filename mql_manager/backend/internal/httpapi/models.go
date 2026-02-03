@@ -38,7 +38,8 @@ type SetUserPasswordRequest struct {
 }
 
 type CreatePackageRequest struct {
-	Name string `json:"name"`
+	Name  string `json:"name"`
+	Price int64  `json:"price"`
 }
 
 type SetPackageChannelsRequest struct {

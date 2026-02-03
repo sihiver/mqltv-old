@@ -13,7 +13,16 @@
       <el-table :data="items" style="width:100%; margin-top: 12px" v-loading="loading">
         <el-table-column prop="id" label="ID" width="90" />
         <el-table-column prop="name" label="Name" min-width="240" />
-        <el-table-column prop="createdAt" label="Created" width="240" />
+        <el-table-column label="Harga" width="180">
+          <template #default="scope">
+            <span>{{ formatIDR(scope.row.price) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="Created" width="240">
+          <template #default="scope">
+            <span>{{ formatDateTimeID(scope.row.createdAt) }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="Actions" width="220">
           <template #default="scope">
             <el-button size="small" @click="open(scope.row.id)">Open</el-button>
@@ -30,6 +39,11 @@
         <el-form-item label="Package name">
           <el-input v-model="newName" placeholder="e.g. Paket Sport" />
         </el-form-item>
+
+        <el-form-item label="Harga (Rp)">
+          <el-input-number v-model="newPrice" :min="0" :step="1000" style="width: 100%" />
+          <div style="margin-top: 6px; color:#64748b; font-size:12px">{{ formatIDR(newPrice || 0) }}</div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCreate = false">Cancel</el-button>
@@ -45,6 +59,8 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AdminShell from '@/components/AdminShell.vue'
 import { api, type Package } from '@/lib/api'
+import { formatDateTimeID } from '@/lib/datetime'
+import { formatIDR } from '@/lib/money'
 
 const router = useRouter()
 
@@ -55,6 +71,7 @@ const authRequired = ref<boolean | undefined>(undefined)
 
 const showCreate = ref(false)
 const newName = ref('')
+const newPrice = ref<number>(0)
 const creating = ref(false)
 
 const deletingId = ref<number | null>(null)
@@ -80,10 +97,11 @@ async function load() {
 async function create() {
   creating.value = true
   try {
-    const p = await api.createPackage({ name: newName.value.trim() })
+    const p = await api.createPackage({ name: newName.value.trim(), price: Number(newPrice.value) || 0 })
     ElMessage.success('Package created')
     showCreate.value = false
     newName.value = ''
+    newPrice.value = 0
     items.value = [p, ...items.value]
     open(p.id)
   } catch (e: any) {

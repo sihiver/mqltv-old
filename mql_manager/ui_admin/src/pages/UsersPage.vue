@@ -14,12 +14,6 @@
       <el-table :data="filtered" style="width:100%; margin-top: 12px" v-loading="loading">
         <el-table-column prop="id" label="ID" width="90" />
         <el-table-column prop="username" label="Username" />
-        <el-table-column prop="displayName" label="Display name" />
-        <el-table-column label="Playlist" width="110">
-          <template #default="scope">
-            <span style="color:#64748b">{{ scope.row.playlistId ?? '—' }}</span>
-          </template>
-        </el-table-column>
         <el-table-column label="App key" min-width="220">
           <template #default="scope">
             <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
@@ -27,7 +21,11 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="Created" width="240" />
+        <el-table-column label="Created" width="240">
+          <template #default="scope">
+            <span>{{ formatDateTimeID(scope.row.createdAt) }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="Actions" width="140">
           <template #default="scope">
             <el-button size="small" @click="go(scope.row.id)">Open</el-button>
@@ -62,6 +60,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AdminShell from '@/components/AdminShell.vue'
 import { api, type User } from '@/lib/api'
+import { formatDateTimeID } from '@/lib/datetime'
 
 const router = useRouter()
 

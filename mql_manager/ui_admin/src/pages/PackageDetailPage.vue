@@ -18,9 +18,10 @@
           <el-col :span="12" :xs="24">
             <p><b>ID:</b> {{ pkg.id }}</p>
             <p><b>Name:</b> {{ pkg.name }}</p>
+            <p><b>Harga:</b> {{ formatIDR(pkg.price) }}</p>
           </el-col>
           <el-col :span="12" :xs="24">
-            <p style="color:#64748b; font-size:12px">Created: {{ pkg.createdAt }}</p>
+            <p style="color:#64748b; font-size:12px">Created: {{ formatDateTimeID(pkg.createdAt) }}</p>
           </el-col>
         </el-row>
       </div>
@@ -100,6 +101,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AdminShell from '@/components/AdminShell.vue'
 import { api, type Channel, type Package, type Playlist } from '@/lib/api'
+import { formatDateTimeID } from '@/lib/datetime'
+import { formatIDR } from '@/lib/money'
 
 const route = useRoute()
 const router = useRouter()

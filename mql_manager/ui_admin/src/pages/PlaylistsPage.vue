@@ -18,7 +18,11 @@
         <el-table-column prop="name" label="Name" min-width="220" />
         <el-table-column prop="sourceType" label="Type" width="110" />
         <el-table-column prop="sourceUrl" label="Source URL" min-width="280" />
-        <el-table-column prop="createdAt" label="Created" width="240" />
+        <el-table-column label="Created" width="240">
+          <template #default="scope">
+            <span>{{ formatDateTimeID(scope.row.createdAt) }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="Public URL" min-width="260">
           <template #default="scope">
             <div style="display:flex; gap:8px; align-items:center;">
@@ -86,6 +90,7 @@ import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AdminShell from '@/components/AdminShell.vue'
 import { api, type Playlist } from '@/lib/api'
+import { formatDateTimeID } from '@/lib/datetime'
 
 const items = ref<Playlist[]>([])
 const loading = ref(false)

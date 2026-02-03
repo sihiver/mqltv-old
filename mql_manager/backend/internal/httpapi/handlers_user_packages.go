@@ -10,7 +10,7 @@ func (a API) handleUserPackages(w http.ResponseWriter, r *http.Request, userID i
 	switch r.Method {
 	case http.MethodGet:
 		rows, err := a.Users.DB.QueryContext(r.Context(), `
-SELECT p.id, p.name, p.created_at
+SELECT p.id, p.name, p.price, p.created_at
 FROM user_packages up
 JOIN packages p ON p.id = up.package_id
 WHERE up.user_id = ?
@@ -25,12 +25,13 @@ ORDER BY p.id ASC
 		items := make([]map[string]any, 0)
 		for rows.Next() {
 			var id int64
+			var price int64
 			var name, createdAt string
-			if err := rows.Scan(&id, &name, &createdAt); err != nil {
+			if err := rows.Scan(&id, &name, &price, &createdAt); err != nil {
 				writeError(w, http.StatusInternalServerError, err)
 				return
 			}
-			items = append(items, map[string]any{"id": id, "name": name, "createdAt": createdAt})
+			items = append(items, map[string]any{"id": id, "name": name, "price": price, "createdAt": createdAt})
 		}
 		if err := rows.Err(); err != nil {
 			writeError(w, http.StatusInternalServerError, err)
@@ -50,7 +51,7 @@ ORDER BY p.id ASC
 		}
 		// return the current packages for convenience
 		rows, err := a.Users.DB.QueryContext(r.Context(), `
-SELECT p.id, p.name, p.created_at
+SELECT p.id, p.name, p.price, p.created_at
 FROM user_packages up
 JOIN packages p ON p.id = up.package_id
 WHERE up.user_id = ?
@@ -65,12 +66,13 @@ ORDER BY p.id ASC
 		items := make([]map[string]any, 0)
 		for rows.Next() {
 			var id int64
+			var price int64
 			var name, createdAt string
-			if err := rows.Scan(&id, &name, &createdAt); err != nil {
+			if err := rows.Scan(&id, &name, &price, &createdAt); err != nil {
 				writeError(w, http.StatusInternalServerError, err)
 				return
 			}
-			items = append(items, map[string]any{"id": id, "name": name, "createdAt": createdAt})
+			items = append(items, map[string]any{"id": id, "name": name, "price": price, "createdAt": createdAt})
 		}
 		if err := rows.Err(); err != nil {
 			writeError(w, http.StatusInternalServerError, err)

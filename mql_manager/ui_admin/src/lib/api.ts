@@ -40,6 +40,7 @@ export type Channel = {
 export type Package = {
   id: number
   name: string
+  price: number
   createdAt: string
 }
 
@@ -157,7 +158,7 @@ export const api = {
     return request<Package[]>('/api/packages')
   },
 
-  createPackage(payload: { name: string }) {
+  createPackage(payload: { name: string; price: number }) {
     return request<Package>('/api/packages', { method: 'POST', body: JSON.stringify(payload) })
   },
 

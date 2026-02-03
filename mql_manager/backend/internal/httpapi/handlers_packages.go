@@ -24,7 +24,7 @@ func (a API) handlePackages(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, err)
 			return
 		}
-		p, err := a.Packages.Create(r.Context(), req.Name)
+		p, err := a.Packages.Create(r.Context(), req.Name, req.Price)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, err)
 			return

@@ -1,6 +1,6 @@
 <template>
   <el-container style="min-height: 100vh">
-    <el-aside :width="collapsed ? '64px' : '220px'" style="background: var(--mql-panel-2); transition: width .15s ease;">
+    <el-aside class="mql-aside" :width="collapsed ? '64px' : '220px'" style="background: var(--mql-panel-2); transition: width .15s ease;">
       <div style="display:flex; align-items:center; gap: 10px; padding: 14px 14px; color: #e6edf3; font-weight: 800;">
         <div style="width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg,#6d28d9,#2563eb);"></div>
         <span v-if="!collapsed">mql_manager</span>
@@ -31,11 +31,16 @@
           <el-icon><List /></el-icon>
           <span>Playlists</span>
         </el-menu-item>
+
+        <el-menu-item index="/packages">
+          <el-icon><Collection /></el-icon>
+          <span>Packages</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
     <el-container>
-      <el-header style="background: #fff; border-bottom: 1px solid #e5e7eb; display:flex; justify-content: space-between; align-items:center;">
+      <el-header class="mql-header" style="background: #fff; border-bottom: 1px solid #e5e7eb; display:flex; justify-content: space-between; align-items:center;">
         <div style="display:flex; align-items:center; gap: 12px;">
           <el-button text @click="collapsed = !collapsed">
             <el-icon><Fold v-if="!collapsed" /><Expand v-else /></el-icon>
@@ -78,7 +83,7 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { auth } from '@/lib/auth'
-import { Expand, Fold, List, Odometer, Refresh, User } from '@element-plus/icons-vue'
+import { Collection, Expand, Fold, List, Odometer, Refresh, User } from '@element-plus/icons-vue'
 
 const props = defineProps<{ title: string; authRequired?: boolean }>()
 
@@ -109,3 +114,18 @@ function reload() {
   router.go(0)
 }
 </script>
+
+<style scoped>
+.mql-aside {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+}
+
+.mql-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+</style>

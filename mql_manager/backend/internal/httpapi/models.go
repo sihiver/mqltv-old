@@ -29,6 +29,18 @@ type SetUserChannelsRequest struct {
 	ChannelIDs []int64 `json:"channelIds"`
 }
 
+type SetUserPackagesRequest struct {
+	PackageIDs []int64 `json:"packageIds"`
+}
+
 type SetUserPasswordRequest struct {
 	Password string `json:"password"`
+}
+
+type CreatePackageRequest struct {
+	Name string `json:"name"`
+}
+
+type SetPackageChannelsRequest struct {
+	ChannelIDs []int64 `json:"channelIds"`
 }

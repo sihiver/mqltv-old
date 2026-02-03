@@ -318,6 +318,22 @@ func (a API) servePublicUserPlaylistByAppKey(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// If user has selected packages, generate M3U from channels in those packages.
+	hasPk, err := a.userHasPackages(r, u.ID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if hasPk {
+		chs, err := a.Users.ListUserPackageChannels(r.Context(), u.ID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		writeM3UFromChannels(w, chs)
+		return
+	}
+
 	// fallback: old behavior
 	if u.PlaylistID == nil {
 		w.WriteHeader(http.StatusNotFound)

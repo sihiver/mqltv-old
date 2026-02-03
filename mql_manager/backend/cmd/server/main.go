@@ -15,6 +15,7 @@ import (
 	"mqltv.local/mql_manager/backend/internal/config"
 	"mqltv.local/mql_manager/backend/internal/db"
 	"mqltv.local/mql_manager/backend/internal/httpapi"
+	"mqltv.local/mql_manager/backend/internal/packages"
 	"mqltv.local/mql_manager/backend/internal/migrate"
 	"mqltv.local/mql_manager/backend/internal/playlists"
 	"mqltv.local/mql_manager/backend/internal/users"
@@ -44,6 +45,7 @@ func main() {
 		Users:        users.Repo{DB: database.SQL},
 		Playlists:    playlists.Repo{DB: database.SQL},
 		Channels:     channels.Repo{DB: database.SQL},
+		Packages:     packages.Repo{DB: database.SQL},
 		AuthRequired: !cfg.AuthDisabled,
 	}
 	api.Register(mux)

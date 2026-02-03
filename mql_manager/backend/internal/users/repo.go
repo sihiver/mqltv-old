@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"mqltv.local/mql_manager/backend/internal/channels"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -31,6 +33,73 @@ type Subscription struct {
 
 type Repo struct {
 	DB *sql.DB
+}
+
+func (r Repo) ListUserPackageIDs(ctx context.Context, userID int64) ([]int64, error) {
+	rows, err := r.DB.QueryContext(ctx, `SELECT package_id FROM user_packages WHERE user_id = ? ORDER BY package_id ASC`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]int64, 0)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+func (r Repo) SetUserPackages(ctx context.Context, userID int64, packageIDs []int64) error {
+	tx, err := r.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM user_packages WHERE user_id = ?`, userID); err != nil {
+		return err
+	}
+	for _, id := range packageIDs {
+		if id <= 0 {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO user_packages(user_id, package_id) VALUES(?, ?)`, userID, id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (r Repo) ListUserPackageChannels(ctx context.Context, userID int64) ([]channels.Channel, error) {
+	// Merge channels from all assigned packages. Group by channel id to avoid duplicates.
+	rows, err := r.DB.QueryContext(ctx, `
+SELECT
+  c.id, c.name, c.stream_url, c.tvg_id, c.tvg_name, c.tvg_logo, c.group_title, c.created_at
+FROM user_packages up
+JOIN package_channels pc ON pc.package_id = up.package_id
+JOIN channels c ON c.id = pc.channel_id
+WHERE up.user_id = ?
+GROUP BY c.id
+ORDER BY MIN(up.package_id) ASC, MIN(pc.pos) ASC, c.group_title ASC, c.name ASC
+`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]channels.Channel, 0)
+	for rows.Next() {
+		var c channels.Channel
+		if err := rows.Scan(&c.ID, &c.Name, &c.StreamURL, &c.TvgID, &c.TvgName, &c.TvgLogo, &c.GroupTitle, &c.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
 }
 
 func (r Repo) ListUsers(ctx context.Context) ([]User, error) {

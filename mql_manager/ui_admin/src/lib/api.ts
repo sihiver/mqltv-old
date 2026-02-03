@@ -37,6 +37,12 @@ export type Channel = {
   createdAt: string
 }
 
+export type Package = {
+  id: number
+  name: string
+  createdAt: string
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers || {})
   headers.set('Accept', 'application/json')
@@ -131,6 +137,44 @@ export const api = {
 
   setUserChannels(userId: number, channelIds: number[]) {
     return request<Channel[]>(`/api/users/${userId}/channels`, {
+      method: 'PUT',
+      body: JSON.stringify({ channelIds })
+    })
+  },
+
+  getUserPackages(userId: number) {
+    return request<Package[]>(`/api/users/${userId}/packages`)
+  },
+
+  setUserPackages(userId: number, packageIds: number[]) {
+    return request<Package[]>(`/api/users/${userId}/packages`, {
+      method: 'PUT',
+      body: JSON.stringify({ packageIds })
+    })
+  },
+
+  listPackages() {
+    return request<Package[]>('/api/packages')
+  },
+
+  createPackage(payload: { name: string }) {
+    return request<Package>('/api/packages', { method: 'POST', body: JSON.stringify(payload) })
+  },
+
+  getPackage(id: number) {
+    return request<Package>(`/api/packages/${id}`)
+  },
+
+  deletePackage(id: number) {
+    return request<void>(`/api/packages/${id}`, { method: 'DELETE' })
+  },
+
+  getPackageChannels(packageId: number) {
+    return request<Channel[]>(`/api/packages/${packageId}/channels`)
+  },
+
+  setPackageChannels(packageId: number, channelIds: number[]) {
+    return request<Channel[]>(`/api/packages/${packageId}/channels`, {
       method: 'PUT',
       body: JSON.stringify({ channelIds })
     })

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"mqltv.local/mql_manager/backend/internal/channels"
+	"mqltv.local/mql_manager/backend/internal/packages"
 	"mqltv.local/mql_manager/backend/internal/playlists"
 	"mqltv.local/mql_manager/backend/internal/users"
 )
@@ -18,6 +19,7 @@ type API struct {
 	Users        users.Repo
 	Playlists    playlists.Repo
 	Channels     channels.Repo
+	Packages     packages.Repo
 	AuthRequired bool
 }
 
@@ -29,6 +31,8 @@ func (a API) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/playlists", a.handlePlaylists)
 	mux.HandleFunc("/api/playlists/", a.handlePlaylistByID)
 	mux.HandleFunc("/api/channels", a.handleChannels)
+	mux.HandleFunc("/api/packages", a.handlePackages)
+	mux.HandleFunc("/api/packages/", a.handlePackageByID)
 
 	// Public endpoints for Android app
 	mux.HandleFunc("/public/login", a.handlePublicLogin)
@@ -97,6 +101,10 @@ func (a API) handleUserByID(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(parts) == 2 && parts[1] == "channels" {
 		a.handleUserChannels(w, r, id)
+		return
+	}
+	if len(parts) == 2 && parts[1] == "packages" {
+		a.handleUserPackages(w, r, id)
 		return
 	}
 	if len(parts) == 2 && parts[1] == "password" {

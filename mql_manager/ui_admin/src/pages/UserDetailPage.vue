@@ -73,14 +73,20 @@
               </el-form-item>
             </el-form>
           </el-col>
-          <el-col :span="6" :xs="24" style="display:flex; gap: 8px; justify-content:flex-end;">
-            <el-button @click="loadChannels" :loading="loadingChannels">Load</el-button>
-            <el-button type="warning" plain @click="clearSelectedChannels" :disabled="selectedChannelIds.length === 0">
-              Clear
-            </el-button>
-            <el-button type="primary" @click="saveChannels" :loading="savingChannels" :disabled="!user">
-              Save ({{ selectedChannelIds.length }})
-            </el-button>
+          <el-col :span="6" :xs="24">
+            <el-form label-position="top">
+              <el-form-item label=" ">
+                <div style="display:flex; gap: 8px; justify-content:flex-end; width: 100%;">
+                  <el-button @click="loadChannels" :loading="loadingChannels">Load</el-button>
+                  <el-button type="warning" plain @click="clearSelectedChannels" :disabled="selectedChannelIds.length === 0">
+                    Clear
+                  </el-button>
+                  <el-button type="primary" @click="saveChannels" :loading="savingChannels" :disabled="!user">
+                    Save ({{ selectedChannelIds.length }})
+                  </el-button>
+                </div>
+              </el-form-item>
+            </el-form>
           </el-col>
         </el-row>
 
@@ -104,6 +110,39 @@
           <span>Showing {{ channels.length }} channels</span>
           <span>Selected {{ selectedChannelIds.length }} total</span>
         </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="Packages" name="packages">
+        <el-alert
+          title="Assign paket ke user. Jika user belum memilih channel manual, playlist publik akan di-generate dari paket yang dipilih."
+          type="info"
+          show-icon
+          style="margin-bottom: 12px"
+        />
+
+        <el-row :gutter="12" style="margin-bottom: 10px; align-items: end;">
+          <el-col :span="18" :xs="24">
+            <el-form label-position="top">
+              <el-form-item label="Select packages">
+                <el-select v-model="selectedPackageIds" multiple filterable clearable placeholder="Choose packages" style="width: 100%">
+                  <el-option v-for="p in allPackages" :key="p.id" :label="`#${p.id} — ${p.name}`" :value="p.id" />
+                </el-select>
+              </el-form-item>
+            </el-form>
+          </el-col>
+          <el-col :span="6" :xs="24" style="display:flex; gap: 8px; justify-content:flex-end;">
+            <el-button type="warning" plain @click="selectedPackageIds = []" :disabled="selectedPackageIds.length === 0">Clear</el-button>
+            <el-button type="primary" @click="savePackages" :loading="savingPackages" :disabled="!user">
+              Save ({{ selectedPackageIds.length }})
+            </el-button>
+          </el-col>
+        </el-row>
+
+        <el-table :data="assignedPackages" style="width: 100%" border>
+          <el-table-column prop="id" label="ID" width="90" />
+          <el-table-column prop="name" label="Name" min-width="240" />
+          <el-table-column prop="createdAt" label="Created" width="240" />
+        </el-table>
       </el-tab-pane>
 
       <el-tab-pane label="Playlist" name="playlist">
@@ -183,7 +222,7 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AdminShell from '@/components/AdminShell.vue'
-import { api, type Channel, type Playlist, type Subscription, type User } from '@/lib/api'
+import { api, type Channel, type Package, type Playlist, type Subscription, type User } from '@/lib/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -207,7 +246,7 @@ const adding = ref(false)
 const deleting = ref(false)
 const deletingSubId = ref<number | null>(null)
 
-const activeTab = ref<'channels' | 'playlist' | 'subscriptions'>('channels')
+const activeTab = ref<'channels' | 'packages' | 'playlist' | 'subscriptions'>('channels')
 
 const channelsTableRef = ref<any>(null)
 const channels = ref<Channel[]>([])
@@ -216,6 +255,11 @@ const channelsPlaylistId = ref<number | null>(null)
 const channelsQuery = ref('')
 const loadingChannels = ref(false)
 const savingChannels = ref(false)
+
+const allPackages = ref<Package[]>([])
+const assignedPackages = ref<Package[]>([])
+const selectedPackageIds = ref<number[]>([])
+const savingPackages = ref(false)
 
 const title = computed(() => (user.value ? `User #${user.value.id}` : 'User'))
 const publicPlaylistUrl = computed(() => {
@@ -232,16 +276,35 @@ async function load() {
     user.value = await api.getUser(id)
     subs.value = await api.listSubscriptions(id)
     playlists.value = await api.listPlaylists()
+    allPackages.value = await api.listPackages()
     selectedPlaylistId.value = (user.value as any)?.playlistId ?? null
 
     // Load selected channels for this user (selection state is global).
     const userCh = await api.getUserChannels(id)
     selectedChannelIds.value = userCh.map((c) => c.id)
+
+    const userPk = await api.getUserPackages(id)
+    assignedPackages.value = userPk
+    selectedPackageIds.value = userPk.map((p) => p.id)
     await loadChannels()
   } catch (e: any) {
     error.value = e?.message || 'Failed to load'
   } finally {
     loading.value = false
+  }
+}
+
+async function savePackages() {
+  if (!user.value) return
+  savingPackages.value = true
+  try {
+    const pk = await api.setUserPackages(user.value.id, selectedPackageIds.value)
+    assignedPackages.value = pk
+    ElMessage.success('Packages saved')
+  } catch (e: any) {
+    ElMessage.error(e?.message || 'Save failed')
+  } finally {
+    savingPackages.value = false
   }
 }
 

@@ -4,6 +4,13 @@ type CreateUserRequest struct {
 	Username    string `json:"username"`
 	DisplayName string `json:"displayName"`
 	Password    string `json:"password"`
+	PackageIDs  []int64 `json:"packageIds"`
+	Subscription *CreateUserSubscriptionRequest `json:"subscription"`
+}
+
+type CreateUserSubscriptionRequest struct {
+	Plan      string `json:"plan"`
+	ExpiresAt string `json:"expiresAt"`
 }
 
 type UpdateUserRequest struct {

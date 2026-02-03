@@ -7,6 +7,8 @@ export type User = {
   appKey?: string
   playlistId?: number | null
   createdAt: string
+  packages?: string[]
+  expiresAt?: string
 }
 
 export type Playlist = {
@@ -76,9 +78,16 @@ export const api = {
   listUsers() {
     return request<User[]>('/api/users')
   },
-  createUser(payload: { username: string; displayName: string; password?: string }) {
+  createUser(payload: {
+    username: string
+    displayName: string
+    password?: string
+    packageIds?: number[]
+    subscription?: { plan: string; expiresAt: string }
+  }) {
     return request<User>('/api/users', { method: 'POST', body: JSON.stringify(payload) })
   },
+
   getUser(id: number) {
     return request<User>(`/api/users/${id}`)
   },

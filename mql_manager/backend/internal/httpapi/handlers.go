@@ -64,7 +64,23 @@ func (a API) handleUsers(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, err)
 			return
 		}
-		u, err := a.Users.CreateUserWithPassword(r.Context(), strings.TrimSpace(req.Username), strings.TrimSpace(req.DisplayName), strings.TrimSpace(req.Password))
+		var subPlan *string
+		var subExpiresAt *string
+		if req.Subscription != nil {
+			p := strings.TrimSpace(req.Subscription.Plan)
+			e := strings.TrimSpace(req.Subscription.ExpiresAt)
+			subPlan = &p
+			subExpiresAt = &e
+		}
+		u, err := a.Users.CreateUserWithSetup(
+			r.Context(),
+			strings.TrimSpace(req.Username),
+			strings.TrimSpace(req.DisplayName),
+			strings.TrimSpace(req.Password),
+			req.PackageIDs,
+			subPlan,
+			subExpiresAt,
+		)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, err)
 			return

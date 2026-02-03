@@ -21,6 +21,8 @@ type User struct {
 	AppKey      string `json:"appKey"`
 	PlaylistID  *int64 `json:"playlistId"`
 	CreatedAt   string `json:"createdAt"`
+	Packages    []string `json:"packages,omitempty"`
+	ExpiresAt   *string  `json:"expiresAt,omitempty"`
 }
 
 type Subscription struct {
@@ -33,6 +35,50 @@ type Subscription struct {
 
 type Repo struct {
 	DB *sql.DB
+}
+
+func (r Repo) CreateUserWithSetup(ctx context.Context, username, displayName, password string, packageIDs []int64, subPlan, subExpiresAt *string) (User, error) {
+	tx, err := r.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return User{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	u, err := r.createUserWithPasswordTx(ctx, tx, username, displayName, password)
+	if err != nil {
+		return User{}, err
+	}
+
+	if len(packageIDs) > 0 {
+		if err := r.setUserPackagesTx(ctx, tx, u.ID, packageIDs); err != nil {
+			return User{}, err
+		}
+	}
+
+	if subPlan != nil || subExpiresAt != nil {
+		plan := ""
+		expiresAt := ""
+		if subPlan != nil {
+			plan = strings.TrimSpace(*subPlan)
+		}
+		if subExpiresAt != nil {
+			expiresAt = strings.TrimSpace(*subExpiresAt)
+		}
+		if plan == "" {
+			return User{}, errors.New("plan is required")
+		}
+		if expiresAt == "" {
+			return User{}, errors.New("expiresAt is required")
+		}
+		if err := r.createSubscriptionTx(ctx, tx, u.ID, plan, expiresAt); err != nil {
+			return User{}, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return User{}, err
+	}
+	return u, nil
 }
 
 func (r Repo) ListUserPackageIDs(ctx context.Context, userID int64) ([]int64, error) {
@@ -103,7 +149,32 @@ ORDER BY MIN(up.package_id) ASC, MIN(pc.pos) ASC, c.group_title ASC, c.name ASC
 }
 
 func (r Repo) ListUsers(ctx context.Context) ([]User, error) {
-	rows, err := r.DB.QueryContext(ctx, `SELECT id, username, display_name, COALESCE(app_key,''), playlist_id, created_at FROM users ORDER BY id DESC`)
+	rows, err := r.DB.QueryContext(ctx, `
+SELECT
+	u.id,
+	u.username,
+	u.display_name,
+	COALESCE(u.app_key,''),
+	u.playlist_id,
+	u.created_at,
+	(
+		SELECT MAX(s.expires_at)
+		FROM subscriptions s
+		WHERE s.user_id = u.id
+	) AS expires_at,
+	(
+		SELECT group_concat(name, '||')
+		FROM (
+			SELECT p.name AS name
+			FROM user_packages up
+			JOIN packages p ON p.id = up.package_id
+			WHERE up.user_id = u.id
+			ORDER BY p.id ASC
+		)
+	) AS package_names
+FROM users u
+ORDER BY u.id DESC
+`)
 	if err != nil {
 		return nil, err
 	}
@@ -113,12 +184,26 @@ func (r Repo) ListUsers(ctx context.Context) ([]User, error) {
 	for rows.Next() {
 		var u User
 		var playlistID sql.NullInt64
-		if err := rows.Scan(&u.ID, &u.Username, &u.DisplayName, &u.AppKey, &playlistID, &u.CreatedAt); err != nil {
+		var expiresAt sql.NullString
+		var packageNames sql.NullString
+		if err := rows.Scan(&u.ID, &u.Username, &u.DisplayName, &u.AppKey, &playlistID, &u.CreatedAt, &expiresAt, &packageNames); err != nil {
 			return nil, err
 		}
 		if playlistID.Valid {
 			v := playlistID.Int64
 			u.PlaylistID = &v
+		}
+		if expiresAt.Valid {
+			v := strings.TrimSpace(expiresAt.String)
+			if v != "" {
+				u.ExpiresAt = &v
+			}
+		}
+		if packageNames.Valid {
+			raw := strings.TrimSpace(packageNames.String)
+			if raw != "" {
+				u.Packages = strings.Split(raw, "||")
+			}
 		}
 		out = append(out, u)
 	}
@@ -142,6 +227,14 @@ func (r Repo) CreateUser(ctx context.Context, username, displayName string) (Use
 }
 
 func (r Repo) CreateUserWithPassword(ctx context.Context, username, displayName, password string) (User, error) {
+	u, err := r.CreateUserWithSetup(ctx, username, displayName, password, nil, nil, nil)
+	if err != nil {
+		return User{}, err
+	}
+	return u, nil
+}
+
+func (r Repo) createUserWithPasswordTx(ctx context.Context, tx *sql.Tx, username, displayName, password string) (User, error) {
 	username = strings.TrimSpace(username)
 	displayName = strings.TrimSpace(displayName)
 	password = strings.TrimSpace(password)
@@ -167,7 +260,7 @@ func (r Repo) CreateUserWithPassword(ctx context.Context, username, displayName,
 	}
 
 	createdAt := time.Now().UTC().Format(time.RFC3339)
-	res, err := r.DB.ExecContext(ctx, `INSERT INTO users(username, display_name, app_key, playlist_id, password_hash, created_at) VALUES(?, ?, ?, NULL, ?, ?)`, username, displayName, appKey, passHash, createdAt)
+	res, err := tx.ExecContext(ctx, `INSERT INTO users(username, display_name, app_key, playlist_id, password_hash, created_at) VALUES(?, ?, ?, NULL, ?, ?)`, username, displayName, appKey, passHash, createdAt)
 	if err != nil {
 		return User{}, err
 	}
@@ -175,7 +268,40 @@ func (r Repo) CreateUserWithPassword(ctx context.Context, username, displayName,
 	if err != nil {
 		return User{}, err
 	}
-	return r.GetUser(ctx, id)
+	return r.getUserTx(ctx, tx, id)
+}
+
+func (r Repo) getUserTx(ctx context.Context, tx *sql.Tx, id int64) (User, error) {
+	var u User
+	var playlistID sql.NullInt64
+	err := tx.QueryRowContext(ctx, `SELECT id, username, display_name, COALESCE(app_key,''), playlist_id, created_at FROM users WHERE id = ?`, id).
+		Scan(&u.ID, &u.Username, &u.DisplayName, &u.AppKey, &playlistID, &u.CreatedAt)
+	if playlistID.Valid {
+		v := playlistID.Int64
+		u.PlaylistID = &v
+	}
+	return u, err
+}
+
+func (r Repo) setUserPackagesTx(ctx context.Context, tx *sql.Tx, userID int64, packageIDs []int64) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM user_packages WHERE user_id = ?`, userID); err != nil {
+		return err
+	}
+	for _, id := range packageIDs {
+		if id <= 0 {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO user_packages(user_id, package_id) VALUES(?, ?)`, userID, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r Repo) createSubscriptionTx(ctx context.Context, tx *sql.Tx, userID int64, plan, expiresAt string) error {
+	createdAt := time.Now().UTC().Format(time.RFC3339)
+	_, err := tx.ExecContext(ctx, `INSERT INTO subscriptions(user_id, plan, expires_at, created_at) VALUES(?, ?, ?, ?)`, userID, plan, expiresAt, createdAt)
+	return err
 }
 
 func (r Repo) SetPassword(ctx context.Context, userID int64, password string) error {

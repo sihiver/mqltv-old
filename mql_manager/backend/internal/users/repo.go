@@ -15,12 +15,12 @@ import (
 )
 
 type User struct {
-	ID          int64  `json:"id"`
-	Username    string `json:"username"`
-	DisplayName string `json:"displayName"`
-	AppKey      string `json:"appKey"`
-	PlaylistID  *int64 `json:"playlistId"`
-	CreatedAt   string `json:"createdAt"`
+	ID          int64    `json:"id"`
+	Username    string   `json:"username"`
+	DisplayName string   `json:"displayName"`
+	AppKey      string   `json:"appKey"`
+	PlaylistID  *int64   `json:"playlistId"`
+	CreatedAt   string   `json:"createdAt"`
 	Packages    []string `json:"packages,omitempty"`
 	ExpiresAt   *string  `json:"expiresAt,omitempty"`
 }

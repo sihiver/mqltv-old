@@ -1,10 +1,10 @@
 package httpapi
 
 type CreateUserRequest struct {
-	Username    string `json:"username"`
-	DisplayName string `json:"displayName"`
-	Password    string `json:"password"`
-	PackageIDs  []int64 `json:"packageIds"`
+	Username     string                         `json:"username"`
+	DisplayName  string                         `json:"displayName"`
+	Password     string                         `json:"password"`
+	PackageIDs   []int64                        `json:"packageIds"`
 	Subscription *CreateUserSubscriptionRequest `json:"subscription"`
 }
 

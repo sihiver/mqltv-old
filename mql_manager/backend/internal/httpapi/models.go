@@ -3,6 +3,7 @@ package httpapi
 type CreateUserRequest struct {
 	Username    string `json:"username"`
 	DisplayName string `json:"displayName"`
+	Password    string `json:"password"`
 }
 
 type UpdateUserRequest struct {
@@ -26,4 +27,8 @@ type SetUserPlaylistRequest struct {
 
 type SetUserChannelsRequest struct {
 	ChannelIDs []int64 `json:"channelIds"`
+}
+
+type SetUserPasswordRequest struct {
+	Password string `json:"password"`
 }

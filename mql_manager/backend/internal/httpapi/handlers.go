@@ -31,6 +31,7 @@ func (a API) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/channels", a.handleChannels)
 
 	// Public endpoints for Android app
+	mux.HandleFunc("/public/login", a.handlePublicLogin)
 	mux.HandleFunc("/playlist.m3u", a.handlePublicRootPlaylist)
 	mux.HandleFunc("/public/m3u/", a.handlePublicM3UByPlaylistID)
 	mux.HandleFunc("/public/users/", a.handlePublicUserPlaylist)
@@ -59,7 +60,7 @@ func (a API) handleUsers(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, err)
 			return
 		}
-		u, err := a.Users.CreateUser(r.Context(), strings.TrimSpace(req.Username), strings.TrimSpace(req.DisplayName))
+		u, err := a.Users.CreateUserWithPassword(r.Context(), strings.TrimSpace(req.Username), strings.TrimSpace(req.DisplayName), strings.TrimSpace(req.Password))
 		if err != nil {
 			writeError(w, http.StatusBadRequest, err)
 			return
@@ -96,6 +97,10 @@ func (a API) handleUserByID(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(parts) == 2 && parts[1] == "channels" {
 		a.handleUserChannels(w, r, id)
+		return
+	}
+	if len(parts) == 2 && parts[1] == "password" {
+		a.handleUserPassword(w, r, id)
 		return
 	}
 	if len(parts) != 1 {

@@ -6,7 +6,10 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
@@ -66,6 +69,13 @@ func (r Repo) GetUser(ctx context.Context, id int64) (User, error) {
 }
 
 func (r Repo) CreateUser(ctx context.Context, username, displayName string) (User, error) {
+	return r.CreateUserWithPassword(ctx, username, displayName, "")
+}
+
+func (r Repo) CreateUserWithPassword(ctx context.Context, username, displayName, password string) (User, error) {
+	username = strings.TrimSpace(username)
+	displayName = strings.TrimSpace(displayName)
+	password = strings.TrimSpace(password)
 	if username == "" {
 		return User{}, errors.New("username is required")
 	}
@@ -75,8 +85,20 @@ func (r Repo) CreateUser(ctx context.Context, username, displayName string) (Use
 		return User{}, err
 	}
 
+	passHash := ""
+	if password != "" {
+		if len(password) < 4 {
+			return User{}, errors.New("password must be at least 4 characters")
+		}
+		b, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return User{}, err
+		}
+		passHash = string(b)
+	}
+
 	createdAt := time.Now().UTC().Format(time.RFC3339)
-	res, err := r.DB.ExecContext(ctx, `INSERT INTO users(username, display_name, app_key, playlist_id, created_at) VALUES(?, ?, ?, NULL, ?)`, username, displayName, appKey, createdAt)
+	res, err := r.DB.ExecContext(ctx, `INSERT INTO users(username, display_name, app_key, playlist_id, password_hash, created_at) VALUES(?, ?, ?, NULL, ?, ?)`, username, displayName, appKey, passHash, createdAt)
 	if err != nil {
 		return User{}, err
 	}
@@ -85,6 +107,50 @@ func (r Repo) CreateUser(ctx context.Context, username, displayName string) (Use
 		return User{}, err
 	}
 	return r.GetUser(ctx, id)
+}
+
+func (r Repo) SetPassword(ctx context.Context, userID int64, password string) error {
+	password = strings.TrimSpace(password)
+	if password == "" {
+		return errors.New("password is required")
+	}
+	if len(password) < 4 {
+		return errors.New("password must be at least 4 characters")
+	}
+	b, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	_, err = r.DB.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, string(b), userID)
+	return err
+}
+
+func (r Repo) Authenticate(ctx context.Context, username, password string) (User, error) {
+	username = strings.TrimSpace(username)
+	password = strings.TrimSpace(password)
+	if username == "" || password == "" {
+		return User{}, errors.New("invalid credentials")
+	}
+
+	var u User
+	var playlistID sql.NullInt64
+	var passHash string
+	err := r.DB.QueryRowContext(ctx, `SELECT id, username, display_name, COALESCE(app_key,''), playlist_id, COALESCE(password_hash,''), created_at FROM users WHERE username = ?`, username).
+		Scan(&u.ID, &u.Username, &u.DisplayName, &u.AppKey, &playlistID, &passHash, &u.CreatedAt)
+	if err != nil {
+		return User{}, errors.New("invalid credentials")
+	}
+	if playlistID.Valid {
+		v := playlistID.Int64
+		u.PlaylistID = &v
+	}
+	if strings.TrimSpace(passHash) == "" {
+		return User{}, errors.New("invalid credentials")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(passHash), []byte(password)); err != nil {
+		return User{}, errors.New("invalid credentials")
+	}
+	return u, nil
 }
 
 func (r Repo) SetUserPlaylist(ctx context.Context, userID int64, playlistID *int64) error {

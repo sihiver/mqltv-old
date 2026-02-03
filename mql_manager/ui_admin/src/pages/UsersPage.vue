@@ -44,6 +44,9 @@
         <el-form-item label="Display name">
           <el-input v-model="newDisplayName" placeholder="e.g. John" />
         </el-form-item>
+        <el-form-item label="Password">
+          <el-input v-model="newPassword" type="password" show-password placeholder="min 4 chars" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCreate = false">Cancel</el-button>
@@ -71,6 +74,7 @@ const authRequired = ref<boolean | undefined>(undefined)
 const showCreate = ref(false)
 const newUsername = ref('')
 const newDisplayName = ref('')
+const newPassword = ref('')
 const creating = ref(false)
 
 const filtered = computed(() => {
@@ -100,11 +104,16 @@ async function load() {
 async function create() {
   creating.value = true
   try {
-    const u = await api.createUser({ username: newUsername.value.trim(), displayName: newDisplayName.value.trim() })
+    const u = await api.createUser({
+      username: newUsername.value.trim(),
+      displayName: newDisplayName.value.trim(),
+      password: newPassword.value.trim()
+    })
     ElMessage.success('User created')
     showCreate.value = false
     newUsername.value = ''
     newDisplayName.value = ''
+    newPassword.value = ''
     await load()
     go(u.id)
   } catch (e: any) {

@@ -69,7 +69,7 @@ export const api = {
   listUsers() {
     return request<User[]>('/api/users')
   },
-  createUser(payload: { username: string; displayName: string }) {
+  createUser(payload: { username: string; displayName: string; password?: string }) {
     return request<User>('/api/users', { method: 'POST', body: JSON.stringify(payload) })
   },
   getUser(id: number) {

@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>New User - mql_manager</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <%- include('partials_header'); %>
+  <main>
+    <div class="card" style="max-width:720px;">
+      <h2>Create user</h2>
+      <% if (error) { %>
+        <div class="error"><%= error %></div>
+      <% } %>
+      <form method="post" action="/users/new">
+        <label>Username</label>
+        <input name="username" placeholder="e.g. user001" />
+        <label>Display name</label>
+        <input name="displayName" placeholder="e.g. John" />
+        <div style="height:12px"></div>
+        <button class="btn primary" type="submit">Create</button>
+        <a class="btn" href="/users">Cancel</a>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

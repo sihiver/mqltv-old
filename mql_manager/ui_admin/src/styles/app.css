@@ -1,0 +1,29 @@
+html, body, #app { height: 100%; }
+body { margin: 0; background: #0f172a; }
+
+:root {
+  --mql-bg: #0f172a;
+  --mql-panel: #111a2e;
+  --mql-panel-2: #0b1220;
+  --mql-border: #223052;
+}
+
+.mql-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mql-card {
+  border-radius: 10px;
+}
+
+.mql-metric {
+  display:flex;
+  justify-content:space-between;
+  gap: 12px;
+  align-items:center;
+}
+
+.mql-metric .label { color:#94a3b8; font-size:12px; }
+.mql-metric .value { font-size: 22px; font-weight: 700; }

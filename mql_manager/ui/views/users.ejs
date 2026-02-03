@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Users - mql_manager</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <%- include('partials_header'); %>
+  <main>
+    <div class="row" style="justify-content: space-between; align-items:center;">
+      <h2 style="margin: 6px 0;">Users</h2>
+      <a class="btn primary" href="/users/new">New user</a>
+    </div>
+
+    <% if (error) { %>
+      <div class="error"><%= error %></div>
+    <% } %>
+
+    <div class="card">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Display name</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% (users || []).forEach(u => { %>
+            <tr>
+              <td><a href="/users/<%= u.id %>"><%= u.id %></a></td>
+              <td><%= u.username %></td>
+              <td><%= u.displayName %></td>
+              <td><small><%= u.createdAt %></small></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</body>
+</html>

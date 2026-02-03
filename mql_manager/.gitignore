@@ -1,0 +1,65 @@
+# ===== Backend (Go + SQLite) =====
+backend/.env
+
+# SQLite database files
+backend/data/*.db
+backend/data/*.db-*
+backend/data/*.sqlite
+backend/data/*.sqlite-*
+backend/data/*.sqlite3
+backend/data/*.sqlite3-*
+
+# Go build/test outputs
+backend/server
+backend/*.exe
+backend/*.out
+backend/*.test
+backend/coverage*.out
+backend/**/coverage*.out
+
+# Logs
+backend/*.log
+backend/**/*.log
+
+# ===== UI (Node/Express) =====
+ui/.env
+ui/node_modules/
+ui/npm-debug.log*
+ui/yarn-debug.log*
+ui/yarn-error.log*
+ui/pnpm-debug.log*
+
+# ===== UI Admin (Vue/Vite) =====
+ui_admin/node_modules/
+ui_admin/dist/
+ui_admin/.env
+ui_admin/.env.*
+ui_admin/npm-debug.log*
+ui_admin/yarn-debug.log*
+ui_admin/yarn-error.log*
+ui_admin/pnpm-debug.log*
+
+# ===== Tooling / OS / Editor =====
+.DS_Store
+Thumbs.db
+
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+.idea/
+*.iml
+
+# General env files (keep examples)
+.env
+.env.*
+!.env.example
+!backend/.env.example
+!ui/.env.example
+
+# Temporary
+*.tmp
+*.swp
+*.swo

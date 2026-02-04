@@ -27,3 +27,9 @@ body { margin: 0; background: #f5f7f9; }
 
 .mql-metric .label { color:#6b7280; font-size:12px; }
 .mql-metric .value { font-size: 22px; font-weight: 700; }
+
+@media (max-width: 768px) {
+  .mql-page { gap: 10px; }
+  .el-card__body { padding: 12px; }
+  .el-card__header { padding: 12px; }
+}

@@ -1,19 +1,17 @@
 <template>
   <el-container style="min-height: 100vh">
-    <el-aside class="mql-aside" :width="collapsed ? '64px' : '220px'" style="background: var(--mql-panel-2); transition: width .15s ease;">
+    <el-aside
+      v-if="!isMobile"
+      class="mql-aside"
+      :width="collapsed ? '64px' : '220px'"
+      style="background: var(--mql-panel-2); transition: width .15s ease;"
+    >
       <div style="display:flex; align-items:center; gap: 10px; padding: 14px 14px; color: #e6edf3; font-weight: 800;">
         <div style="width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg,#6d28d9,#2563eb);"></div>
         <span v-if="!collapsed">mql_manager</span>
       </div>
 
-      <el-menu
-        :default-active="active"
-        :collapse="collapsed"
-        background-color="var(--mql-panel-2)"
-        text-color="#cbd5e1"
-        active-text-color="#7aa2ff"
-        router
-      >
+      <el-menu :default-active="active" :collapse="collapsed" background-color="var(--mql-panel-2)" text-color="#cbd5e1" active-text-color="#7aa2ff" router>
         <el-menu-item index="/dashboard">
           <el-icon><Odometer /></el-icon>
           <span>Dashboard</span>
@@ -36,13 +34,16 @@
     </el-aside>
 
     <el-container>
-      <el-header class="mql-header" style="background: #fff; border-bottom: 1px solid #e5e7eb; display:flex; justify-content: space-between; align-items:center;">
-        <div style="display:flex; align-items:center; gap: 12px;">
-          <el-button text @click="collapsed = !collapsed">
+      <el-header class="mql-header" style="background: #fff; border-bottom: 1px solid #e5e7eb; display:flex; justify-content: space-between; align-items:center; gap: 10px;">
+        <div style="display:flex; align-items:center; gap: 10px; min-width: 0;">
+          <el-button v-if="isMobile" text @click="mobileMenuOpen = true">
+            <el-icon><Menu /></el-icon>
+          </el-button>
+          <el-button v-else text @click="collapsed = !collapsed">
             <el-icon><Fold v-if="!collapsed" /><Expand v-else /></el-icon>
           </el-button>
 
-          <el-breadcrumb separator="/" style="font-weight:600;">
+          <el-breadcrumb separator="/" style="font-weight:600; overflow:hidden; text-overflow: ellipsis; white-space: nowrap;">
             <el-breadcrumb-item v-for="(b, i) in breadcrumb" :key="i">{{ b }}</el-breadcrumb-item>
           </el-breadcrumb>
         </div>
@@ -68,18 +69,51 @@
         </div>
       </el-header>
 
-      <el-main style="background: var(--mql-bg); padding: 14px;">
+      <el-main :style="{ background: 'var(--mql-bg)', padding: isMobile ? '10px' : '14px' }">
         <slot />
       </el-main>
     </el-container>
   </el-container>
+
+  <el-drawer v-model="mobileMenuOpen" direction="ltr" size="78%" :with-header="false">
+    <div style="display:flex; align-items:center; gap: 10px; padding: 14px 14px; color: #111827; font-weight: 800; border-bottom: 1px solid var(--mql-border);">
+      <div style="width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg,#6d28d9,#2563eb);"></div>
+      <span>mql_manager</span>
+    </div>
+
+    <el-menu
+      :default-active="active"
+      background-color="#ffffff"
+      text-color="#111827"
+      active-text-color="#2563eb"
+      router
+      @select="() => (mobileMenuOpen = false)"
+    >
+      <el-menu-item index="/dashboard">
+        <el-icon><Odometer /></el-icon>
+        <span>Dashboard</span>
+      </el-menu-item>
+      <el-menu-item index="/playlists">
+        <el-icon><List /></el-icon>
+        <span>Playlists</span>
+      </el-menu-item>
+      <el-menu-item index="/packages">
+        <el-icon><Collection /></el-icon>
+        <span>Packages</span>
+      </el-menu-item>
+      <el-menu-item index="/users">
+        <el-icon><User /></el-icon>
+        <span>Users</span>
+      </el-menu-item>
+    </el-menu>
+  </el-drawer>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { auth } from '@/lib/auth'
-import { Collection, Expand, Fold, List, Odometer, Refresh, User } from '@element-plus/icons-vue'
+import { Collection, Expand, Fold, List, Menu, Odometer, Refresh, User } from '@element-plus/icons-vue'
 
 const props = defineProps<{ title: string; authRequired?: boolean }>()
 
@@ -87,6 +121,26 @@ const route = useRoute()
 const router = useRouter()
 
 const collapsed = ref(false)
+const mobileMenuOpen = ref(false)
+const isMobile = ref(false)
+
+function updateIsMobile() {
+  try {
+    isMobile.value = window.matchMedia('(max-width: 768px)').matches
+  } catch {
+    isMobile.value = false
+  }
+  if (isMobile.value) collapsed.value = true
+}
+
+onMounted(() => {
+  updateIsMobile()
+  window.addEventListener('resize', updateIsMobile)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateIsMobile)
+})
 
 const active = computed(() => (typeof route.path === 'string' ? route.path : '/users'))
 const breadcrumb = computed(() => {

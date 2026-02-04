@@ -5,6 +5,7 @@ import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -41,6 +42,8 @@ public class LiveTvFragment extends Fragment {
     private LiveTvChannelGridAdapter gridAdapter;
     private RecyclerView categoryList;
     private RecyclerView grid;
+
+    private int selectedCategoryPosition = 0;
 
     private final List<String> categoryKeys = new ArrayList<>();
     private final List<String> categoryLabels = new ArrayList<>();
@@ -95,6 +98,40 @@ public class LiveTvFragment extends Fragment {
         gridAdapter = new LiveTvChannelGridAdapter();
         grid.setAdapter(gridAdapter);
 
+        // TV UX:
+        // - From the first row: DPAD_UP goes to the *active* category (not a random tab).
+        // - From lower rows: DPAD_UP should move within the grid (row-1), not skip to categories.
+        grid.addOnChildAttachStateChangeListener(new RecyclerView.OnChildAttachStateChangeListener() {
+            @Override
+            public void onChildViewAttachedToWindow(@NonNull View view) {
+                view.setOnKeyListener((v1, keyCode, event) -> {
+                    if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                        if (grid == null) return false;
+
+                        RecyclerView.LayoutManager lm = grid.getLayoutManager();
+                        int spanCount = 1;
+                        if (lm instanceof GridLayoutManager) {
+                            spanCount = Math.max(1, ((GridLayoutManager) lm).getSpanCount());
+                        }
+
+                        int pos = grid.getChildAdapterPosition(v1);
+                        if (pos != RecyclerView.NO_POSITION && pos < spanCount) {
+                            focusSelectedCategory();
+                            return true;
+                        }
+                        return false;
+                    }
+                    return false;
+                });
+            }
+
+            @Override
+            public void onChildViewDetachedFromWindow(@NonNull View view) {
+                view.setOnKeyListener(null);
+            }
+        });
+
         load(appContext);
 
         return v;
@@ -145,6 +182,7 @@ public class LiveTvFragment extends Fragment {
     private void applyCategory(Context context, int position) {
         if (position < 0 || position >= categoryKeys.size()) return;
         if (categoryAdapter != null) categoryAdapter.setSelected(position);
+        selectedCategoryPosition = position;
 
         String key = categoryKeys.get(position);
 
@@ -179,6 +217,29 @@ public class LiveTvFragment extends Fragment {
 
         if (gridAdapter != null) gridAdapter.submit(out);
         if (grid != null) grid.scrollToPosition(0);
+    }
+
+    private void focusSelectedCategory() {
+        if (categoryList == null) return;
+
+        final int pos = selectedCategoryPosition;
+        if (pos < 0) return;
+
+        categoryList.scrollToPosition(pos);
+        categoryList.post(() -> {
+            RecyclerView.ViewHolder vh = categoryList.findViewHolderForAdapterPosition(pos);
+            if (vh != null && vh.itemView != null) {
+                vh.itemView.requestFocus();
+            } else {
+                // If not laid out yet, try again shortly.
+                categoryList.postDelayed(() -> {
+                    RecyclerView.ViewHolder vh2 = categoryList.findViewHolderForAdapterPosition(pos);
+                    if (vh2 != null && vh2.itemView != null) {
+                        vh2.itemView.requestFocus();
+                    }
+                }, 40);
+            }
+        });
     }
 
     private static final class CategoryData {

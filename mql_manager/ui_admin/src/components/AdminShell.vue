@@ -1,17 +1,24 @@
 <template>
-  <el-container style="min-height: 100vh">
+  <el-container class="mql-shell" style="min-height: 100vh">
     <el-aside
       v-if="!isMobile"
       class="mql-aside"
       :width="collapsed ? '64px' : '220px'"
-      style="background: var(--mql-panel-2); transition: width .15s ease;"
     >
-      <div style="display:flex; align-items:center; gap: 10px; padding: 14px 14px; color: #e6edf3; font-weight: 800;">
-        <div style="width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg,#6d28d9,#2563eb);"></div>
+      <div class="mql-aside__brand">
+        <div class="mql-brand-mark"></div>
         <span v-if="!collapsed">mql_manager</span>
       </div>
 
-      <el-menu :default-active="active" :collapse="collapsed" background-color="var(--mql-panel-2)" text-color="#cbd5e1" active-text-color="#7aa2ff" router>
+      <el-menu
+        class="mql-menu"
+        :default-active="active"
+        :collapse="collapsed"
+        background-color="var(--mql-panel-2)"
+        text-color="#cbd5e1"
+        active-text-color="#7aa2ff"
+        router
+      >
         <el-menu-item index="/dashboard">
           <el-icon><Odometer /></el-icon>
           <span>Dashboard</span>
@@ -34,24 +41,24 @@
     </el-aside>
 
     <el-container>
-      <el-header class="mql-header" style="background: #fff; border-bottom: 1px solid #e5e7eb; display:flex; justify-content: space-between; align-items:center; gap: 10px;">
-        <div style="display:flex; align-items:center; gap: 10px; min-width: 0;">
-          <el-button v-if="isMobile" text @click="mobileMenuOpen = true">
+      <el-header class="mql-header">
+        <div class="mql-header__left">
+          <el-button v-if="isMobile" text circle size="small" @click="mobileMenuOpen = true">
             <el-icon><Menu /></el-icon>
           </el-button>
-          <el-button v-else text @click="collapsed = !collapsed">
+          <el-button v-else text circle size="small" @click="collapsed = !collapsed">
             <el-icon><Fold v-if="!collapsed" /><Expand v-else /></el-icon>
           </el-button>
 
-          <el-breadcrumb separator="/" style="font-weight:600; overflow:hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <el-breadcrumb separator="/" class="mql-breadcrumb">
             <el-breadcrumb-item v-for="(b, i) in breadcrumb" :key="i">{{ b }}</el-breadcrumb-item>
           </el-breadcrumb>
         </div>
 
-        <div style="display:flex; gap: 10px; align-items:center;">
+        <div class="mql-header__right">
           <el-tag v-if="authMode" type="info" effect="plain">Auth: {{ authMode }}</el-tag>
           <el-tooltip content="Refresh" placement="bottom">
-            <el-button text @click="reload">
+            <el-button text circle size="small" @click="reload">
               <el-icon><Refresh /></el-icon>
             </el-button>
           </el-tooltip>
@@ -75,9 +82,9 @@
     </el-container>
   </el-container>
 
-  <el-drawer v-model="mobileMenuOpen" direction="ltr" size="78%" :with-header="false">
-    <div style="display:flex; align-items:center; gap: 10px; padding: 14px 14px; color: #111827; font-weight: 800; border-bottom: 1px solid var(--mql-border);">
-      <div style="width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg,#6d28d9,#2563eb);"></div>
+  <el-drawer v-model="mobileMenuOpen" class="mql-drawer" direction="ltr" size="78%" :with-header="false">
+    <div class="mql-drawer__brand">
+      <div class="mql-brand-mark"></div>
       <span>mql_manager</span>
     </div>
 
@@ -166,16 +173,88 @@ function reload() {
 </script>
 
 <style scoped>
+.mql-shell {
+  --mql-header-h: 56px;
+}
+
 .mql-aside {
   position: sticky;
   top: 0;
   height: 100vh;
   overflow: auto;
+  background: var(--mql-panel-2);
+  transition: width 0.15s ease;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mql-aside__brand {
+  height: var(--mql-header-h);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  color: #e6edf3;
+  font-weight: 800;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mql-brand-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6d28d9, #2563eb);
+}
+
+.mql-menu {
+  border-right: 0;
 }
 
 .mql-header {
   position: sticky;
   top: 0;
   z-index: 30;
+  height: var(--mql-header-h);
+  background: var(--mql-panel);
+  border-bottom: 1px solid var(--mql-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+}
+
+.mql-header__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mql-header__right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.mql-breadcrumb {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mql-drawer__brand {
+  height: var(--mql-header-h);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  color: #111827;
+  font-weight: 800;
+  border-bottom: 1px solid var(--mql-border);
+}
+
+.mql-drawer :deep(.el-drawer__body) {
+  padding: 0;
 }
 </style>

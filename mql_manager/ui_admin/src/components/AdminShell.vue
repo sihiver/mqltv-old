@@ -18,11 +18,6 @@
           <el-icon><Odometer /></el-icon>
           <span>Dashboard</span>
         </el-menu-item>
-        <el-menu-item index="/users">
-          <el-icon><User /></el-icon>
-          <span>Users</span>
-        </el-menu-item>
-
         <el-menu-item index="/playlists">
           <el-icon><List /></el-icon>
           <span>Playlists</span>
@@ -31,6 +26,11 @@
         <el-menu-item index="/packages">
           <el-icon><Collection /></el-icon>
           <span>Packages</span>
+        </el-menu-item>
+
+        <el-menu-item index="/users">
+          <el-icon><User /></el-icon>
+          <span>Users</span>
         </el-menu-item>
       </el-menu>
     </el-aside>

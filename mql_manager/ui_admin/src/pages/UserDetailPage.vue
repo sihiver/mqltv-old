@@ -1,6 +1,6 @@
 <template>
   <AdminShell :title="title" :auth-required="authRequired">
-    <el-card>
+    <el-card class="mql-card" style="border: 1px solid var(--mql-border)">
       <template #header>
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <strong>User</strong>
@@ -8,8 +8,8 @@
             <el-tag v-if="selectedChannelIds.length > 0" type="success" effect="plain" size="small">
               Custom channels: {{ selectedChannelIds.length }}
             </el-tag>
-            <el-button @click="load" :loading="loading">Refresh</el-button>
-            <el-button type="danger" plain size="small" @click="remove" :loading="deleting">Delete</el-button>
+            <el-button size="small" @click="load" :loading="loading">Refresh</el-button>
+            <el-button size="small" type="danger" plain @click="remove" :loading="deleting">Delete</el-button>
           </div>
         </div>
       </template>
@@ -72,8 +72,9 @@
 
     <div style="height:12px" />
 
-    <el-tabs v-model="activeTab" type="border-card">
-      <el-tab-pane label="Channels" name="channels">
+    <el-card class="mql-card" style="border: 1px solid var(--mql-border)">
+      <el-tabs v-model="activeTab" type="card">
+        <el-tab-pane label="Channels" name="channels">
         <el-alert
           title="Select individual channels for this user. If any channels are selected, the public user playlist will be generated from the selected channels."
           type="info"
@@ -141,9 +142,9 @@
           <span>Showing {{ channels.length }} channels</span>
           <span>Selected {{ selectedChannelIds.length }} total</span>
         </div>
-      </el-tab-pane>
+        </el-tab-pane>
 
-      <el-tab-pane label="Packages" name="packages">
+        <el-tab-pane label="Packages" name="packages">
         <el-alert
           title="Assign paket ke user. Jika user belum memilih channel manual, playlist publik akan di-generate dari paket yang dipilih."
           type="info"
@@ -178,9 +179,9 @@
             </template>
           </el-table-column>
         </el-table>
-      </el-tab-pane>
+        </el-tab-pane>
 
-      <el-tab-pane label="Playlist" name="playlist">
+        <el-tab-pane label="Playlist" name="playlist">
         <el-alert
           v-if="!user?.appKey"
           title="This user has no appKey yet. Create a new user to generate one."
@@ -197,9 +198,9 @@
             <el-button type="primary" style="margin-left: 10px" @click="savePlaylist" :loading="savingPlaylist">Save</el-button>
           </el-form-item>
         </el-form>
-      </el-tab-pane>
+        </el-tab-pane>
 
-      <el-tab-pane label="Subscriptions" name="subscriptions">
+        <el-tab-pane label="Subscriptions" name="subscriptions">
         <el-row :gutter="12">
           <el-col :span="10" :xs="24">
             <el-card shadow="never">
@@ -255,8 +256,9 @@
             </el-card>
           </el-col>
         </el-row>
-      </el-tab-pane>
-    </el-tabs>
+        </el-tab-pane>
+      </el-tabs>
+    </el-card>
   </AdminShell>
 </template>
 

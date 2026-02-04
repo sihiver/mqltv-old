@@ -1,12 +1,15 @@
 <template>
   <AdminShell :title="title" :auth-required="authRequired">
-    <el-card>
+    <el-card class="mql-card" style="border: 1px solid var(--mql-border)">
       <template #header>
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <strong>Package</strong>
           <div style="display:flex; gap: 8px; align-items:center;">
-            <el-button @click="load" :loading="loading">Refresh</el-button>
-            <el-button type="danger" plain size="small" @click="remove" :loading="deleting">Delete</el-button>
+            <el-tag v-if="selectedChannelIds.length > 0" type="success" effect="plain" size="small">
+              Channels: {{ selectedChannelIds.length }}
+            </el-tag>
+            <el-button size="small" @click="load" :loading="loading">Refresh</el-button>
+            <el-button size="small" type="danger" plain @click="remove" :loading="deleting">Delete</el-button>
           </div>
         </div>
       </template>
@@ -16,12 +19,29 @@
       <div v-if="pkg">
         <el-row :gutter="12">
           <el-col :span="12" :xs="24">
-            <p><b>ID:</b> {{ pkg.id }}</p>
-            <p><b>Name:</b> {{ pkg.name }}</p>
-            <p><b>Harga:</b> {{ formatIDR(pkg.price) }}</p>
+            <el-card shadow="never" class="mql-card" style="border: 1px solid var(--mql-border)">
+              <template #header><strong>Info</strong></template>
+
+              <el-descriptions :column="1" border size="small">
+                <el-descriptions-item label="ID">{{ pkg.id }}</el-descriptions-item>
+                <el-descriptions-item label="Name">{{ pkg.name }}</el-descriptions-item>
+                <el-descriptions-item label="Harga">{{ formatIDR(pkg.price) }}</el-descriptions-item>
+                <el-descriptions-item label="Created">{{ formatDateTimeID(pkg.createdAt) }}</el-descriptions-item>
+              </el-descriptions>
+            </el-card>
           </el-col>
+
           <el-col :span="12" :xs="24">
-            <p style="color:#64748b; font-size:12px">Created: {{ formatDateTimeID(pkg.createdAt) }}</p>
+            <el-card shadow="never" class="mql-card" style="border: 1px solid var(--mql-border)">
+              <template #header><strong>Summary</strong></template>
+
+              <el-descriptions :column="1" border size="small">
+                <el-descriptions-item label="Selected channels">{{ selectedChannelIds.length }}</el-descriptions-item>
+                <el-descriptions-item label="Loaded channels">{{ channels.length }}</el-descriptions-item>
+                <el-descriptions-item label="Filter playlist">{{ channelsPlaylistId ? `#${channelsPlaylistId}` : 'All' }}</el-descriptions-item>
+                <el-descriptions-item label="Search">{{ channelsQuery.trim() || '—' }}</el-descriptions-item>
+              </el-descriptions>
+            </el-card>
           </el-col>
         </el-row>
       </div>
@@ -29,8 +49,9 @@
 
     <div style="height:12px" />
 
-    <el-tabs v-model="activeTab" type="border-card">
-      <el-tab-pane label="Channels" name="channels">
+    <el-card class="mql-card" style="border: 1px solid var(--mql-border)">
+      <el-tabs v-model="activeTab" type="card">
+        <el-tab-pane label="Channels" name="channels">
         <el-alert
           title="Pilih channel yang masuk ke paket ini. Paket bisa dipakai nanti untuk assignment (misalnya ke user)."
           type="info"
@@ -90,8 +111,9 @@
           <span>Showing {{ channels.length }} channels</span>
           <span>Selected {{ selectedChannelIds.length }} total</span>
         </div>
-      </el-tab-pane>
-    </el-tabs>
+        </el-tab-pane>
+      </el-tabs>
+    </el-card>
   </AdminShell>
 </template>
 

@@ -15,6 +15,7 @@ public final class AuthPrefs {
     private static final String KEY_PLAN = "auth_plan";
     private static final String KEY_PACKAGES = "auth_packages";
     private static final String KEY_EXPIRES_AT = "auth_expires_at";
+    private static final String KEY_LAST_STATUS_REFRESH = "auth_last_status_refresh";
 
     // Sensible default for local LAN deployments; user can override in login screen.
     private static final String DEFAULT_BASE_URL = "http://192.168.15.10:8088";
@@ -111,6 +112,30 @@ public final class AuthPrefs {
                 .apply();
     }
 
+    public static long getLastStatusRefreshMs(Context context) {
+        return sp(context).getLong(KEY_LAST_STATUS_REFRESH, 0L);
+    }
+
+    public static void setLastStatusRefreshMs(Context context, long ms) {
+        sp(context).edit().putLong(KEY_LAST_STATUS_REFRESH, ms).apply();
+    }
+
+    /**
+     * Update only account-related fields without overwriting appKey/playlist url.
+     */
+    public static void updateAccountStatus(Context context, String displayName, String plan, String packagesRaw, String expiresAt) {
+        if (displayName == null) displayName = "";
+        if (plan == null) plan = "";
+        if (packagesRaw == null) packagesRaw = "";
+        if (expiresAt == null) expiresAt = "";
+        sp(context).edit()
+                .putString(KEY_DISPLAY_NAME, displayName.trim())
+                .putString(KEY_PLAN, plan.trim())
+                .putString(KEY_PACKAGES, packagesRaw.trim())
+                .putString(KEY_EXPIRES_AT, expiresAt.trim())
+                .apply();
+    }
+
     public static void clear(Context context) {
         sp(context).edit()
                 .remove(KEY_USERNAME)
@@ -120,6 +145,7 @@ public final class AuthPrefs {
                 .remove(KEY_PLAN)
                 .remove(KEY_PACKAGES)
                 .remove(KEY_EXPIRES_AT)
+                .remove(KEY_LAST_STATUS_REFRESH)
                 .apply();
     }
 }

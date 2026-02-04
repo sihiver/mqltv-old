@@ -245,6 +245,7 @@ func (a API) handlePublicM3UByPlaylistID(w http.ResponseWriter, r *http.Request)
 
 func (a API) handlePublicUserPlaylist(w http.ResponseWriter, r *http.Request) {
 	// /public/users/{appKey}/playlist.m3u
+	// /public/users/{appKey}/status
 	p := strings.Trim(strings.TrimPrefix(r.URL.Path, "/public/users/"), "/")
 	parts := strings.Split(p, "/")
 	if len(parts) != 2 {
@@ -253,11 +254,82 @@ func (a API) handlePublicUserPlaylist(w http.ResponseWriter, r *http.Request) {
 	}
 	appKey := parts[0]
 	file := parts[1]
-	if file != "playlist.m3u" {
+	if file == "playlist.m3u" {
+		a.servePublicUserPlaylistByAppKey(w, r, appKey)
+		return
+	}
+	if file == "status" {
+		a.servePublicUserStatusByAppKey(w, r, appKey)
+		return
+	}
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func (a API) servePublicUserStatusByAppKey(w http.ResponseWriter, r *http.Request, appKey string) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	if strings.TrimSpace(appKey) == "" {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	a.servePublicUserPlaylistByAppKey(w, r, appKey)
+
+	u, err := a.Users.GetUserByAppKey(r.Context(), appKey)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Package names
+	var packageNames string
+	_ = a.Users.DB.QueryRowContext(r.Context(), `
+SELECT COALESCE(group_concat(name, '||'), '')
+FROM (
+	SELECT p.name AS name
+	FROM user_packages up
+	JOIN packages p ON p.id = up.package_id
+	WHERE up.user_id = ?
+	ORDER BY p.id ASC
+)
+`, u.ID).Scan(&packageNames)
+	packageNames = strings.TrimSpace(packageNames)
+	if packageNames != "" {
+		u.Packages = strings.Split(packageNames, "||")
+	}
+
+	// Latest subscription plan + expiry (if any)
+	var subPlan sql.NullString
+	var subExpiresAt sql.NullString
+	if err := a.Users.DB.QueryRowContext(r.Context(), `
+SELECT plan, expires_at
+FROM subscriptions
+WHERE user_id = ?
+ORDER BY datetime(expires_at) DESC
+LIMIT 1
+`, u.ID).Scan(&subPlan, &subExpiresAt); err == nil {
+		if subPlan.Valid {
+			p := strings.TrimSpace(subPlan.String)
+			if p != "" {
+				u.Plan = &p
+			}
+		}
+		if subExpiresAt.Valid {
+			e := strings.TrimSpace(subExpiresAt.String)
+			if e != "" {
+				u.ExpiresAt = &e
+			}
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":   true,
+		"user": u,
+	})
 }
 
 func (a API) handlePublicRootPlaylist(w http.ResponseWriter, r *http.Request) {
@@ -304,11 +376,17 @@ func (a API) servePublicUserPlaylistByAppKey(w http.ResponseWriter, r *http.Requ
 
 	// If user has a subscription and it is expired, block playlist.
 	// (If user has no subscription, allow as "free" account.)
-	var maxExpires string
-	_ = a.Users.DB.QueryRowContext(r.Context(), `SELECT COALESCE(MAX(expires_at), '') FROM subscriptions WHERE user_id = ?`, u.ID).Scan(&maxExpires)
-	maxExpires = strings.TrimSpace(maxExpires)
-	if maxExpires != "" {
-		if t, err := time.Parse(time.RFC3339, maxExpires); err == nil {
+	var latestExpires string
+	_ = a.Users.DB.QueryRowContext(r.Context(), `
+SELECT COALESCE(expires_at, '')
+FROM subscriptions
+WHERE user_id = ?
+ORDER BY datetime(expires_at) DESC
+LIMIT 1
+`, u.ID).Scan(&latestExpires)
+	latestExpires = strings.TrimSpace(latestExpires)
+	if latestExpires != "" {
+		if t, err := time.Parse(time.RFC3339, latestExpires); err == nil {
 			if time.Now().UTC().After(t) {
 				w.WriteHeader(http.StatusForbidden)
 				return

@@ -17,6 +17,23 @@ import androidx.fragment.app.FragmentActivity;
 public class ExpiredActivity extends FragmentActivity {
 
     @Override
+    protected void onResume() {
+        super.onResume();
+
+        // If admin already renewed, refresh status and close expired screen.
+        if (AuthPrefs.isLoggedIn(this)) {
+            AccountStatusRefresher.refresh(this, () -> {
+                if (!SubscriptionGuard.isExpired(ExpiredActivity.this)) {
+                    Intent i = new Intent(ExpiredActivity.this, MainActivity.class);
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(i);
+                    finish();
+                }
+            });
+        }
+    }
+
+    @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_expired);

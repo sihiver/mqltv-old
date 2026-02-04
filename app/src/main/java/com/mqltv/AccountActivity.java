@@ -16,6 +16,13 @@ import java.util.Locale;
 
 public class AccountActivity extends FragmentActivity {
 
+    private TextView letter;
+    private TextView name;
+    private TextView username;
+    private TextView packages;
+    private TextView expires;
+    private TextView status;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -28,15 +35,41 @@ public class AccountActivity extends FragmentActivity {
             return;
         }
 
-        TextView letter = findViewById(R.id.account_profile_letter);
-        TextView name = findViewById(R.id.account_name);
-        TextView username = findViewById(R.id.account_username);
-        TextView packages = findViewById(R.id.account_packages);
-        TextView expires = findViewById(R.id.account_expires);
-        TextView status = findViewById(R.id.account_status);
+        letter = findViewById(R.id.account_profile_letter);
+        name = findViewById(R.id.account_name);
+        username = findViewById(R.id.account_username);
+        packages = findViewById(R.id.account_packages);
+        expires = findViewById(R.id.account_expires);
+        status = findViewById(R.id.account_status);
         Button btnClose = findViewById(R.id.account_close);
         Button btnLogout = findViewById(R.id.account_logout);
 
+        bind();
+
+        // Refresh from server so renewed subscriptions reflect immediately.
+        AccountStatusRefresher.refresh(this, this::bind);
+
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> finish());
+        }
+
+        if (btnLogout != null) {
+            btnLogout.setOnClickListener(v -> {
+                AuthPrefs.clear(getApplicationContext());
+                // Return to launcher/home.
+                Intent i = new Intent(AccountActivity.this, MainActivity.class);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(i);
+                finish();
+            });
+        }
+
+        // Make D-pad focus start on close button.
+        View focus = btnClose != null ? btnClose : btnLogout;
+        if (focus != null) focus.requestFocus();
+    }
+
+    private void bind() {
         String displayName = AuthPrefs.getDisplayName(this);
         String u = AuthPrefs.getUsername(this);
         String shownName = !TextUtils.isEmpty(displayName) ? displayName : u;
@@ -50,6 +83,7 @@ public class AccountActivity extends FragmentActivity {
         }
         if (name != null) name.setText(!TextUtils.isEmpty(shownName) ? shownName : "-");
         if (username != null) username.setText(!TextUtils.isEmpty(u) ? ("@" + u) : "-");
+
         if (packages != null) {
             String plan = AuthPrefs.getPlan(this);
             if (plan != null) plan = plan.trim();
@@ -70,25 +104,6 @@ public class AccountActivity extends FragmentActivity {
             int color = ContextCompat.getColor(this, isExpired ? android.R.color.holo_red_light : android.R.color.holo_green_light);
             status.setBackgroundColor(color);
         }
-
-        if (btnClose != null) {
-            btnClose.setOnClickListener(v -> finish());
-        }
-
-        if (btnLogout != null) {
-            btnLogout.setOnClickListener(v -> {
-                AuthPrefs.clear(getApplicationContext());
-                // Return to launcher/home.
-                Intent i = new Intent(AccountActivity.this, MainActivity.class);
-                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                startActivity(i);
-                finish();
-            });
-        }
-
-        // Make D-pad focus start on close button.
-        View focus = btnClose != null ? btnClose : btnLogout;
-        if (focus != null) focus.requestFocus();
     }
 
     private static String formatExpires(String expiresAt) {

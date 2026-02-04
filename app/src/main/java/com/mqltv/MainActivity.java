@@ -27,6 +27,12 @@ public class MainActivity extends FragmentActivity {
         }
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        AccountStatusRefresher.refreshIfDue(this);
+    }
+
     public void navigateTo(NavDestination destination) {
         if (destination == null) return;
         showDestination(destination);

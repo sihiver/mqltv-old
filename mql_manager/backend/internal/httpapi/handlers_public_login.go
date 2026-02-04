@@ -63,7 +63,7 @@ FROM (
 SELECT plan, expires_at
 FROM subscriptions
 WHERE user_id = ?
-ORDER BY expires_at DESC
+ORDER BY datetime(expires_at) DESC
 LIMIT 1
 `, u.ID).Scan(&subPlan, &subExpiresAt); err == nil {
 		if subPlan.Valid {

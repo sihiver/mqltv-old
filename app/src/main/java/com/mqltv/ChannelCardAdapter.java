@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -44,6 +45,7 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
 
     private final List<Channel> items = new ArrayList<>();
 
+    @SuppressLint("NotifyDataSetChanged")
     public void submit(List<Channel> channels) {
         items.clear();
         if (channels != null) items.addAll(channels);

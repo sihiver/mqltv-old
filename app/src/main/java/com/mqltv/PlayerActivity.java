@@ -5,13 +5,16 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
 import androidx.fragment.app.FragmentActivity;
 
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.common.util.UnstableApi;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -38,7 +41,7 @@ public class PlayerActivity extends FragmentActivity {
         }
     }
 
-    @Override
+    @OptIn(markerClass = UnstableApi.class) @Override
     protected void onStart() {
         super.onStart();
 
@@ -93,7 +96,7 @@ public class PlayerActivity extends FragmentActivity {
 
         player.addListener(new Player.Listener() {
             @Override
-            public void onPlayerError(PlaybackException error) {
+            public void onPlayerError(@NonNull PlaybackException error) {
                 String msg = "Playback error: " + error.getErrorCodeName();
                 Throwable cause = error.getCause();
                 boolean codecNotSupported = false;

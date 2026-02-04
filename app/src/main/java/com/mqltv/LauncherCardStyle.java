@@ -46,7 +46,7 @@ public final class LauncherCardStyle {
 
             // Stroke: prefer accent-like vibrant color but keep it readable.
             int accent = pickAccentColor(palette, context);
-            int stroke = withAlpha(ensureMinLuma(accent, 0.38f), 0xFF);
+            int stroke = withAlpha(ensureMinLuma(accent));
 
             return new LauncherCardStyle(normalTop, normalBottom, focusTop, focusBottom, stroke);
         } catch (Exception ignored) {
@@ -85,16 +85,16 @@ public final class LauncherCardStyle {
         return Color.rgb(clamp255(r), clamp255(g), clamp255(b));
     }
 
-    private static int withAlpha(int rgb, int alpha) {
-        return (rgb & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
+    private static int withAlpha(int rgb) {
+        return (rgb & 0x00FFFFFF) | ((0xFF) << 24);
     }
 
     /** Ensure the color isn't too dark for a stroke by enforcing a minimum luma. */
-    private static int ensureMinLuma(int color, float minLuma) {
+    private static int ensureMinLuma(int color) {
         float l = luma(color);
-        if (l >= minLuma) return color;
+        if (l >= (float) 0.38) return color;
         // Blend towards white to raise luma.
-        float t = clamp01((minLuma - l) / (1f - l));
+        float t = clamp01(((float) 0.38 - l) / (1f - l));
         return blend(color, Color.WHITE, t * 0.55f);
     }
 

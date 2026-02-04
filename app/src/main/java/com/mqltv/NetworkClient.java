@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Build;
 import android.util.Log;
@@ -32,6 +33,7 @@ public final class NetworkClient {
     private static final String TAG = "NetworkClient";
     private static volatile OkHttpClient CLIENT;
     private static volatile OkHttpClient UNSAFE_LOGO_CLIENT;
+    @SuppressLint("StaticFieldLeak")
     private static volatile Context APP_CONTEXT;
 
     private NetworkClient() {
@@ -203,11 +205,13 @@ public final class NetworkClient {
 
     private static OkHttpClient buildUnsafeLogoClient() {
         try {
-            final X509TrustManager trustAll = new X509TrustManager() {
+            @SuppressLint("CustomX509TrustManager") final X509TrustManager trustAll = new X509TrustManager() {
+                @SuppressLint("TrustAllX509TrustManager")
                 @Override
                 public void checkClientTrusted(X509Certificate[] chain, String authType) {
                 }
 
+                @SuppressLint("TrustAllX509TrustManager")
                 @Override
                 public void checkServerTrusted(X509Certificate[] chain, String authType) {
                 }
@@ -249,6 +253,7 @@ public final class NetworkClient {
         }
     }
 
+    @SuppressLint("CustomX509TrustManager")
     private static final class CompositeTrustManager implements X509TrustManager {
         private final X509TrustManager primary;
         private final X509TrustManager secondary;

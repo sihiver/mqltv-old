@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
@@ -119,6 +120,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         LauncherCard card = items.get(position);
         boolean isLiveTv = card != null && card.getDestination() == NavDestination.LIVE_TV;
         boolean isRadio = card != null && card.getDestination() == NavDestination.SHOWS;
+        assert card != null;
         holder.title.setText(card.getTitle());
         holder.subtitle.setText(card.getSubtitle() != null ? card.getSubtitle() : "");
         holder.icon.setImageResource(card.getIconRes());
@@ -163,9 +165,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             if (v.getBackground() != null) {
                 v.getBackground().setState(v.getDrawableState());
             }
-            if (holder.indicator != null) {
-                holder.indicator.setVisibility(hasFocus ? View.VISIBLE : View.INVISIBLE);
-            }
+            holder.indicator.setVisibility(hasFocus ? View.VISIBLE : View.INVISIBLE);
 
             // Keep focused card fully visible (avoid partial cut on the left).
             if (hasFocus) {
@@ -222,7 +222,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
 
         // Attach after layout pass.
         holder.video.post(() -> {
-            if (!isLiveTv || liveTvBgFailed) return;
+            if (liveTvBgFailed) return;
             try {
                 p.setVideoSurfaceView(holder.video);
                 Log.d(TAG, "attached SurfaceView to player");
@@ -261,6 +261,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         return RawResourceDataSource.buildRawResourceUri(R.raw.launcher_card_bg);
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     private void switchToLocalFallback(Context app, SimpleExoPlayer p, DataSource.Factory localFactory) {
         if (liveTvBgFallbackToLocal) return;
         liveTvBgFallbackToLocal = true;
@@ -293,14 +294,14 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
 
             // Prefer remote URL when configured; fall back to a bundled baseline MP4 if decode/network fails.
             String url = Constants.LAUNCHER_LIVETV_CARD_VIDEO_URL;
-            boolean hasRemote = url != null && !url.trim().isEmpty();
+            boolean hasRemote = true;
 
             DataSource.Factory remoteFactory = new OkHttpDataSourceFactory(NetworkClient.getClient(), "MQLTV/1.0");
             String userAgent = Util.getUserAgent(app, "MQLTV");
             DataSource.Factory localFactory = new DefaultDataSourceFactory(app, userAgent);
 
-            Uri initialUri = hasRemote ? Uri.parse(url) : getLocalFallbackUri();
-            MediaSource mediaSource = buildMediaSource(app, initialUri, hasRemote ? remoteFactory : localFactory);
+            Uri initialUri = Uri.parse(url);
+            MediaSource mediaSource = buildMediaSource(app, initialUri, remoteFactory);
             Log.d(TAG, "init player uri=" + initialUri + " (remote=" + hasRemote + ")");
 
             SimpleExoPlayer p = new SimpleExoPlayer.Builder(app).build();
@@ -325,10 +326,11 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             });
 
             p.addListener(new Player.EventListener() {
+                @SuppressLint("NotifyDataSetChanged")
                 @Override
-                public void onPlayerError(ExoPlaybackException error) {
+                public void onPlayerError(@NonNull ExoPlaybackException error) {
                     Log.e(TAG, "bg video player error", error);
-                    if (hasRemote && !liveTvBgFallbackToLocal) {
+                    if (!liveTvBgFallbackToLocal) {
                         switchToLocalFallback(app, p, localFactory);
                         return;
                     }
@@ -349,16 +351,14 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             });
 
             // If remote is configured but never produces frames (codec unsupported, etc), fall back quickly.
-            if (hasRemote) {
-                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    if (liveTvBgPlayer != p) return;
-                    if (liveTvBgFailed || liveTvBgFallbackToLocal) return;
-                    if (!liveTvBgRenderedFirstFrame) {
-                        Log.w(TAG, "no first frame after timeout; fallback to local");
-                        switchToLocalFallback(app, p, localFactory);
-                    }
-                }, 6000);
-            }
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (liveTvBgPlayer != p) return;
+                if (liveTvBgFailed || liveTvBgFallbackToLocal) return;
+                if (!liveTvBgRenderedFirstFrame) {
+                    Log.w(TAG, "no first frame after timeout; fallback to local");
+                    switchToLocalFallback(app, p, localFactory);
+                }
+            }, 6000);
 
             liveTvBgPlayer = p;
             return p;

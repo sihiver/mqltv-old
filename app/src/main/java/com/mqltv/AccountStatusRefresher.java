@@ -44,7 +44,7 @@ public final class AccountStatusRefresher {
 
         final String baseUrl = AuthPrefs.getBaseUrl(app);
         final String appKey = AuthPrefs.getAppKey(app);
-        if (baseUrl == null || baseUrl.trim().isEmpty() || appKey == null || appKey.trim().isEmpty()) {
+        if (baseUrl == null || baseUrl.trim().isEmpty() || appKey.trim().isEmpty()) {
             if (onDone != null) onDone.run();
             return;
         }

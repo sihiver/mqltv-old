@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -9,8 +10,6 @@ import android.net.Uri;
 public final class PlayerIntents {
     private PlayerIntents() {}
 
-    // Backward-compatible constants (used by Settings UI and callers)
-    public static final String PREF_PLAYER_MODE = PlaybackPrefs.PREF_PLAYER_MODE;
     public static final int PLAYER_MODE_AUTO = PlaybackPrefs.PLAYER_MODE_AUTO;
     public static final int PLAYER_MODE_EXO = PlaybackPrefs.PLAYER_MODE_EXO;
     public static final int PLAYER_MODE_VLC = PlaybackPrefs.PLAYER_MODE_VLC;
@@ -37,6 +36,7 @@ public final class PlayerIntents {
         return createPlayIntent(context, title, url);
     }
 
+    @SuppressLint("QueryPermissionsNeeded")
     private static Intent createMxPlayIntent(Context context, String title, String url) {
         if (url == null) return null;
 
@@ -86,18 +86,6 @@ public final class PlayerIntents {
             return LegacyExoPlayerActivity.class;
         }
         return PlayerActivity.class;
-    }
-
-    public static boolean shouldUseVlc(Context context) {
-        int mode = PlaybackPrefs.getPlayerMode(context);
-        if (mode == PlaybackPrefs.PLAYER_MODE_VLC) return true;
-        if (mode == PlaybackPrefs.PLAYER_MODE_EXO) return false;
-
-        // Explicit legacy Exo means no VLC.
-        if (mode == PlaybackPrefs.PLAYER_MODE_EXO_LEGACY) return false;
-
-        // AUTO: keep old behavior for callers that still check this.
-        return false;
     }
 
     public static int getPlayerMode(Context context) {

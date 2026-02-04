@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.annotation.SuppressLint;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,6 +26,7 @@ public final class LiveTvCategoryAdapter extends RecyclerView.Adapter<LiveTvCate
         this.listener = listener;
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     public void submit(List<String> categoryLabels) {
         labels.clear();
         if (categoryLabels != null) labels.addAll(categoryLabels);

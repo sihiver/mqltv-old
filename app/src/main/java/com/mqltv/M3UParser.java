@@ -1,9 +1,12 @@
 package com.mqltv;
 
+import android.os.Build;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,15 +18,20 @@ public final class M3UParser {
     public static List<Channel> parse(InputStream inputStream) throws IOException {
         List<Channel> channels = new ArrayList<>();
 
-        BufferedReader reader = new BufferedReader(
-            new InputStreamReader(inputStream, "UTF-8")
-        );
+        BufferedReader reader = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            reader = new BufferedReader(
+                new InputStreamReader(inputStream, StandardCharsets.UTF_8)
+            );
+        }
 
         String pendingTitle = null;
         String pendingGroupTitle = null;
         String pendingLogoUrl = null;
         String line;
-        while ((line = reader.readLine()) != null) {
+        while (true) {
+            assert reader != null;
+            if ((line = reader.readLine()) == null) break;
             line = line.trim();
             if (line.isEmpty()) continue;
 

@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.SurfaceView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentActivity;
 
@@ -97,7 +98,7 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
 
         player.addListener(new Player.EventListener() {
             @Override
-            public void onPlayerError(ExoPlaybackException error) {
+            public void onPlayerError(@NonNull ExoPlaybackException error) {
                 Log.e(TAG, "Legacy Exo error type=" + error.type, error);
 
                 boolean codecNotSupported = false;

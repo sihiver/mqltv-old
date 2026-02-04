@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.nio.file.Files;
 
 import okhttp3.Request;
 import okhttp3.Response;
@@ -97,7 +98,7 @@ public final class LauncherWallpaper {
         File out = new File(context.getFilesDir(), fileName);
         File tmp = new File(context.getFilesDir(), fileName + ".tmp");
 
-        try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(tmp))) {
+        try (BufferedOutputStream bos = new BufferedOutputStream(Files.newOutputStream(tmp.toPath()))) {
             byte[] buf = new byte[16 * 1024];
             int n;
             while ((n = input.read(buf)) != -1) {
@@ -154,7 +155,7 @@ public final class LauncherWallpaper {
         if (SOURCE_CUSTOM.equals(src)) {
             try {
                 File f = getFile(context);
-                if (f != null && f.exists() && f.length() > 0) {
+                if (f.exists() && f.length() > 0) {
                     try (FileInputStream fis = new FileInputStream(f)) {
                         return decodeScaled(context, new BufferedInputStream(fis));
                     }
@@ -173,7 +174,7 @@ public final class LauncherWallpaper {
             }
 
             File f = getBingFile(context);
-            if (f != null && f.exists() && f.length() > 0) {
+            if (f.exists() && f.length() > 0) {
                 try (FileInputStream fis = new FileInputStream(f)) {
                     return decodeScaled(context, new BufferedInputStream(fis));
                 }
@@ -185,7 +186,7 @@ public final class LauncherWallpaper {
         // record the preference, still use it when Bing isn't available.
         try {
             File f = getFile(context);
-            if (f != null && f.exists() && f.length() > 0) {
+            if (f.exists() && f.length() > 0) {
                 try (FileInputStream fis = new FileInputStream(f)) {
                     return decodeScaled(context, new BufferedInputStream(fis));
                 }
@@ -195,11 +196,9 @@ public final class LauncherWallpaper {
 
         // 4) Asset fallback (optional): app/src/main/assets/launcher_wallpaper.jpg
         try {
-            InputStream is = new BufferedInputStream(context.getAssets().open(FILE_NAME));
-            try {
+            try (InputStream is = new BufferedInputStream(context.getAssets().open(FILE_NAME))) {
                 return decodeScaled(context, is);
-            } finally {
-                try { is.close(); } catch (Exception ignored) {}
+            } catch (Exception ignored) {
             }
         } catch (Exception ignored) {
         }
@@ -237,12 +236,12 @@ public final class LauncherWallpaper {
                 Log.d(TAG, "Bing: json tls=" + resp.handshake().tlsVersion() + " cipher=" + resp.handshake().cipherSuite());
             }
             if (!resp.isSuccessful() || resp.body() == null) {
-                Log.w(TAG, "Bing JSON failed: http=" + (resp != null ? resp.code() : 0));
+                Log.w(TAG, "Bing JSON failed: http=" + resp.code());
                 return;
             }
 
             String json = resp.body().string();
-            if (json == null || json.trim().isEmpty()) return;
+            if (json.trim().isEmpty()) return;
 
             JSONObject obj = new JSONObject(json);
             String url = obj.optString("url", null);
@@ -250,14 +249,14 @@ public final class LauncherWallpaper {
 
             Log.d(TAG, "Bing JSON ok: date=" + date + " last=" + lastDate + " url=" + url);
 
-            if (url == null || url.trim().isEmpty()) return;
+            if (url.trim().isEmpty()) return;
             url = url.trim();
             if (url.startsWith("//")) url = "https:" + url;
             if (!url.startsWith("http://") && !url.startsWith("https://")) {
                 url = "https://www.bing.com" + (url.startsWith("/") ? "" : "/") + url;
             }
 
-            boolean upToDate = cached != null && cached.exists() && cached.length() > 0 && date != null && date.equals(lastDate);
+            boolean upToDate = cached.exists() && cached.length() > 0 && date.equals(lastDate);
             if (upToDate) {
                 try {
                     prefs(context).edit().putString(KEY_SOURCE, SOURCE_BING).putString(KEY_BING_URL, url).apply();
@@ -283,12 +282,12 @@ public final class LauncherWallpaper {
                     Log.d(TAG, "Bing: img tls=" + imgResp.handshake().tlsVersion() + " cipher=" + imgResp.handshake().cipherSuite());
                 }
                 if (!imgResp.isSuccessful() || imgResp.body() == null) {
-                    Log.w(TAG, "Bing image failed: http=" + (imgResp != null ? imgResp.code() : 0));
+                    Log.w(TAG, "Bing image failed: http=" + imgResp.code());
                     return;
                 }
 
                 long len = imgResp.body().contentLength();
-                if (len > 0 && len > 25L * 1024L * 1024L) return;
+                if (len > 25L * 1024L * 1024L) return;
 
                 boolean ok;
                 try (InputStream is = imgResp.body().byteStream()) {
@@ -297,13 +296,13 @@ public final class LauncherWallpaper {
                 if (!ok) return;
 
                 File out = getBingFile(context);
-                long written = out != null && out.exists() ? out.length() : -1;
+                long written = out.exists() ? out.length() : -1;
                 Log.d(TAG, "Bing wallpaper saved: bytes=" + len + " written=" + written);
 
                 try {
                     SharedPreferences.Editor e = prefs(context).edit();
                     e.putString(KEY_SOURCE, SOURCE_BING);
-                    if (date != null && !date.trim().isEmpty()) e.putString(KEY_BING_DATE, date.trim());
+                    if (!date.trim().isEmpty()) e.putString(KEY_BING_DATE, date.trim());
                     e.putString(KEY_BING_URL, url);
                     e.apply();
                 } catch (Exception ignored) {

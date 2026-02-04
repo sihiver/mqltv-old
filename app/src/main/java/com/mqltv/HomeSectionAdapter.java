@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.annotation.SuppressLint;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
@@ -19,6 +20,7 @@ public class HomeSectionAdapter extends RecyclerView.Adapter<HomeSectionAdapter.
 
     private final List<HomeSection> items = new ArrayList<>();
 
+    @SuppressLint("NotifyDataSetChanged")
     public void submit(List<HomeSection> sections) {
         items.clear();
         if (sections != null) items.addAll(sections);
@@ -70,7 +72,7 @@ public class HomeSectionAdapter extends RecyclerView.Adapter<HomeSectionAdapter.
 
     private static CharSequence formatTitle(TextView tv, String title, int count) {
         String safeTitle = title != null ? title : "";
-        String countText = String.format(" (%02d)", count);
+        @SuppressLint("DefaultLocale") String countText = String.format(" (%02d)", count);
         SpannableString ss = new SpannableString(safeTitle + countText);
         int start = safeTitle.length();
         int end = ss.length();

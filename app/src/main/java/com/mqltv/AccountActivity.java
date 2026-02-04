@@ -86,8 +86,8 @@ public class AccountActivity extends FragmentActivity {
 
         if (packages != null) {
             String plan = AuthPrefs.getPlan(this);
-            if (plan != null) plan = plan.trim();
-            if (plan != null && !plan.isEmpty()) {
+            plan = plan.trim();
+            if (!plan.isEmpty()) {
                 packages.setText(plan);
             } else {
                 packages.setText(AuthPrefs.getPackagesDisplay(this));

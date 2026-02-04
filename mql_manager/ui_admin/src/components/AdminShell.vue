@@ -14,14 +14,10 @@
         active-text-color="#7aa2ff"
         router
       >
-        <el-sub-menu index="dash">
-          <template #title>
-            <el-icon><Odometer /></el-icon>
-            <span>Dashboard</span>
-          </template>
-          <el-menu-item index="/dashboard/analysis">Analysis</el-menu-item>
-          <el-menu-item index="/dashboard/workplace">Workplace</el-menu-item>
-        </el-sub-menu>
+        <el-menu-item index="/dashboard">
+          <el-icon><Odometer /></el-icon>
+          <span>Dashboard</span>
+        </el-menu-item>
         <el-menu-item index="/users">
           <el-icon><User /></el-icon>
           <span>Users</span>

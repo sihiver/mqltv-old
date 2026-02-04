@@ -1,9 +1,8 @@
 package com.mqltv;
 
-import android.content.Intent;
+
 import android.os.Bundle;
 import android.view.View;
-import android.widget.TextView;
 
 import androidx.fragment.app.FragmentActivity;
 
@@ -104,7 +103,6 @@ public class MainActivity extends FragmentActivity {
         // Launcher-style behavior: don't finish the Home activity.
         if (currentDestination != NavDestination.HOME) {
             showDestination(NavDestination.HOME);
-            return;
         }
         // At root: ignore back to avoid exiting the Home app.
     }

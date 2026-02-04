@@ -231,7 +231,7 @@ public class LoginActivity extends FragmentActivity {
                         }
                     }
 
-                    if (publicPlaylistPath == null || publicPlaylistPath.trim().isEmpty()) {
+                    if (publicPlaylistPath.trim().isEmpty()) {
                         throw new RuntimeException("Response login tidak valid");
                     }
 

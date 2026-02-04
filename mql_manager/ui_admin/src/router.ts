@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginPage from './pages/LoginPage.vue'
-import DashboardAnalysisPage from './pages/dashboard/DashboardAnalysisPage.vue'
 import DashboardWorkplacePage from './pages/dashboard/DashboardWorkplacePage.vue'
 import UsersPage from './pages/UsersPage.vue'
 import UserDetailPage from './pages/UserDetailPage.vue'
@@ -12,19 +11,17 @@ import { auth } from './lib/auth'
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', redirect: '/dashboard/analysis' },
+    { path: '/', redirect: '/dashboard' },
     { path: '/login', component: LoginPage, meta: { title: 'Login' } },
 
     {
-      path: '/dashboard/analysis',
-      component: DashboardAnalysisPage,
-      meta: { requiresAuth: true, title: 'Analysis', breadcrumb: ['Dashboard', 'Analysis'] }
-    },
-    {
-      path: '/dashboard/workplace',
+      path: '/dashboard',
       component: DashboardWorkplacePage,
-      meta: { requiresAuth: true, title: 'Workplace', breadcrumb: ['Dashboard', 'Workplace'] }
+      meta: { requiresAuth: true, title: 'Dashboard', breadcrumb: ['Dashboard'] }
     },
+
+    // Backward-compatible link
+    { path: '/dashboard/workplace', redirect: '/dashboard' },
 
     { path: '/users', component: UsersPage, meta: { requiresAuth: true, title: 'Users', breadcrumb: ['Users'] } },
     {

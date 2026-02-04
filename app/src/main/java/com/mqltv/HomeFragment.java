@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
@@ -51,12 +52,14 @@ public class HomeFragment extends Fragment {
         return v;
     }
 
+    @SuppressLint("SetTextI18n")
     private void load(Context appContext) {
         setLoading(true);
         executor.execute(() -> {
             PlaylistRepository repo = new PlaylistRepository();
             List<Channel> channels = repo.loadFromUrls(appContext, AuthPrefs.getPlaylistUrls(appContext));
-            boolean hasServerPlaylist = AuthPrefs.getPlaylistUrl(appContext) != null && !AuthPrefs.getPlaylistUrl(appContext).trim().isEmpty();
+            AuthPrefs.getPlaylistUrl(appContext);
+            boolean hasServerPlaylist = !AuthPrefs.getPlaylistUrl(appContext).trim().isEmpty();
             if ((channels == null || channels.isEmpty()) && !hasServerPlaylist) {
                 channels = repo.loadDefault(appContext);
             }

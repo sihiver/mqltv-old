@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -35,6 +36,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         this.listener = listener;
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     public void submit(List<LauncherAppEntry> list) {
         items.clear();
         if (list != null) items.addAll(list);
@@ -48,6 +50,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         return new VH(v);
     }
 
+    @SuppressLint("SetTextI18n")
     @Override
     public void onBindViewHolder(@NonNull VH holder, int position) {
         LauncherAppEntry e = items.get(position);
@@ -57,6 +60,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         if (holder.title != null) holder.title.setText(e.label);
 
         if (e.isAddButton) {
+            assert holder.icon != null;
             holder.icon.setImageResource(android.R.drawable.ic_input_add);
             holder.icon.setColorFilter(ContextCompat.getColor(holder.itemView.getContext(), R.color.mql_text_primary));
 
@@ -67,6 +71,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
 
             holder.itemView.setBackground(createTileBackground(ctx, 0xFF4D5B6A));
         } else {
+            assert holder.icon != null;
             holder.icon.setImageDrawable(e.icon);
             holder.icon.clearColorFilter();
 
@@ -132,7 +137,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         normal.setCornerRadius(radius);
 
         GradientDrawable focused = new GradientDrawable();
-        focused.setColor(lighten(baseColor, 0.10f));
+        focused.setColor(lighten(baseColor));
         focused.setCornerRadius(radius);
         focused.setStroke(stroke, 0xFF3AA0FF);
 
@@ -159,13 +164,13 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         return Color.HSVToColor(hsv);
     }
 
-    private static int lighten(int color, float amount) {
+    private static int lighten(int color) {
         int r = Color.red(color);
         int g = Color.green(color);
         int b = Color.blue(color);
-        r = clamp((int) (r + (255 - r) * amount));
-        g = clamp((int) (g + (255 - g) * amount));
-        b = clamp((int) (b + (255 - b) * amount));
+        r = clamp((int) (r + (255 - r) * (float) 0.1));
+        g = clamp((int) (g + (255 - g) * (float) 0.1));
+        b = clamp((int) (b + (255 - b) * (float) 0.1));
         return Color.rgb(r, g, b);
     }
 
@@ -181,22 +186,20 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
     private static String resolveSubtitle(Context ctx, LauncherAppEntry e) {
         if (e == null || e.component == null) return null;
         String pkg = e.component.getPackageName();
-        if (pkg == null) return null;
 
         PackageManager pm = ctx.getPackageManager();
         String installer = null;
         try {
             installer = pm.getInstallerPackageName(pkg);
         } catch (Exception ignored) {
-            installer = null;
         }
         if (installer == null || installer.trim().isEmpty()) return null;
 
         // Prefer showing a friendly store/app label (e.g. "Google Play").
         try {
             ApplicationInfo ai = pm.getApplicationInfo(installer, 0);
-            CharSequence label = ai != null ? pm.getApplicationLabel(ai) : null;
-            return label != null ? label.toString() : installer;
+            CharSequence label = pm.getApplicationLabel(ai);
+            return label.toString();
         } catch (Exception ignored) {
             return installer;
         }

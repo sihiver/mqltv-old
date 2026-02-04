@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
@@ -90,7 +91,7 @@ public class LiveTvFragment extends Fragment {
         grid.setHasFixedSize(false);
         grid.setItemViewCacheSize(24);
         grid.setClipToPadding(false);
-        grid.addItemDecoration(new GridSpacingItemDecoration(dpToPx(v, 14), dpToPx(v, 14), dpToPx(v, 14)));
+        grid.addItemDecoration(new GridSpacingItemDecoration(dpToPx(v), dpToPx(v), dpToPx(v)));
         gridAdapter = new LiveTvChannelGridAdapter();
         grid.setAdapter(gridAdapter);
 
@@ -108,7 +109,8 @@ public class LiveTvFragment extends Fragment {
         executor.execute(() -> {
             PlaylistRepository repo = new PlaylistRepository();
             List<Channel> channels = repo.loadFromUrls(context, AuthPrefs.getPlaylistUrls(context));
-            boolean hasServerPlaylist = AuthPrefs.getPlaylistUrl(context) != null && !AuthPrefs.getPlaylistUrl(context).trim().isEmpty();
+            AuthPrefs.getPlaylistUrl(context);
+            boolean hasServerPlaylist = !AuthPrefs.getPlaylistUrl(context).trim().isEmpty();
             if ((channels == null || channels.isEmpty()) && !hasServerPlaylist) {
                 channels = repo.loadDefault(context);
             }
@@ -116,14 +118,10 @@ public class LiveTvFragment extends Fragment {
 
             final CategoryData cats = buildCategories(channels);
             mainHandler.post(() -> {
-                if (categoryKeys != null) {
-                    categoryKeys.clear();
-                    categoryKeys.addAll(cats.keys);
-                }
-                if (categoryLabels != null) {
-                    categoryLabels.clear();
-                    categoryLabels.addAll(cats.labels);
-                }
+                categoryKeys.clear();
+                categoryKeys.addAll(cats.keys);
+                categoryLabels.clear();
+                categoryLabels.addAll(cats.labels);
                 if (categoryAdapter != null) {
                     categoryAdapter.submit(categoryLabels);
                     categoryAdapter.setSelected(0);
@@ -143,6 +141,7 @@ public class LiveTvFragment extends Fragment {
         });
     }
 
+    @SuppressLint("SetTextI18n")
     private void applyCategory(Context context, int position) {
         if (position < 0 || position >= categoryKeys.size()) return;
         if (categoryAdapter != null) categoryAdapter.setSelected(position);
@@ -222,9 +221,9 @@ public class LiveTvFragment extends Fragment {
         return new CategoryData(keys, labels);
     }
 
-    private static int dpToPx(View v, int dp) {
+    private static int dpToPx(View v) {
         float d = v.getResources().getDisplayMetrics().density;
-        return Math.round(dp * d);
+        return Math.round(14 * d);
     }
 
     private static final class GridSpacingItemDecoration extends RecyclerView.ItemDecoration {

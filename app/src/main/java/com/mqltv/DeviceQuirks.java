@@ -14,7 +14,7 @@ public final class DeviceQuirks {
         if (model == null) return false;
 
         String m = model.toUpperCase(Locale.US);
-        boolean modelMatch = m.contains("EC6108V9") || m.equals("EC6108") || m.contains("EC6108");
+        boolean modelMatch = m.contains("EC6108V9") || m.contains("EC6108");
         if (!modelMatch) return false;
 
         if (manufacturer == null) return true;

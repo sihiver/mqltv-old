@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
@@ -38,7 +39,6 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private RecyclerView cardsList;
     private LauncherCardAdapter adapter;
 
-    private RecyclerView appsList;
     private LauncherAppsAdapter appsAdapter;
     private List<LauncherAppEntry> allLaunchableAppsCache;
 
@@ -100,13 +100,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         TextView profileLetter = v.findViewById(R.id.launcher_profile_letter);
         if (profileLetter != null) {
             String name = AuthPrefs.getDisplayName(appContext);
-            if (name == null || name.trim().isEmpty()) name = AuthPrefs.getUsername(appContext);
+            if (name.trim().isEmpty()) name = AuthPrefs.getUsername(appContext);
             String letter = "?";
-            if (name != null) {
-                name = name.trim();
-                if (!name.isEmpty()) {
-                    letter = String.valueOf(Character.toUpperCase(name.charAt(0)));
-                }
+            name = name.trim();
+            if (!name.isEmpty()) {
+                letter = String.valueOf(Character.toUpperCase(name.charAt(0)));
             }
             profileLetter.setText(letter);
         }
@@ -138,7 +136,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         adapter = new LauncherCardAdapter(this);
         cardsList.setAdapter(adapter);
 
-        appsList = v.findViewById(R.id.launcher_apps);
+        RecyclerView appsList = v.findViewById(R.id.launcher_apps);
         if (appsList != null) {
             appsList.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
             appsList.setHasFixedSize(false);
@@ -225,7 +223,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         executor.execute(() -> {
             PlaylistRepository repo = new PlaylistRepository();
             List<Channel> channels = repo.loadFromUrls(appContext, AuthPrefs.getPlaylistUrls(appContext));
-            boolean hasServerPlaylist = AuthPrefs.getPlaylistUrl(appContext) != null && !AuthPrefs.getPlaylistUrl(appContext).trim().isEmpty();
+            AuthPrefs.getPlaylistUrl(appContext);
+            boolean hasServerPlaylist = !AuthPrefs.getPlaylistUrl(appContext).trim().isEmpty();
             if ((channels == null || channels.isEmpty()) && !hasServerPlaylist) {
                 channels = repo.loadDefault(appContext);
             }
@@ -279,9 +278,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             // Add the plus button.
             row.add(new LauncherAppEntry("Tambah", null, null, true));
 
-            List<LauncherAppEntry> finalRow = row;
             mainHandler.post(() -> {
-                if (appsAdapter != null) appsAdapter.submit(finalRow);
+                if (appsAdapter != null) appsAdapter.submit(row);
             });
         });
     }
@@ -321,7 +319,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 boolean isSystem = false;
                 try {
                     ApplicationInfo ai = pm.getApplicationInfo(e.component.getPackageName(), 0);
-                    isSystem = ai != null && (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+                    isSystem = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
                 } catch (Exception ignored) {
                 }
                 if (!isSystem) {
@@ -445,7 +443,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             boolean isSystem = false;
             try {
                 ApplicationInfo ai = pm.getApplicationInfo(e.component.getPackageName(), 0);
-                isSystem = ai != null && (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+                isSystem = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
             } catch (Exception ignored) {
             }
             if (isSystem) {
@@ -468,6 +466,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         return null;
     }
 
+    @SuppressLint("QueryPermissionsNeeded")
     private static List<LauncherAppEntry> queryAllLaunchableApps(PackageManager pm, Context ctx) {
         List<LauncherAppEntry> out = new ArrayList<>();
         if (pm == null || ctx == null) return out;
@@ -493,13 +492,13 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             if (ri == null || ri.activityInfo == null) continue;
             ComponentName cn = new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name);
             String key = cn.flattenToString();
-            if (key == null || seen.contains(key)) continue;
+            if (seen.contains(key)) continue;
             seen.add(key);
             try {
                 LauncherAppEntry e = LauncherAppEntry.fromResolveInfo(ri, pm);
                 // Exclude our own app.
                 if (ctx.getPackageName().equals(cn.getPackageName())) continue;
-                if (e == null || e.icon == null) continue;
+                if (e.icon == null) continue;
                 out.add(e);
             } catch (Exception ignored) {
             }

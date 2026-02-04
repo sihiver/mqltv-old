@@ -26,12 +26,11 @@ public final class AuthPrefs {
 
     public static boolean isLoggedIn(Context context) {
         String appKey = getAppKey(context);
-        return appKey != null && !appKey.trim().isEmpty();
+        return !appKey.trim().isEmpty();
     }
 
     public static String getBaseUrl(Context context) {
         String v = sp(context).getString(KEY_BASE_URL, DEFAULT_BASE_URL);
-        if (v == null) return DEFAULT_BASE_URL;
         v = v.trim();
         return v.isEmpty() ? DEFAULT_BASE_URL : v;
     }
@@ -42,52 +41,45 @@ public final class AuthPrefs {
     }
 
     public static String getUsername(Context context) {
-        String v = sp(context).getString(KEY_USERNAME, "");
-        return v == null ? "" : v;
+        return sp(context).getString(KEY_USERNAME, "");
     }
 
     public static String getDisplayName(Context context) {
-        String v = sp(context).getString(KEY_DISPLAY_NAME, "");
-        return v == null ? "" : v;
+        return sp(context).getString(KEY_DISPLAY_NAME, "");
     }
 
     public static String getPackagesRaw(Context context) {
-        String v = sp(context).getString(KEY_PACKAGES, "");
-        return v == null ? "" : v;
+        return sp(context).getString(KEY_PACKAGES, "");
     }
 
     public static String getPlan(Context context) {
-        String v = sp(context).getString(KEY_PLAN, "");
-        return v == null ? "" : v;
+        return sp(context).getString(KEY_PLAN, "");
     }
 
     public static String getPackagesDisplay(Context context) {
         String raw = getPackagesRaw(context);
-        raw = raw == null ? "" : raw.trim();
+        raw = raw.trim();
         if (raw.isEmpty()) return "-";
         // Stored as "name||name2" (mirrors backend join).
         return raw.replace("||", ", ");
     }
 
     public static String getAppKey(Context context) {
-        String v = sp(context).getString(KEY_APP_KEY, "");
-        return v == null ? "" : v;
+        return sp(context).getString(KEY_APP_KEY, "");
     }
 
     public static String getPlaylistUrl(Context context) {
-        String v = sp(context).getString(KEY_PLAYLIST_URL, "");
-        return v == null ? "" : v;
+        return sp(context).getString(KEY_PLAYLIST_URL, "");
     }
 
     public static String getExpiresAt(Context context) {
-        String v = sp(context).getString(KEY_EXPIRES_AT, "");
-        return v == null ? "" : v;
+        return sp(context).getString(KEY_EXPIRES_AT, "");
     }
 
     public static String[] getPlaylistUrls(Context context) {
         String url = getPlaylistUrl(context);
-        if (url != null) url = url.trim();
-        if (url != null && !url.isEmpty()) {
+        url = url.trim();
+        if (!url.isEmpty()) {
             return new String[] { url };
         }
         return Constants.HOME_PLAYLIST_URLS;

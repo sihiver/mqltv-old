@@ -1,11 +1,11 @@
 html, body, #app { height: 100%; }
-body { margin: 0; background: #0f172a; }
+body { margin: 0; background: #f5f7f9; }
 
 :root {
-  --mql-bg: #0f172a;
-  --mql-panel: #111a2e;
-  --mql-panel-2: #0b1220;
-  --mql-border: #223052;
+  --mql-bg: #f5f7f9;
+  --mql-panel: #ffffff;
+  --mql-panel-2: #111827;
+  --mql-border: #e5e7eb;
 }
 
 .mql-page {
@@ -25,5 +25,5 @@ body { margin: 0; background: #0f172a; }
   align-items:center;
 }
 
-.mql-metric .label { color:#94a3b8; font-size:12px; }
+.mql-metric .label { color:#6b7280; font-size:12px; }
 .mql-metric .value { font-size: 22px; font-weight: 700; }

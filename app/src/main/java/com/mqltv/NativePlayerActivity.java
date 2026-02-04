@@ -18,6 +18,8 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+
 import java.io.IOException;
 
 public class NativePlayerActivity extends Activity {
@@ -150,17 +152,17 @@ public class NativePlayerActivity extends Activity {
         SurfaceHolder holder = surfaceView.getHolder();
         holder.addCallback(new SurfaceHolder.Callback() {
             @Override
-            public void surfaceCreated(SurfaceHolder holder) {
+            public void surfaceCreated(@NonNull SurfaceHolder holder) {
                 Log.d(TAG, "surfaceCreated");
                 startPlayback(holder);
             }
 
             @Override
-            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+            public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
             }
 
             @Override
-            public void surfaceDestroyed(SurfaceHolder holder) {
+            public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
                 Log.d(TAG, "surfaceDestroyed");
                 releasePlayer();
             }
@@ -377,8 +379,7 @@ public class NativePlayerActivity extends Activity {
 
     private long getAudioPostBufferDelayMs() {
         // Unmute quickly after buffering; extra delay tends to create noticeable lag.
-        if (DeviceQuirks.isZteB760H()) return 0;
-        if (Build.VERSION.SDK_INT <= 19) return 0;
+        DeviceQuirks.isZteB760H();
         return 0;
     }
 

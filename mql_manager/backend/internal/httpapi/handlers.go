@@ -11,8 +11,8 @@ import (
 
 	"mqltv.local/mql_manager/backend/internal/channels"
 	"mqltv.local/mql_manager/backend/internal/packages"
-	"mqltv.local/mql_manager/backend/internal/presence"
 	"mqltv.local/mql_manager/backend/internal/playlists"
+	"mqltv.local/mql_manager/backend/internal/presence"
 	"mqltv.local/mql_manager/backend/internal/users"
 )
 

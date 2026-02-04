@@ -64,6 +64,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".LoginActivity"
+            android:theme="@style/Theme.MQLTV"
+            android:exported="false" />
+
     </application>
 
 </manifest>

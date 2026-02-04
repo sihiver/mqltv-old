@@ -38,10 +38,30 @@
             <span>{{ scope.row.expiresAt ? formatDateTimeID(scope.row.expiresAt) : '—' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="Actions" width="240">
+        <el-table-column label="Actions" width="320">
           <template #default="scope">
             <el-button size="small" @click="go(scope.row.id)">Open</el-button>
             <el-button size="small" type="primary" plain @click="openRenew(scope.row)">Perpanjang</el-button>
+            <el-button
+              v-if="isActive(scope.row)"
+              size="small"
+              type="danger"
+              plain
+              @click="expire(scope.row)"
+              :loading="togglingId === scope.row.id"
+            >
+              Disable
+            </el-button>
+            <el-button
+              v-else
+              size="small"
+              type="success"
+              plain
+              @click="enable(scope.row)"
+              :loading="togglingId === scope.row.id"
+            >
+              Enable
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -120,7 +140,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import AdminShell from '@/components/AdminShell.vue'
 import { api, type Package, type User } from '@/lib/api'
 import { formatDateTimeID } from '@/lib/datetime'
@@ -156,6 +176,8 @@ const renewUser = ref<User | null>(null)
 const renewDays = ref<number>(30)
 const renewPlan = ref<string>('basic')
 const renewing = ref(false)
+
+const togglingId = ref<number | null>(null)
 
 const renewNewExpiresAt = computed(() => {
   if (!renewUser.value) return ''
@@ -197,6 +219,60 @@ function statusTag(u: User): { label: string; type: 'success' | 'warning' | 'inf
   if (!u.expiresAt || !Number.isFinite(exp)) return { label: 'Inactive', type: 'info' }
   if (exp <= Date.now()) return { label: 'Expired', type: 'danger' }
   return { label: 'Active', type: 'success' }
+}
+
+function isActive(u: User): boolean {
+  const exp = u.expiresAt ? new Date(u.expiresAt).getTime() : NaN
+  return Boolean(u.expiresAt && Number.isFinite(exp) && exp > Date.now())
+}
+
+async function expire(u: User) {
+  if (!u?.id) return
+  try {
+    await ElMessageBox.confirm(
+      `Disable / Expired akun "${u.username}"? User akan langsung tidak bisa akses playlist.`,
+      'Konfirmasi',
+      { type: 'warning', confirmButtonText: 'Disable', cancelButtonText: 'Cancel' }
+    )
+  } catch {
+    return
+  }
+
+  togglingId.value = u.id
+  try {
+    await api.createSubscription(u.id, { plan: 'admin', expiresAt: new Date(Date.now() - 1000).toISOString() })
+    ElMessage.success('Akun berhasil di-disable (expired)')
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.message || 'Gagal disable akun')
+  } finally {
+    togglingId.value = null
+  }
+}
+
+async function enable(u: User) {
+  if (!u?.id) return
+  const exp = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  try {
+    await ElMessageBox.confirm(
+      `Enable / Aktifkan akun "${u.username}" selama 30 hari? (Untuk durasi lain gunakan Perpanjang)`,
+      'Konfirmasi',
+      { type: 'info', confirmButtonText: 'Enable', cancelButtonText: 'Cancel' }
+    )
+  } catch {
+    return
+  }
+
+  togglingId.value = u.id
+  try {
+    await api.createSubscription(u.id, { plan: 'admin', expiresAt: exp })
+    ElMessage.success('Akun berhasil di-enable (aktif)')
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.message || 'Gagal enable akun')
+  } finally {
+    togglingId.value = null
+  }
 }
 
 function openRenew(u: User) {

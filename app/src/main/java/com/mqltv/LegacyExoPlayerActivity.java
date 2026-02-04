@@ -2,6 +2,8 @@ package com.mqltv;
 
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.widget.Toast;
@@ -37,6 +39,24 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
     private SimpleExoPlayer player;
     private SurfaceView surfaceView;
 
+    private final Handler accessHandler = new Handler(Looper.getMainLooper());
+    private boolean accessCheckInFlight = false;
+    private final Runnable accessTick = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing()) return;
+            if (accessCheckInFlight) {
+                accessHandler.postDelayed(this, 3000);
+                return;
+            }
+            accessCheckInFlight = true;
+            PlaybackAccessEnforcer.refreshThenEnforce(LegacyExoPlayerActivity.this, LoginActivity.DEST_LIVE_TV, () -> {
+                accessCheckInFlight = false;
+                if (!isFinishing()) accessHandler.postDelayed(accessTick, 30_000);
+            });
+        }
+    };
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,10 +74,7 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
     protected void onStart() {
         super.onStart();
 
-        if (!SubscriptionGuard.ensureNotExpired(this)) {
-            finish();
-            return;
-        }
+        if (!PlaybackAccessEnforcer.ensureAccessOrFinish(this, LoginActivity.DEST_LIVE_TV)) return;
 
         String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
         String url = getIntent().getStringExtra(Constants.EXTRA_URL);
@@ -148,8 +165,23 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        if (!PlaybackAccessEnforcer.ensureAccessOrFinish(this, LoginActivity.DEST_LIVE_TV)) return;
+        accessHandler.removeCallbacks(accessTick);
+        accessHandler.post(accessTick);
+    }
+
+    @Override
+    protected void onPause() {
+        accessHandler.removeCallbacks(accessTick);
+        super.onPause();
+    }
+
+    @Override
     protected void onStop() {
         super.onStop();
+        accessHandler.removeCallbacks(accessTick);
         if (isFinishing()) {
             PresenceReporter.stopPlayback(getApplicationContext());
         }

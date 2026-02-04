@@ -43,6 +43,23 @@ public class NativePlayerActivity extends Activity {
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    private boolean accessCheckInFlight = false;
+    private final Runnable accessTick = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing()) return;
+            if (accessCheckInFlight) {
+                mainHandler.postDelayed(this, 3000);
+                return;
+            }
+            accessCheckInFlight = true;
+            PlaybackAccessEnforcer.refreshThenEnforce(NativePlayerActivity.this, LoginActivity.DEST_LIVE_TV, () -> {
+                accessCheckInFlight = false;
+                if (!isFinishing()) mainHandler.postDelayed(accessTick, 30_000);
+            });
+        }
+    };
+
     private boolean prepared = false;
     private boolean started = false;
     private boolean didResyncSeek = false;
@@ -115,10 +132,7 @@ public class NativePlayerActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (!SubscriptionGuard.ensureNotExpired(this)) {
-            finish();
-            return;
-        }
+        if (!PlaybackAccessEnforcer.ensureAccessOrFinish(this, LoginActivity.DEST_LIVE_TV)) return;
 
         setContentView(R.layout.activity_native_player);
 
@@ -169,6 +183,14 @@ public class NativePlayerActivity extends Activity {
         });
 
         mainHandler.postDelayed(watchdog, 2000);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!PlaybackAccessEnforcer.ensureAccessOrFinish(this, LoginActivity.DEST_LIVE_TV)) return;
+        mainHandler.removeCallbacks(accessTick);
+        mainHandler.post(accessTick);
     }
 
     private void startPlayback(SurfaceHolder holder) {
@@ -472,6 +494,7 @@ public class NativePlayerActivity extends Activity {
 
     @Override
     protected void onPause() {
+        mainHandler.removeCallbacks(accessTick);
         super.onPause();
         // Stop playback when leaving.
         releasePlayer();
@@ -483,6 +506,7 @@ public class NativePlayerActivity extends Activity {
         if (isFinishing()) {
             PresenceReporter.stopPlayback(getApplicationContext());
         }
+        mainHandler.removeCallbacks(accessTick);
         mainHandler.removeCallbacks(watchdog);
         releasePlayer();
     }

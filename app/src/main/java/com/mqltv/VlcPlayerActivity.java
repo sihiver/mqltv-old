@@ -100,6 +100,22 @@ public class VlcPlayerActivity extends FragmentActivity {
     };
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
+    private boolean accessCheckInFlight = false;
+    private final Runnable accessTick = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing()) return;
+            if (accessCheckInFlight) {
+                uiHandler.postDelayed(this, 3000);
+                return;
+            }
+            accessCheckInFlight = true;
+            PlaybackAccessEnforcer.refreshThenEnforce(VlcPlayerActivity.this, LoginActivity.DEST_LIVE_TV, () -> {
+                accessCheckInFlight = false;
+                if (!isFinishing()) uiHandler.postDelayed(accessTick, 30_000);
+            });
+        }
+    };
     private final Runnable hideControlsRunnable = () -> {
         if (controls != null) controls.setVisibility(View.GONE);
     };
@@ -169,10 +185,7 @@ public class VlcPlayerActivity extends FragmentActivity {
     protected void onStart() {
         super.onStart();
 
-        if (!SubscriptionGuard.ensureNotExpired(this)) {
-            finish();
-            return;
-        }
+        if (!PlaybackAccessEnforcer.ensureAccessOrFinish(this, LoginActivity.DEST_LIVE_TV)) return;
 
         String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
         String url = getIntent().getStringExtra(Constants.EXTRA_URL);
@@ -446,6 +459,7 @@ public class VlcPlayerActivity extends FragmentActivity {
     @Override
     protected void onStop() {
         super.onStop();
+        uiHandler.removeCallbacks(accessTick);
         if (isFinishing()) {
             PresenceReporter.stopPlayback(getApplicationContext());
         }
@@ -453,7 +467,16 @@ public class VlcPlayerActivity extends FragmentActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        if (!PlaybackAccessEnforcer.ensureAccessOrFinish(this, LoginActivity.DEST_LIVE_TV)) return;
+        uiHandler.removeCallbacks(accessTick);
+        uiHandler.post(accessTick);
+    }
+
+    @Override
     protected void onPause() {
+        uiHandler.removeCallbacks(accessTick);
         super.onPause();
         releasePlayer();
     }

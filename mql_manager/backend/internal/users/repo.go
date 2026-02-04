@@ -159,9 +159,11 @@ SELECT
 	u.playlist_id,
 	u.created_at,
 	(
-		SELECT MAX(s.expires_at)
+		SELECT s.expires_at
 		FROM subscriptions s
 		WHERE s.user_id = u.id
+		ORDER BY s.id DESC
+		LIMIT 1
 	) AS expires_at,
 	(
 		SELECT group_concat(name, '||')

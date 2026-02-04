@@ -302,6 +302,20 @@ func (a API) servePublicUserPlaylistByAppKey(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// If user has a subscription and it is expired, block playlist.
+	// (If user has no subscription, allow as "free" account.)
+	var maxExpires string
+	_ = a.Users.DB.QueryRowContext(r.Context(), `SELECT COALESCE(MAX(expires_at), '') FROM subscriptions WHERE user_id = ?`, u.ID).Scan(&maxExpires)
+	maxExpires = strings.TrimSpace(maxExpires)
+	if maxExpires != "" {
+		if t, err := time.Parse(time.RFC3339, maxExpires); err == nil {
+			if time.Now().UTC().After(t) {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+		}
+	}
+
 	// If user has selected channels, generate M3U from those.
 	hasCh, err := a.userHasChannels(r, u.ID)
 	if err != nil {

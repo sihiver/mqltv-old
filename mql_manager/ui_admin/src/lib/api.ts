@@ -46,6 +46,17 @@ export type Package = {
   createdAt: string
 }
 
+export type PresenceRow = {
+  userId: number
+  username: string
+  displayName: string
+  status: 'online' | 'offline'
+  channelTitle: string
+  channelUrl: string
+  lastSeenAt: string
+  updatedAt: string
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers || {})
   headers.set('Accept', 'application/json')
@@ -188,5 +199,13 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ channelIds })
     })
+  },
+
+  listPresence(params?: { all?: boolean; limit?: number }) {
+    const sp = new URLSearchParams()
+    if (params?.all) sp.set('all', '1')
+    if (params?.limit != null) sp.set('limit', String(params.limit))
+    const qs = sp.toString()
+    return request<{ ok: boolean; cutoff: string; items: PresenceRow[] }>(`/api/presence${qs ? `?${qs}` : ''}`)
   }
 }

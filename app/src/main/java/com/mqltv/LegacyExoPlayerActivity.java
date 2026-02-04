@@ -53,8 +53,16 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
     protected void onStart() {
         super.onStart();
 
+        if (!SubscriptionGuard.ensureNotExpired(this)) {
+            finish();
+            return;
+        }
+
+        String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
         String url = getIntent().getStringExtra(Constants.EXTRA_URL);
         if (url == null || url.trim().isEmpty()) return;
+
+        PresenceReporter.startPlayback(getApplicationContext(), title, url);
 
         DefaultTrackSelector trackSelector = new DefaultTrackSelector(this);
         boolean limit480p = PlaybackPrefs.isExoLimit480p(this);
@@ -141,6 +149,9 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
     @Override
     protected void onStop() {
         super.onStop();
+        if (isFinishing()) {
+            PresenceReporter.stopPlayback(getApplicationContext());
+        }
         if (player != null) {
             if (surfaceView != null) {
                 player.clearVideoSurfaceView(surfaceView);

@@ -5,6 +5,9 @@
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <strong>User</strong>
           <div style="display:flex; gap: 8px; align-items:center;">
+            <el-tag v-if="selectedChannelIds.length > 0" type="success" effect="plain" size="small">
+              Custom channels: {{ selectedChannelIds.length }}
+            </el-tag>
             <el-button @click="load" :loading="loading">Refresh</el-button>
             <el-button type="danger" plain size="small" @click="remove" :loading="deleting">Delete</el-button>
           </div>
@@ -101,6 +104,12 @@
           @selection-change="onChannelSelectionChange"
         >
           <el-table-column type="selection" width="55" />
+          <el-table-column label="Added" width="110">
+            <template #default="scope">
+              <el-tag v-if="isChannelAdded(scope.row.id)" type="success" size="small">Added</el-tag>
+              <span v-else style="color:#94a3b8; font-size:12px;">—</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="name" label="Name" min-width="220" />
           <el-table-column prop="groupTitle" label="Group" min-width="180" />
           <el-table-column prop="streamUrl" label="Stream URL" min-width="320" show-overflow-tooltip />
@@ -273,6 +282,11 @@ const allPackages = ref<Package[]>([])
 const assignedPackages = ref<Package[]>([])
 const selectedPackageIds = ref<number[]>([])
 const savingPackages = ref(false)
+
+const selectedChannelIdSet = computed(() => new Set(selectedChannelIds.value))
+function isChannelAdded(id: number): boolean {
+  return selectedChannelIdSet.value.has(id)
+}
 
 const title = computed(() => (user.value ? `User #${user.value.id}` : 'User'))
 const publicPlaylistUrl = computed(() => {

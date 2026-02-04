@@ -69,6 +69,16 @@
             android:theme="@style/Theme.MQLTV"
             android:exported="false" />
 
+        <activity
+            android:name=".ExpiredActivity"
+            android:theme="@style/Theme.MQLTV"
+            android:exported="false" />
+
+        <activity
+            android:name=".AccountActivity"
+            android:theme="@style/Theme.MQLTV"
+            android:exported="false" />
+
     </application>
 
 </manifest>

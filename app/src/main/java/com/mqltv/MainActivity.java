@@ -14,16 +14,16 @@ public class MainActivity extends FragmentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (!AuthPrefs.isLoggedIn(this)) {
-            startActivity(new Intent(this, LoginActivity.class));
-            finish();
-            return;
-        }
-
         setContentView(R.layout.activity_main);
 
         if (savedInstanceState == null) {
             showDestination(NavDestination.HOME);
+
+            // If launched after login with a target destination, navigate there.
+            String dest = getIntent() != null ? getIntent().getStringExtra(LoginActivity.EXTRA_AFTER_LOGIN_DEST) : null;
+            if (LoginActivity.DEST_LIVE_TV.equals(dest)) {
+                showDestination(NavDestination.LIVE_TV);
+            }
         }
     }
 
@@ -71,6 +71,12 @@ public class MainActivity extends FragmentActivity {
                         .commit();
                 break;
             case LIVE_TV:
+                if (!LoginGuard.ensureLoggedIn(this, LoginActivity.DEST_LIVE_TV)) {
+                    return;
+                }
+                if (!SubscriptionGuard.ensureNotExpired(this)) {
+                    return;
+                }
                 getSupportFragmentManager().beginTransaction()
                         .replace(R.id.content_container, new LiveTvFragment())
                         .commit();

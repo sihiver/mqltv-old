@@ -96,6 +96,33 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             }
         });
 
+        View profile = v.findViewById(R.id.launcher_profile);
+        TextView profileLetter = v.findViewById(R.id.launcher_profile_letter);
+        if (profileLetter != null) {
+            String name = AuthPrefs.getDisplayName(appContext);
+            if (name == null || name.trim().isEmpty()) name = AuthPrefs.getUsername(appContext);
+            String letter = "?";
+            if (name != null) {
+                name = name.trim();
+                if (!name.isEmpty()) {
+                    letter = String.valueOf(Character.toUpperCase(name.charAt(0)));
+                }
+            }
+            profileLetter.setText(letter);
+        }
+        if (profile != null) {
+            profile.setOnClickListener(view -> {
+                if (AuthPrefs.isLoggedIn(appContext)) {
+                    Intent i = new Intent(appContext, AccountActivity.class);
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    appContext.startActivity(i);
+                } else {
+                    // For launcher: use profile icon as login entry.
+                    LoginGuard.ensureLoggedIn(appContext);
+                }
+            });
+        }
+
         cardsList = v.findViewById(R.id.launcher_cards);
         cardsList.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
         cardsList.setHasFixedSize(false);
@@ -198,7 +225,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         executor.execute(() -> {
             PlaylistRepository repo = new PlaylistRepository();
             List<Channel> channels = repo.loadFromUrls(appContext, AuthPrefs.getPlaylistUrls(appContext));
-            if (channels == null || channels.isEmpty()) {
+            boolean hasServerPlaylist = AuthPrefs.getPlaylistUrl(appContext) != null && !AuthPrefs.getPlaylistUrl(appContext).trim().isEmpty();
+            if ((channels == null || channels.isEmpty()) && !hasServerPlaylist) {
                 channels = repo.loadDefault(appContext);
             }
             final int liveCount = channels != null ? channels.size() : 0;

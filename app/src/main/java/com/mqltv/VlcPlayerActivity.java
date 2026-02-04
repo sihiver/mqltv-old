@@ -169,12 +169,20 @@ public class VlcPlayerActivity extends FragmentActivity {
     protected void onStart() {
         super.onStart();
 
+        if (!SubscriptionGuard.ensureNotExpired(this)) {
+            finish();
+            return;
+        }
+
+        String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
         String url = getIntent().getStringExtra(Constants.EXTRA_URL);
         if (url == null || url.trim().isEmpty()) {
             Toast.makeText(this, "Invalid stream URL", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
+
+        PresenceReporter.startPlayback(getApplicationContext(), title, url);
 
         ArrayList<String> options = new ArrayList<>();
         // Keep logging lightweight on legacy STBs.
@@ -438,6 +446,9 @@ public class VlcPlayerActivity extends FragmentActivity {
     @Override
     protected void onStop() {
         super.onStop();
+        if (isFinishing()) {
+            PresenceReporter.stopPlayback(getApplicationContext());
+        }
         releasePlayer();
     }
 

@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@android:color/black">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <FrameLayout
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/launcher_icon_bg"
+            android:padding="0dp">
+
+            <TextView
+                android:id="@+id/account_profile_letter"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="?"
+                android:textStyle="bold"
+                android:textSize="22sp"
+                android:textColor="@color/mql_text_primary" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingStart="16dp">
+
+            <TextView
+                android:id="@+id/account_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="-"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@color/mql_text_primary" />
+
+            <TextView
+                android:id="@+id/account_username"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="-"
+                android:textSize="14sp"
+                android:textColor="@color/mql_text_secondary" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/account_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AKTIF"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:padding="8dp"
+            android:textColor="@android:color/black"
+            android:background="@android:color/holo_green_light" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="16dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Paket"
+            android:textSize="14sp"
+            android:textColor="@color/mql_text_secondary" />
+
+        <TextView
+            android:id="@+id/account_packages"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="-"
+            android:textSize="16sp"
+            android:textColor="@color/mql_text_primary" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="14dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Expired"
+            android:textSize="14sp"
+            android:textColor="@color/mql_text_secondary" />
+
+        <TextView
+            android:id="@+id/account_expires"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="-"
+            android:textSize="16sp"
+            android:textColor="@color/mql_text_primary" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/account_close"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TUTUP" />
+
+        <View
+            android:layout_width="12dp"
+            android:layout_height="1dp" />
+
+        <Button
+            android:id="@+id/account_logout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LOGOUT" />
+
+    </LinearLayout>
+
+</LinearLayout>

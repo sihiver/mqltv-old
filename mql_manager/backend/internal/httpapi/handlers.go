@@ -11,6 +11,7 @@ import (
 
 	"mqltv.local/mql_manager/backend/internal/channels"
 	"mqltv.local/mql_manager/backend/internal/packages"
+	"mqltv.local/mql_manager/backend/internal/presence"
 	"mqltv.local/mql_manager/backend/internal/playlists"
 	"mqltv.local/mql_manager/backend/internal/users"
 )
@@ -20,11 +21,13 @@ type API struct {
 	Playlists    playlists.Repo
 	Channels     channels.Repo
 	Packages     packages.Repo
+	Presence     presence.Repo
 	AuthRequired bool
 }
 
 func (a API) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/health", a.handleHealth)
+	mux.HandleFunc("/api/presence", a.handlePresence)
 	mux.HandleFunc("/api/users", a.handleUsers)
 	mux.HandleFunc("/api/users/", a.handleUserByID)
 	mux.HandleFunc("/api/subscriptions/", a.handleSubscriptionByID)
@@ -36,6 +39,7 @@ func (a API) Register(mux *http.ServeMux) {
 
 	// Public endpoints for Android app
 	mux.HandleFunc("/public/login", a.handlePublicLogin)
+	mux.HandleFunc("/public/presence", a.handlePublicPresence)
 	mux.HandleFunc("/playlist.m3u", a.handlePublicRootPlaylist)
 	mux.HandleFunc("/public/m3u/", a.handlePublicM3UByPlaylistID)
 	mux.HandleFunc("/public/users/", a.handlePublicUserPlaylist)

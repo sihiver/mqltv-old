@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#050607"
+    android:focusable="true"
+    android:focusableInTouchMode="true">
+
+    <!-- Optional exact screenshot background. Add: res/drawable/subscription_expired.png -->
+    <ImageView
+        android:id="@+id/expired_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:scaleType="centerCrop"
+        android:contentDescription="Langganan berakhir" />
+
+    <!-- Fallback UI if screenshot is not present -->
+    <LinearLayout
+        android:id="@+id/expired_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="24dp">
+
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/ic_expired_warning"
+            android:contentDescription="Warning" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="MASA AKTIF HABIS"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="28sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Akun Anda sedang tidak aktif. Silakan hubungi admin untuk memperpanjang, lalu coba lagi."
+            android:textColor="#C9D1D9"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/expired_btn_refresh"
+        android:layout_width="260dp"
+        android:layout_height="56dp"
+        android:layout_gravity="center_horizontal|bottom"
+        android:layout_marginBottom="60dp"
+        android:text="KEMBALI KE BERANDA"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#D9302A"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
+</FrameLayout>

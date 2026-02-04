@@ -33,6 +33,9 @@ public class MainFragment extends BrowseSupportFragment {
             if (!(item instanceof Channel)) return;
             Channel channel = (Channel) item;
 
+            if (!LoginGuard.ensureLoggedIn(requireContext())) return;
+            if (!SubscriptionGuard.ensureNotExpired(requireContext())) return;
+            PresenceReporter.reportOnlineLaunch(requireContext(), channel.getTitle(), channel.getUrl());
             Intent intent = PlayerIntents.createPreferredPlayIntent(requireContext(), channel.getTitle(), channel.getUrl());
             try {
                 startActivity(intent);

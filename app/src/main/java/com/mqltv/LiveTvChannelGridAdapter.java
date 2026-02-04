@@ -79,7 +79,10 @@ public final class LiveTvChannelGridAdapter extends RecyclerView.Adapter<LiveTvC
 
         holder.itemView.setOnClickListener(v -> {
             if (c == null) return;
+            if (!LoginGuard.ensureLoggedIn(v.getContext(), LoginActivity.DEST_LIVE_TV)) return;
+            if (!SubscriptionGuard.ensureNotExpired(v.getContext())) return;
             RecentChannelsStore.record(v.getContext(), c);
+            PresenceReporter.reportOnlineLaunch(v.getContext(), c.getTitle(), c.getUrl());
             Intent intent = PlayerIntents.createPreferredPlayIntent(v.getContext(), c.getTitle(), c.getUrl());
             try {
                 v.getContext().startActivity(intent);

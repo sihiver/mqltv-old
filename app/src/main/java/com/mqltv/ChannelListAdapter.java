@@ -34,7 +34,10 @@ public class ChannelListAdapter extends RecyclerView.Adapter<ChannelListAdapter.
         Channel c = items.get(position);
         holder.title.setText(c.getTitle());
         holder.title.setOnClickListener(v -> {
+            if (!LoginGuard.ensureLoggedIn(v.getContext())) return;
+            if (!SubscriptionGuard.ensureNotExpired(v.getContext())) return;
             RecentChannelsStore.record(v.getContext(), c);
+            PresenceReporter.reportOnlineLaunch(v.getContext(), c.getTitle(), c.getUrl());
             Intent intent = PlayerIntents.createPreferredPlayIntent(v.getContext(), c.getTitle(), c.getUrl());
             try {
                 v.getContext().startActivity(intent);

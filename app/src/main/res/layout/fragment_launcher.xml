@@ -144,16 +144,26 @@
             android:layout_width="12dp"
             android:layout_height="0dp" />
 
-        <ImageView
+        <FrameLayout
             android:id="@+id/launcher_profile"
             android:layout_width="42dp"
             android:layout_height="42dp"
-            android:padding="8dp"
             android:background="@drawable/launcher_icon_bg"
-            android:src="@android:drawable/sym_def_app_icon"
             android:focusable="true"
             android:focusableInTouchMode="true"
-            android:contentDescription="Profile" />
+            android:contentDescription="Profile">
+
+            <TextView
+                android:id="@+id/launcher_profile_letter"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="?"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:textColor="@color/mql_text_primary" />
+
+        </FrameLayout>
 
     </LinearLayout>
 

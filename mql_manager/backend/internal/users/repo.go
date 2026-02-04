@@ -22,6 +22,7 @@ type User struct {
 	PlaylistID  *int64   `json:"playlistId"`
 	CreatedAt   string   `json:"createdAt"`
 	Packages    []string `json:"packages,omitempty"`
+	Plan        *string  `json:"plan,omitempty"`
 	ExpiresAt   *string  `json:"expiresAt,omitempty"`
 }
 

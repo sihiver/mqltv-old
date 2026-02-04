@@ -112,6 +112,12 @@ public class NativePlayerActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (!SubscriptionGuard.ensureNotExpired(this)) {
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_native_player);
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -123,6 +129,8 @@ public class NativePlayerActivity extends Activity {
 
         title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
         url = getIntent().getStringExtra(Constants.EXTRA_URL);
+
+        PresenceReporter.startPlayback(getApplicationContext(), title, url);
 
         if (url == null || url.trim().isEmpty()) {
             Toast.makeText(this, "URL kosong", Toast.LENGTH_SHORT).show();
@@ -471,6 +479,9 @@ public class NativePlayerActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (isFinishing()) {
+            PresenceReporter.stopPlayback(getApplicationContext());
+        }
         mainHandler.removeCallbacks(watchdog);
         releasePlayer();
     }

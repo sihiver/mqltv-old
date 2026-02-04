@@ -36,6 +36,9 @@ public class LoginActivity extends FragmentActivity {
     private Button loginBtn;
     private TextView status;
 
+    public static final String EXTRA_AFTER_LOGIN_DEST = "afterLoginDest";
+    public static final String DEST_LIVE_TV = "live_tv";
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -207,18 +210,44 @@ public class LoginActivity extends FragmentActivity {
                     String publicPlaylistPath = json.optString("publicPlaylistUrl", "");
                     JSONObject userObj = json.optJSONObject("user");
                     String appKey = userObj != null ? userObj.optString("appKey", "") : "";
+                    String expiresAt = userObj != null ? userObj.optString("expiresAt", "") : "";
+                    String displayName = userObj != null ? userObj.optString("displayName", "") : "";
+                    String plan = userObj != null ? userObj.optString("plan", "") : "";
+
+                    String packagesRaw = "";
+                    if (userObj != null) {
+                        org.json.JSONArray pkgs = userObj.optJSONArray("packages");
+                        if (pkgs != null && pkgs.length() > 0) {
+                            StringBuilder sb = new StringBuilder();
+                            for (int i = 0; i < pkgs.length(); i++) {
+                                String p = pkgs.optString(i, "");
+                                if (p == null) p = "";
+                                p = p.trim();
+                                if (p.isEmpty()) continue;
+                                if (sb.length() > 0) sb.append("||");
+                                sb.append(p);
+                            }
+                            packagesRaw = sb.toString();
+                        }
+                    }
 
                     if (publicPlaylistPath == null || publicPlaylistPath.trim().isEmpty()) {
                         throw new RuntimeException("Response login tidak valid");
                     }
 
                     String fullPlaylistUrl = joinUrl(baseUrl, publicPlaylistPath);
-                    AuthPrefs.setLogin(getApplicationContext(), username, appKey, fullPlaylistUrl);
+                    AuthPrefs.setLogin(getApplicationContext(), username, displayName, appKey, fullPlaylistUrl, plan, packagesRaw, expiresAt);
                 }
 
                 mainHandler.post(() -> {
                     setStatus("Login berhasil");
+
                     Intent i = new Intent(LoginActivity.this, MainActivity.class);
+                    // If caller asked to go somewhere after login, keep that intent.
+                    String dest = getIntent() != null ? getIntent().getStringExtra(EXTRA_AFTER_LOGIN_DEST) : null;
+                    if (dest != null && !dest.trim().isEmpty()) {
+                        i.putExtra(EXTRA_AFTER_LOGIN_DEST, dest);
+                    }
                     i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(i);
                     finish();

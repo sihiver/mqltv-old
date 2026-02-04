@@ -162,14 +162,14 @@
             android:layout_height="wrap_content"
             android:text="00:00"
             android:textColor="@color/mql_text_primary"
-            android:textSize="18sp"
+            android:textSize="22sp"
             android:textStyle="bold"
             android:importantForAccessibility="no" />
 
         <ImageView
             android:id="@+id/launcher_header_net"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
             android:layout_marginStart="14dp"
             android:src="@drawable/ic_mql_wifi"
             android:tint="@color/mql_text_primary"

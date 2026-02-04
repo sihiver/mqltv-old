@@ -256,9 +256,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private void updateHeaderTime() {
         if (headerTime == null) return;
         try {
-            SimpleDateFormat fmt = new SimpleDateFormat("h:mma", Locale.getDefault());
+            // 24-hour clock for TV header.
+            SimpleDateFormat fmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
             String s = fmt.format(new Date());
-            headerTime.setText(s != null ? s.toLowerCase(Locale.US) : "");
+            headerTime.setText(s != null ? s : "");
         } catch (Exception ignored) {
         }
     }

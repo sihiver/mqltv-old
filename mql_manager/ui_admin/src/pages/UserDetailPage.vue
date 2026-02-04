@@ -19,30 +19,52 @@
       <div v-if="user">
         <el-row :gutter="12">
           <el-col :span="12" :xs="24">
-            <p><b>ID:</b> {{ user.id }}</p>
-            <p><b>Username:</b> {{ user.username }}</p>
-            <p><b>Display name:</b> {{ user.displayName }}</p>
+            <el-card shadow="never" class="mql-card" style="border: 1px solid var(--mql-border)">
+              <template #header><strong>Info</strong></template>
+
+              <el-descriptions :column="1" border size="small">
+                <el-descriptions-item label="ID">{{ user.id }}</el-descriptions-item>
+                <el-descriptions-item label="Username">{{ user.username }}</el-descriptions-item>
+                <el-descriptions-item label="Display name">{{ user.displayName || '—' }}</el-descriptions-item>
+                <el-descriptions-item label="Paket">
+                  <span>{{ latestPlan || assignedPackageNames }}</span>
+                </el-descriptions-item>
+                <el-descriptions-item label="Status">
+                  <el-tag :type="statusTag.type" size="small">{{ statusTag.label }}</el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="Sisa masa aktif">{{ remaining }}</el-descriptions-item>
+                <el-descriptions-item label="Berakhir">
+                  <span>{{ latestExpiresAt ? formatDateTimeID(latestExpiresAt) : '—' }}</span>
+                </el-descriptions-item>
+                <el-descriptions-item label="Created">{{ formatDateTimeID(user.createdAt) }}</el-descriptions-item>
+              </el-descriptions>
+            </el-card>
           </el-col>
+
           <el-col :span="12" :xs="24">
-            <p>
-              <b>App key:</b>
-              <span
-                v-if="user.appKey"
-                style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"
-              >
-                {{ user.appKey }}
-              </span>
-              <span v-else style="color:#64748b">—</span>
-              <el-button v-if="user.appKey" size="small" style="margin-left: 8px" @click="copy(user.appKey)">Copy</el-button>
-            </p>
-            <p v-if="user.appKey">
-              <b>Public playlist URL:</b>
-              <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
-                {{ publicPlaylistUrl }}
-              </span>
-              <el-button size="small" style="margin-left: 8px" @click="copy(publicPlaylistUrl)">Copy</el-button>
-            </p>
-            <p style="color:#64748b; font-size:12px">Created: {{ formatDateTimeID(user.createdAt) }}</p>
+            <el-card shadow="never" class="mql-card" style="border: 1px solid var(--mql-border)">
+              <template #header><strong>Access</strong></template>
+
+              <el-form label-position="top">
+                <el-form-item label="App key">
+                  <el-input :model-value="user.appKey || ''" readonly class="mono">
+                    <template #append>
+                      <el-button :disabled="!user.appKey" @click="user.appKey && copy(user.appKey)">Copy</el-button>
+                    </template>
+                  </el-input>
+                </el-form-item>
+
+                <el-form-item label="Public playlist URL">
+                  <el-input :model-value="publicPlaylistAbsUrl" readonly class="mono">
+                    <template #append>
+                      <el-button :disabled="!publicPlaylistAbsUrl" @click="publicPlaylistAbsUrl && copy(publicPlaylistAbsUrl)">
+                        Copy
+                      </el-button>
+                    </template>
+                  </el-input>
+                </el-form-item>
+              </el-form>
+            </el-card>
           </el-col>
         </el-row>
       </div>
@@ -294,6 +316,51 @@ const publicPlaylistUrl = computed(() => {
   return `/public/users/${user.value.appKey}/playlist.m3u`
 })
 
+const publicPlaylistAbsUrl = computed(() => {
+  const rel = publicPlaylistUrl.value
+  if (!rel) return ''
+  try {
+    return `${window.location.origin}${rel}`
+  } catch {
+    return rel
+  }
+})
+
+const latestSub = computed(() => {
+  if (!subs.value.length) return null
+  const sorted = [...subs.value].sort((a, b) => {
+    const ta = new Date(a.expiresAt).getTime()
+    const tb = new Date(b.expiresAt).getTime()
+    return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0)
+  })
+  return sorted[0] || null
+})
+
+const latestExpiresAt = computed(() => (latestSub.value ? latestSub.value.expiresAt : ''))
+const latestPlan = computed(() => (latestSub.value ? latestSub.value.plan : ''))
+
+const assignedPackageNames = computed(() => {
+  const names = assignedPackages.value.map((p) => p.name).filter(Boolean)
+  return names.length ? names.join(', ') : '—'
+})
+
+const statusTag = computed((): { label: string; type: 'success' | 'warning' | 'info' | 'danger' } => {
+  const exp = latestExpiresAt.value ? new Date(latestExpiresAt.value).getTime() : NaN
+  if (!latestExpiresAt.value || !Number.isFinite(exp)) return { label: 'Inactive', type: 'info' }
+  if (exp <= Date.now()) return { label: 'Expired', type: 'danger' }
+  return { label: 'Active', type: 'success' }
+})
+
+const remaining = computed(() => {
+  if (!latestExpiresAt.value) return '—'
+  const exp = new Date(latestExpiresAt.value).getTime()
+  if (!Number.isFinite(exp)) return '—'
+  const msLeft = exp - Date.now()
+  const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000))
+  if (daysLeft <= 0) return 'Expired'
+  return `${daysLeft} hari`
+})
+
 async function load() {
   loading.value = true
   error.value = null
@@ -461,3 +528,9 @@ async function remove() {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.mono :deep(input) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+</style>

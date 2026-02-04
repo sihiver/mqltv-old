@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -26,8 +28,11 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -46,11 +51,33 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private RecyclerView recentList;
     private ChannelCardAdapter recentAdapter;
 
+    private TextView headerTime;
+    private ImageView headerNet;
+
+    private final Runnable headerTicker = new Runnable() {
+        @Override
+        public void run() {
+            if (getContext() != null) {
+                Context appContext = getContext().getApplicationContext();
+                updateHeaderTime();
+                updateNetworkIcon(appContext);
+            }
+            mainHandler.postDelayed(this, 10_000);
+        }
+    };
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_launcher, container, false);
         Context appContext = v.getContext().getApplicationContext();
+
+        headerTime = v.findViewById(R.id.launcher_header_time);
+        headerNet = v.findViewById(R.id.launcher_header_net);
+        updateHeaderTime();
+        updateNetworkIcon(appContext);
+        mainHandler.removeCallbacks(headerTicker);
+        mainHandler.post(headerTicker);
 
         ImageView wallpaper = v.findViewById(R.id.launcher_wallpaper);
         if (wallpaper != null) {
@@ -85,9 +112,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         }
 
         View search = v.findViewById(R.id.launcher_search);
-        search.setOnClickListener(view -> {
-            // Placeholder for future search UI.
-        });
+        if (search != null) {
+            // Hide the search bar on homescreen (per product requirement).
+            search.setVisibility(View.GONE);
+            search.setOnClickListener(null);
+        }
 
         ImageView settings = v.findViewById(R.id.launcher_settings);
         settings.setOnClickListener(view -> {
@@ -210,6 +239,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (getContext() != null) {
             loadLauncherApps(getContext().getApplicationContext());
             loadRecentLive(getContext().getApplicationContext());
+
+            updateHeaderTime();
+            updateNetworkIcon(getContext().getApplicationContext());
+            mainHandler.removeCallbacks(headerTicker);
+            mainHandler.post(headerTicker);
         }
     }
 
@@ -217,6 +251,44 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     public void onPause() {
         super.onPause();
         if (adapter != null) adapter.setHostActive(false);
+    }
+
+    private void updateHeaderTime() {
+        if (headerTime == null) return;
+        try {
+            SimpleDateFormat fmt = new SimpleDateFormat("h:mma", Locale.getDefault());
+            String s = fmt.format(new Date());
+            headerTime.setText(s != null ? s.toLowerCase(Locale.US) : "");
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void updateNetworkIcon(Context appContext) {
+        if (headerNet == null) return;
+
+        ConnectivityManager cm = (ConnectivityManager) appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo ni = null;
+        try {
+            if (cm != null) ni = cm.getActiveNetworkInfo();
+        } catch (Exception ignored) {
+        }
+
+        if (ni == null || !ni.isConnected()) {
+            headerNet.setVisibility(View.GONE);
+            return;
+        }
+
+        int type = ni.getType();
+        if (type == ConnectivityManager.TYPE_ETHERNET) {
+            headerNet.setVisibility(View.VISIBLE);
+            headerNet.setImageResource(R.drawable.ic_mql_ethernet);
+        } else if (type == ConnectivityManager.TYPE_WIFI) {
+            headerNet.setVisibility(View.VISIBLE);
+            headerNet.setImageResource(R.drawable.ic_mql_wifi);
+        } else {
+            // Connected but not WiFi/Ethernet (e.g., cellular). Hide for TV-like UX.
+            headerNet.setVisibility(View.GONE);
+        }
     }
 
     private void loadCounts(Context appContext) {
@@ -251,6 +323,9 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     public void onDestroyView() {
         super.onDestroyView();
         if (adapter != null) adapter.release();
+        mainHandler.removeCallbacks(headerTicker);
+        headerTime = null;
+        headerNet = null;
     }
 
     private void loadLauncherApps(Context appContext) {

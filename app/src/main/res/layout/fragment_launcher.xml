@@ -180,17 +180,35 @@
             android:layout_width="14dp"
             android:layout_height="0dp" />
 
-        <ImageView
+        <FrameLayout
             android:id="@+id/launcher_settings"
             android:layout_width="42dp"
             android:layout_height="42dp"
-            android:padding="10dp"
-            android:background="@drawable/launcher_icon_bg"
-            android:src="@android:drawable/ic_menu_manage"
-            android:tint="@color/mql_text_primary"
+            android:background="@drawable/launcher_card_bg_radio_80"
             android:focusable="true"
             android:focusableInTouchMode="true"
-            android:contentDescription="Settings" />
+            android:clickable="true"
+            android:contentDescription="Settings">
+
+            <ImageView
+                android:id="@+id/launcher_settings_icon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="10dp"
+                android:src="@android:drawable/ic_menu_manage"
+                android:tint="@color/mql_text_primary"
+                android:importantForAccessibility="no" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/launcher_card_focus_frame"
+                android:clickable="false"
+                android:focusable="false"
+                android:importantForAccessibility="no"
+                android:duplicateParentState="true" />
+
+        </FrameLayout>
 
         <View
             android:layout_width="12dp"
@@ -200,9 +218,10 @@
             android:id="@+id/launcher_profile"
             android:layout_width="42dp"
             android:layout_height="42dp"
-            android:background="@drawable/launcher_icon_bg"
+            android:background="@drawable/launcher_card_bg_radio_80"
             android:focusable="true"
             android:focusableInTouchMode="true"
+            android:clickable="true"
             android:contentDescription="Profile">
 
             <TextView
@@ -214,6 +233,15 @@
                 android:textStyle="bold"
                 android:textSize="16sp"
                 android:textColor="@color/mql_text_primary" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/launcher_card_focus_frame"
+                android:clickable="false"
+                android:focusable="false"
+                android:importantForAccessibility="no"
+                android:duplicateParentState="true" />
 
         </FrameLayout>
 

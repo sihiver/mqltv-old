@@ -118,8 +118,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             search.setOnClickListener(null);
         }
 
-        ImageView settings = v.findViewById(R.id.launcher_settings);
-        settings.setOnClickListener(view -> {
+        View settings = v.findViewById(R.id.launcher_settings);
+        if (settings != null) settings.setOnClickListener(view -> {
             if (getActivity() instanceof MainActivity) {
                 ((MainActivity) getActivity()).openSettings();
             }

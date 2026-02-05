@@ -46,6 +46,8 @@ public class VlcPlayerActivity extends FragmentActivity {
     private ProgressBar loading;
     private boolean released = false;
 
+    private PlayerChannelOverlayController channelOverlay;
+
     private final IVLCVout.Callback vlcVoutCallback = new IVLCVout.Callback() {
         @Override
         public void onSurfacesCreated(IVLCVout vout) {
@@ -179,6 +181,20 @@ public class VlcPlayerActivity extends FragmentActivity {
         if (title != null) {
             setTitle(title);
         }
+
+        channelOverlay = new PlayerChannelOverlayController(this, channel -> {
+            if (channel == null) return;
+            if (!LoginGuard.ensureLoggedIn(VlcPlayerActivity.this, LoginActivity.DEST_LIVE_TV)) return;
+            if (!SubscriptionGuard.ensureNotExpired(VlcPlayerActivity.this)) return;
+            RecentChannelsStore.record(VlcPlayerActivity.this, channel);
+            PresenceReporter.reportOnlineLaunch(VlcPlayerActivity.this, channel.getTitle(), channel.getUrl());
+            try {
+                startActivity(PlayerIntents.createPreferredPlayIntent(VlcPlayerActivity.this, channel.getTitle(), channel.getUrl()));
+            } catch (Exception e) {
+                startActivity(PlayerIntents.createPlayIntent(VlcPlayerActivity.this, channel.getTitle(), channel.getUrl()));
+            }
+            finish();
+        });
     }
 
     @Override
@@ -196,6 +212,8 @@ public class VlcPlayerActivity extends FragmentActivity {
         }
 
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
+
+        if (channelOverlay != null) channelOverlay.setCurrentChannel(url);
 
         ArrayList<String> options = new ArrayList<>();
         // Keep logging lightweight on legacy STBs.
@@ -368,6 +386,20 @@ public class VlcPlayerActivity extends FragmentActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (channelOverlay != null && channelOverlay.handleKeyEvent(event)) {
+            if (channelOverlay.isVisible() && controls != null) controls.setVisibility(View.GONE);
+            return true;
+        }
+
+        // When the channel list is open, let focused list items receive navigation keys.
+        if (channelOverlay != null && channelOverlay.isVisible() && event.getAction() == KeyEvent.ACTION_DOWN) {
+            int key = event.getKeyCode();
+            if (key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN
+                    || key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                if (controls != null) controls.setVisibility(View.GONE);
+                return super.dispatchKeyEvent(event);
+            }
+        }
         // For TV: show controls on any D-PAD/OK interaction.
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             int key = event.getKeyCode();
@@ -464,6 +496,15 @@ public class VlcPlayerActivity extends FragmentActivity {
             PresenceReporter.stopPlayback(getApplicationContext());
         }
         releasePlayer();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (channelOverlay != null) {
+            channelOverlay.destroy();
+            channelOverlay = null;
+        }
+        super.onDestroy();
     }
 
     @Override

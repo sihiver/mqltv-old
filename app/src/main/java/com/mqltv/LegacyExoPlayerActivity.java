@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.SurfaceView;
 import android.widget.Toast;
 
@@ -39,6 +40,8 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
     private SimpleExoPlayer player;
     private SurfaceView surfaceView;
 
+    private PlayerChannelOverlayController channelOverlay;
+
     private final Handler accessHandler = new Handler(Looper.getMainLooper());
     private boolean accessCheckInFlight = false;
     private final Runnable accessTick = new Runnable() {
@@ -68,6 +71,26 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
         if (title != null) {
             setTitle(title);
         }
+
+        channelOverlay = new PlayerChannelOverlayController(this, channel -> {
+            if (channel == null) return;
+            if (!LoginGuard.ensureLoggedIn(LegacyExoPlayerActivity.this, LoginActivity.DEST_LIVE_TV)) return;
+            if (!SubscriptionGuard.ensureNotExpired(LegacyExoPlayerActivity.this)) return;
+            RecentChannelsStore.record(LegacyExoPlayerActivity.this, channel);
+            PresenceReporter.reportOnlineLaunch(LegacyExoPlayerActivity.this, channel.getTitle(), channel.getUrl());
+            try {
+                startActivity(PlayerIntents.createPreferredPlayIntent(LegacyExoPlayerActivity.this, channel.getTitle(), channel.getUrl()));
+            } catch (Exception e) {
+                startActivity(PlayerIntents.createPlayIntent(LegacyExoPlayerActivity.this, channel.getTitle(), channel.getUrl()));
+            }
+            finish();
+        });
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (channelOverlay != null && channelOverlay.handleKeyEvent(event)) return true;
+        return super.dispatchKeyEvent(event);
     }
 
     @Override
@@ -79,6 +102,8 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
         String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
         String url = getIntent().getStringExtra(Constants.EXTRA_URL);
         if (url == null || url.trim().isEmpty()) return;
+
+        if (channelOverlay != null) channelOverlay.setCurrentChannel(url);
 
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
 
@@ -192,5 +217,14 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
             player.release();
             player = null;
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (channelOverlay != null) {
+            channelOverlay.destroy();
+            channelOverlay = null;
+        }
+        super.onDestroy();
     }
 }

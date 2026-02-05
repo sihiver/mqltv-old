@@ -5,6 +5,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.KeyEvent;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -29,6 +30,8 @@ public class PlayerActivity extends FragmentActivity {
 
     private ExoPlayer player;
     private PlayerView playerView;
+
+    private PlayerChannelOverlayController channelOverlay;
 
     private final Handler accessHandler = new Handler(Looper.getMainLooper());
     private boolean accessCheckInFlight = false;
@@ -59,6 +62,27 @@ public class PlayerActivity extends FragmentActivity {
         if (title != null) {
             setTitle(title);
         }
+
+        channelOverlay = new PlayerChannelOverlayController(this, channel -> {
+            if (channel == null) return;
+            if (!LoginGuard.ensureLoggedIn(PlayerActivity.this, LoginActivity.DEST_LIVE_TV)) return;
+            if (!SubscriptionGuard.ensureNotExpired(PlayerActivity.this)) return;
+            RecentChannelsStore.record(PlayerActivity.this, channel);
+            PresenceReporter.reportOnlineLaunch(PlayerActivity.this, channel.getTitle(), channel.getUrl());
+            Intent i = PlayerIntents.createPreferredPlayIntent(PlayerActivity.this, channel.getTitle(), channel.getUrl());
+            try {
+                startActivity(i);
+            } catch (Exception e) {
+                startActivity(PlayerIntents.createPlayIntent(PlayerActivity.this, channel.getTitle(), channel.getUrl()));
+            }
+            finish();
+        });
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (channelOverlay != null && channelOverlay.handleKeyEvent(event)) return true;
+        return super.dispatchKeyEvent(event);
     }
 
     @OptIn(markerClass = UnstableApi.class) @Override
@@ -70,6 +94,8 @@ public class PlayerActivity extends FragmentActivity {
         String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
         String url = getIntent().getStringExtra(Constants.EXTRA_URL);
         if (url == null || url.trim().isEmpty()) return;
+
+        if (channelOverlay != null) channelOverlay.setCurrentChannel(url);
 
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
 
@@ -193,5 +219,14 @@ public class PlayerActivity extends FragmentActivity {
             player.release();
             player = null;
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (channelOverlay != null) {
+            channelOverlay.destroy();
+            channelOverlay = null;
+        }
+        super.onDestroy();
     }
 }

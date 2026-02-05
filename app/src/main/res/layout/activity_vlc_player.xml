@@ -115,4 +115,6 @@
             android:enabled="false" />
     </LinearLayout>
 
+    <include layout="@layout/view_player_channel_overlay" />
+
 </FrameLayout>

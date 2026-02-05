@@ -11,4 +11,6 @@
         app:surface_type="surface_view"
         android:keepScreenOn="true" />
 
+    <include layout="@layout/view_player_channel_overlay" />
+
 </FrameLayout>

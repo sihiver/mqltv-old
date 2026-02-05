@@ -41,6 +41,8 @@ public class NativePlayerActivity extends Activity {
     private String url;
     private String title;
 
+    private PlayerChannelOverlayController channelOverlay;
+
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private boolean accessCheckInFlight = false;
@@ -145,6 +147,21 @@ public class NativePlayerActivity extends Activity {
 
         title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
         url = getIntent().getStringExtra(Constants.EXTRA_URL);
+
+        channelOverlay = new PlayerChannelOverlayController(this, channel -> {
+            if (channel == null) return;
+            if (!LoginGuard.ensureLoggedIn(NativePlayerActivity.this, LoginActivity.DEST_LIVE_TV)) return;
+            if (!SubscriptionGuard.ensureNotExpired(NativePlayerActivity.this)) return;
+            RecentChannelsStore.record(NativePlayerActivity.this, channel);
+            PresenceReporter.reportOnlineLaunch(NativePlayerActivity.this, channel.getTitle(), channel.getUrl());
+            try {
+                startActivity(PlayerIntents.createPreferredPlayIntent(NativePlayerActivity.this, channel.getTitle(), channel.getUrl()));
+            } catch (Exception e) {
+                startActivity(PlayerIntents.createPlayIntent(NativePlayerActivity.this, channel.getTitle(), channel.getUrl()));
+            }
+            finish();
+        });
+        if (channelOverlay != null) channelOverlay.setCurrentChannel(url);
 
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
 
@@ -474,13 +491,15 @@ public class NativePlayerActivity extends Activity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (channelOverlay != null && channelOverlay.handleKeyEvent(event)) return true;
+
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             finish();
             return true;
         }
 
         if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-            toggleControls();
+            // OK is used to open the channel list overlay.
             return true;
         }
 
@@ -502,6 +521,10 @@ public class NativePlayerActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (channelOverlay != null) {
+            channelOverlay.destroy();
+            channelOverlay = null;
+        }
         super.onDestroy();
         if (isFinishing()) {
             PresenceReporter.stopPlayback(getApplicationContext());

@@ -131,6 +131,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
     private static Drawable createTileBackground(Context ctx, int baseColor) {
         int radius = dp(ctx, 6);
         int stroke = dp(ctx, 2);
+        int accent = ContextCompat.getColor(ctx, R.color.mql_accent);
 
         GradientDrawable normal = new GradientDrawable();
         normal.setColor(baseColor);
@@ -139,7 +140,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         GradientDrawable focused = new GradientDrawable();
         focused.setColor(lighten(baseColor));
         focused.setCornerRadius(radius);
-        focused.setStroke(stroke, 0xFF3AA0FF);
+        focused.setStroke(stroke, accent);
 
         StateListDrawable s = new StateListDrawable();
         s.addState(new int[] { android.R.attr.state_focused }, focused);

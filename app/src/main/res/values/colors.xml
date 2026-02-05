@@ -4,6 +4,8 @@
     <color name="mql_panel_focused">#1A2230</color>
     <color name="mql_text_primary">#FFFFFF</color>
     <color name="mql_text_secondary">#B7C0CC</color>
-    <color name="mql_accent">#1E88E5</color>
-    <color name="mql_focus">#2D2D2D</color>
+    <!-- Focus / accent color (matches launcher focus image) -->
+    <color name="mql_accent">#FF6A2A</color>
+    <color name="mql_accent_20">#33FF6A2A</color>
+    <color name="mql_focus">#FF6A2A</color>
 </resources>

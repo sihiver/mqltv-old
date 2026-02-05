@@ -4,7 +4,7 @@
     <item android:state_focused="true">
         <shape android:shape="oval">
             <solid android:color="#CC18202C" />
-            <stroke android:width="2dp" android:color="#2A78FF" />
+            <stroke android:width="2dp" android:color="@color/mql_accent" />
         </shape>
     </item>
     <item>

@@ -128,6 +128,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
 
         int colorPrimary = ContextCompat.getColor(holder.itemView.getContext(), R.color.mql_text_primary);
         int colorSecondary = ContextCompat.getColor(holder.itemView.getContext(), R.color.mql_text_secondary);
+        int colorAccent = ContextCompat.getColor(holder.itemView.getContext(), R.color.mql_accent);
         holder.icon.setColorFilter(colorSecondary);
 
         if (isRadio) {
@@ -169,7 +170,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
 
             // Keep focused card fully visible (avoid partial cut on the left).
             if (hasFocus) {
-                holder.icon.setColorFilter(colorPrimary);
+                holder.icon.setColorFilter(colorAccent);
                 View parent = (View) v.getParent();
                 if (parent instanceof RecyclerView) {
                     int pos = holder.getBindingAdapterPosition();

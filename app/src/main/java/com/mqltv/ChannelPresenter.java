@@ -8,6 +8,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.ColorUtils;
 import androidx.leanback.widget.Presenter;
 
 public class ChannelPresenter extends Presenter {
@@ -34,7 +36,12 @@ public class ChannelPresenter extends Presenter {
         textView.setFocusableInTouchMode(true);
 
         textView.setOnFocusChangeListener((v, hasFocus) -> {
-            v.setBackgroundColor(hasFocus ? 0xFF2D2D2D : Color.TRANSPARENT);
+            if (hasFocus) {
+                int accent = ContextCompat.getColor(context, R.color.mql_accent);
+                v.setBackgroundColor(ColorUtils.setAlphaComponent(accent, 0x22));
+            } else {
+                v.setBackgroundColor(Color.TRANSPARENT);
+            }
         });
 
         return new ViewHolder(textView);

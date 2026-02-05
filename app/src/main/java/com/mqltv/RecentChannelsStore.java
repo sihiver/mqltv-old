@@ -13,7 +13,7 @@ import java.util.List;
 public final class RecentChannelsStore {
     private static final String PREFS = "mqltv_recent";
     private static final String KEY = "recent_channels";
-    private static final int MAX = 20;
+    private static final int MAX = 6;
 
     private RecentChannelsStore() {
     }

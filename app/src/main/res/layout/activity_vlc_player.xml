@@ -115,6 +115,8 @@
             android:enabled="false" />
     </LinearLayout>
 
+    <include layout="@layout/view_player_live_badge_number" />
+
     <include layout="@layout/view_player_channel_overlay" />
 
 </FrameLayout>

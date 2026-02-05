@@ -76,6 +76,8 @@ public final class PlayerChannelOverlayController {
     private TextView infoNextTime;
     private TextView infoNextTitle;
 
+    private TextView typedNumberView;
+
     private final ChannelAdapter adapter = new ChannelAdapter();
 
     private volatile List<Channel> allChannels = Collections.emptyList();
@@ -84,6 +86,12 @@ public final class PlayerChannelOverlayController {
     private int categoryIndex = 0;
 
     private String currentUrl;
+
+    private static final long NUMBER_COMMIT_DELAY_MS = 1200L;
+    private static final long NUMBER_HIDE_DELAY_MS = 1800L;
+    private final StringBuilder numberBuffer = new StringBuilder(4);
+    private final Runnable commitNumberRunnable = this::commitPendingChannelNumber;
+    private final Runnable hideNumberRunnable = this::hideTypedNumber;
 
     public PlayerChannelOverlayController(@NonNull Activity activity, @NonNull PlayerLauncher launcher) {
         this.activity = activity;
@@ -107,6 +115,8 @@ public final class PlayerChannelOverlayController {
         infoNowTitle = activity.findViewById(R.id.player_channel_overlay_info_now_title);
         infoNextTime = activity.findViewById(R.id.player_channel_overlay_info_next_time);
         infoNextTitle = activity.findViewById(R.id.player_channel_overlay_info_next_title);
+
+        typedNumberView = activity.findViewById(R.id.player_overlay_typed_number);
 
         if (list != null) {
             list.setLayoutManager(new LinearLayoutManager(activity, LinearLayoutManager.VERTICAL, false));
@@ -176,13 +186,48 @@ public final class PlayerChannelOverlayController {
             worker.shutdownNow();
         } catch (Throwable ignored) {
         }
+
+        try {
+            MAIN.removeCallbacks(commitNumberRunnable);
+            MAIN.removeCallbacks(hideNumberRunnable);
+        } catch (Throwable ignored) {
+        }
     }
 
     public boolean handleKeyEvent(@NonNull KeyEvent event) {
         if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
 
         int key = event.getKeyCode();
+
+        int digit = digitFromKeyCode(key);
+        if (digit >= 0) {
+            // Numeric channel select: show typed digits on the player (top-right) without opening the channel list.
+            if (isVisible()) hide();
+            onDigitPressed(digit);
+            return true;
+        }
+
+        if (key == KeyEvent.KEYCODE_DEL || key == KeyEvent.KEYCODE_FORWARD_DEL) {
+            if (numberBuffer.length() > 0) {
+                numberBuffer.deleteCharAt(numberBuffer.length() - 1);
+                updateTypedNumberUi();
+                MAIN.removeCallbacks(commitNumberRunnable);
+                MAIN.removeCallbacks(hideNumberRunnable);
+                if (numberBuffer.length() > 0) {
+                    MAIN.postDelayed(commitNumberRunnable, NUMBER_COMMIT_DELAY_MS);
+                    MAIN.postDelayed(hideNumberRunnable, NUMBER_HIDE_DELAY_MS);
+                } else {
+                    hideTypedNumber();
+                }
+                return true;
+            }
+        }
+
         if (key == KeyEvent.KEYCODE_BACK) {
+            if (numberBuffer.length() > 0) {
+                clearTypedNumber();
+                return true;
+            }
             if (isVisible()) {
                 hide();
                 return true;
@@ -191,6 +236,10 @@ public final class PlayerChannelOverlayController {
         }
 
         if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) {
+            if (numberBuffer.length() > 0) {
+                commitPendingChannelNumber();
+                return true;
+            }
             if (!isVisible()) {
                 show();
                 return true;
@@ -223,6 +272,147 @@ public final class PlayerChannelOverlayController {
         }
 
         return false;
+    }
+
+    private void onDigitPressed(int digit) {
+        if (digit < 0 || digit > 9) return;
+
+        if (numberBuffer.length() >= 4) {
+            // Keep only the last 3 digits then append.
+            numberBuffer.delete(0, numberBuffer.length() - 3);
+        }
+        numberBuffer.append(digit);
+        updateTypedNumberUi();
+
+        MAIN.removeCallbacks(commitNumberRunnable);
+        MAIN.removeCallbacks(hideNumberRunnable);
+        MAIN.postDelayed(commitNumberRunnable, NUMBER_COMMIT_DELAY_MS);
+        MAIN.postDelayed(hideNumberRunnable, NUMBER_HIDE_DELAY_MS);
+    }
+
+    private void commitPendingChannelNumber() {
+        if (numberBuffer.length() == 0) return;
+
+        final int channelNumber;
+        try {
+            channelNumber = Integer.parseInt(numberBuffer.toString());
+        } catch (Throwable ignored) {
+            clearTypedNumber();
+            return;
+        }
+
+        numberBuffer.setLength(0);
+        MAIN.removeCallbacks(commitNumberRunnable);
+
+        // Keep the number visible briefly after committing.
+        MAIN.removeCallbacks(hideNumberRunnable);
+        MAIN.postDelayed(hideNumberRunnable, 650L);
+
+        if (channelNumber <= 0) return;
+
+        ensureLoadedThen(() -> playChannelByNumber(channelNumber));
+    }
+
+    private void ensureLoadedThen(@NonNull Runnable action) {
+        if (allChannels != null && !allChannels.isEmpty()) {
+            action.run();
+            return;
+        }
+
+        worker.execute(() -> {
+            List<Channel> loaded = loadChannels(appContext);
+            final List<Channel> loadedFinal = (loaded != null) ? loaded : Collections.emptyList();
+            final CategoryState state = buildCategories(loadedFinal);
+
+            MAIN.post(() -> {
+                allChannels = loadedFinal;
+                categories.clear();
+                categories.addAll(state.labels);
+                byCategory.clear();
+                byCategory.putAll(state.map);
+
+                if (isVisible()) {
+                    int idx = pickInitialCategoryIndex(state, currentUrl);
+                    if (idx < 0) idx = 0;
+                    categoryIndex = idx;
+                    applyCategory(categoryIndex);
+                    focusCurrentChannel();
+                }
+
+                action.run();
+            });
+        });
+    }
+
+    private void playChannelByNumber(int channelNumber) {
+        int idx = channelNumber - 1;
+        if (allChannels == null || idx < 0 || idx >= allChannels.size()) return;
+        Channel c = allChannels.get(idx);
+        if (c == null) return;
+
+        // Number selection should behave like direct tuning.
+        hide();
+        launcher.play(c);
+    }
+
+    private void updateTypedNumberUi() {
+        if (typedNumberView == null) return;
+        if (numberBuffer.length() <= 0) {
+            typedNumberView.setVisibility(View.GONE);
+            return;
+        }
+        typedNumberView.setText(numberBuffer.toString());
+        typedNumberView.setVisibility(View.VISIBLE);
+        typedNumberView.bringToFront();
+    }
+
+    private void hideTypedNumber() {
+        if (typedNumberView == null) return;
+        typedNumberView.setVisibility(View.GONE);
+    }
+
+    private void clearTypedNumber() {
+        numberBuffer.setLength(0);
+        MAIN.removeCallbacks(commitNumberRunnable);
+        MAIN.removeCallbacks(hideNumberRunnable);
+        hideTypedNumber();
+    }
+
+    private static int digitFromKeyCode(int keyCode) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_0:
+            case KeyEvent.KEYCODE_NUMPAD_0:
+                return 0;
+            case KeyEvent.KEYCODE_1:
+            case KeyEvent.KEYCODE_NUMPAD_1:
+                return 1;
+            case KeyEvent.KEYCODE_2:
+            case KeyEvent.KEYCODE_NUMPAD_2:
+                return 2;
+            case KeyEvent.KEYCODE_3:
+            case KeyEvent.KEYCODE_NUMPAD_3:
+                return 3;
+            case KeyEvent.KEYCODE_4:
+            case KeyEvent.KEYCODE_NUMPAD_4:
+                return 4;
+            case KeyEvent.KEYCODE_5:
+            case KeyEvent.KEYCODE_NUMPAD_5:
+                return 5;
+            case KeyEvent.KEYCODE_6:
+            case KeyEvent.KEYCODE_NUMPAD_6:
+                return 6;
+            case KeyEvent.KEYCODE_7:
+            case KeyEvent.KEYCODE_NUMPAD_7:
+                return 7;
+            case KeyEvent.KEYCODE_8:
+            case KeyEvent.KEYCODE_NUMPAD_8:
+                return 8;
+            case KeyEvent.KEYCODE_9:
+            case KeyEvent.KEYCODE_NUMPAD_9:
+                return 9;
+            default:
+                return -1;
+        }
     }
 
     private void ensureLoadedThenApply() {

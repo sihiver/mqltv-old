@@ -4,6 +4,7 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import org.json.JSONObject;
 
@@ -54,6 +55,12 @@ public final class PresenceReporter {
         AppContextHolder.init(context);
         send(context.getApplicationContext(), "online", channelTitle, channelUrl);
         lastOnlineAtMs = android.os.SystemClock.elapsedRealtime();
+
+        // External player launches won't call startPlayback(), so keep the presence fresh.
+        hbTitle = channelTitle;
+        hbUrl = channelUrl;
+        MAIN.removeCallbacks(HEARTBEAT);
+        MAIN.postDelayed(HEARTBEAT, HEARTBEAT_MS);
     }
 
     /** Call from internal player onStart (starts heartbeat). */
@@ -91,10 +98,16 @@ public final class PresenceReporter {
         if (context == null) return;
 
         String appKey = AuthPrefs.getAppKey(context);
-        if (appKey == null || appKey.trim().isEmpty()) return;
+        if (appKey == null || appKey.trim().isEmpty()) {
+            if (BuildConfig.DEBUG) Log.w("PresenceReporter", "skip presence: missing appKey");
+            return;
+        }
 
         String baseUrl = AuthPrefs.getBaseUrl(context);
-        if (baseUrl == null) return;
+        if (baseUrl == null) {
+            if (BuildConfig.DEBUG) Log.w("PresenceReporter", "skip presence: missing baseUrl");
+            return;
+        }
 
         String endpoint = joinUrl(baseUrl, "/public/presence");
 
@@ -117,10 +130,19 @@ public final class PresenceReporter {
                     // Ignore response body.
                     if (!resp.isSuccessful()) {
                         // Keep it silent; presence must never break playback.
+                        if (BuildConfig.DEBUG) {
+                            Log.w("PresenceReporter", "presence failed: HTTP " + resp.code() + " endpoint=" + endpoint + " status=" + status);
+                        }
                     }
                 }
-            } catch (IOException ignored) {
-            } catch (Throwable ignored) {
+            } catch (IOException e) {
+                if (BuildConfig.DEBUG) {
+                    Log.w("PresenceReporter", "presence failed: IO endpoint=" + endpoint + " status=" + status + " err=" + e);
+                }
+            } catch (Throwable e) {
+                if (BuildConfig.DEBUG) {
+                    Log.w("PresenceReporter", "presence failed: unexpected endpoint=" + endpoint + " status=" + status + " err=" + e);
+                }
             }
         });
     }

@@ -138,7 +138,10 @@ public class LoginActivity extends FragmentActivity {
             String host = u.getHost();
             if (host == null) return false;
             host = host.trim();
-            return "127.0.0.1".equals(host) || "localhost".equalsIgnoreCase(host) || "::1".equals(host);
+            return "127.0.0.1".equals(host)
+                    || "localhost".equalsIgnoreCase(host)
+                    || "::1".equals(host)
+                    || "0.0.0.0".equals(host);
         } catch (Throwable ignored) {
             return false;
         }
@@ -147,7 +150,7 @@ public class LoginActivity extends FragmentActivity {
     private static String humanizeLoginError(Throwable e, String baseUrl) {
         if (e instanceof IOException) {
             if (isLocalhostBaseUrl(baseUrl)) {
-                return "Gagal konek ke server. Jangan pakai 127.0.0.1/localhost di emulator/device. " +
+                return "Gagal konek ke server. Jangan pakai 127.0.0.1/localhost/0.0.0.0 di emulator/device. " +
                         "Pakai IP komputer server (contoh http://192.168.x.x:8088), " +
                         "atau 10.0.2.2:8088 (Android Emulator), atau 10.0.3.2:8088 (Genymotion).";
             }

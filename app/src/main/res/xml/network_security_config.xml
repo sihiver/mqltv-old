@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+
     <!-- Allow HTTP HLS streams for dens.tv subdomains (required for some sample IPTV links). -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">dens.tv</domain>
+    </domain-config>
+
+    <!-- Main backend host used by login / presence / playlist requests. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">iptv.mqlspot.my.id</domain>
     </domain-config>
 
     <!-- Local playlist server (LAN). -->

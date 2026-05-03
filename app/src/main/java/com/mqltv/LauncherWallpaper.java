@@ -17,7 +17,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.nio.file.Files;
 
 import okhttp3.Request;
 import okhttp3.Response;
@@ -98,7 +97,7 @@ public final class LauncherWallpaper {
         File out = new File(context.getFilesDir(), fileName);
         File tmp = new File(context.getFilesDir(), fileName + ".tmp");
 
-        try (BufferedOutputStream bos = new BufferedOutputStream(Files.newOutputStream(tmp.toPath()))) {
+        try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(tmp))) {
             byte[] buf = new byte[16 * 1024];
             int n;
             while ((n = input.read(buf)) != -1) {

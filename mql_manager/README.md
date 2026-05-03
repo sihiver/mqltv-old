@@ -18,6 +18,8 @@ cp .env.example .env
 go run ./cmd/server
 ```
 
+Note: the `mql_manager/` root folder does **not** contain a `package.json`. If you run `npm run dev` there, you'll get `ENOENT: Could not read package.json`.
+
 Backend defaults:
 - URL: http://127.0.0.1:8088
 - DB: `backend/data/mql_manager.db`

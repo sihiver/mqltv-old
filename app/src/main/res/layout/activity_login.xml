@@ -2,11 +2,13 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#FFFFFF"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="#FFFFFF"
         android:orientation="vertical"
         android:padding="24dp">
 
@@ -14,6 +16,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Login"
+            android:textColor="#111111"
             android:textSize="24sp"
             android:textStyle="bold"
             android:layout_marginBottom="16dp" />
@@ -22,49 +25,63 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Server Base URL"
+            android:textColor="#333333"
             android:layout_marginTop="8dp" />
 
         <EditText
             android:id="@+id/login_base_url"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="http://192.168.1.10:8088"
+            android:background="@drawable/bg_login_input_selector"
+            android:hint="http://iptv.mqlspot.my.id:8088"
             android:inputType="textUri"
-            android:singleLine="true" />
+            android:singleLine="true"
+            android:textColor="#111111"
+            android:textColorHint="#888888" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Username"
+            android:textColor="#333333"
             android:layout_marginTop="12dp" />
 
         <EditText
             android:id="@+id/login_username"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@drawable/bg_login_input_selector"
             android:hint="user001"
             android:inputType="text"
-            android:singleLine="true" />
+            android:singleLine="true"
+            android:textColor="#111111"
+            android:textColorHint="#888888" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Password"
+            android:textColor="#333333"
             android:layout_marginTop="12dp" />
 
         <EditText
             android:id="@+id/login_password"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@drawable/bg_login_input_selector"
             android:hint="password"
             android:inputType="textPassword"
-            android:singleLine="true" />
+            android:singleLine="true"
+            android:textColor="#111111"
+            android:textColorHint="#888888" />
 
         <Button
             android:id="@+id/login_button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@drawable/bg_login_button_selector"
             android:text="Login"
+            android:textColor="@color/login_button_text"
             android:layout_marginTop="16dp" />
 
         <TextView
@@ -72,6 +89,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text=""
+            android:textColor="#111111"
             android:layout_marginTop="12dp" />
 
     </LinearLayout>

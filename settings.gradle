@@ -11,8 +11,16 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Crosswalk (XWalk) Android Maven repo
+        maven { url = uri("https://download.01.org/crosswalk/releases/crosswalk/android/maven2") }
+        // Moxtra mirror for Crosswalk AAR (xwalk_core_library)
+        maven { url = uri("https://maven.moxtra.com/nexus/content/groups/public") }
     }
 }
 
 rootProject.name = "MQLTV"
 include(":app")
+
+// New standalone Vidio Web wrapper app (module name :vidio, folder com.sihiver.vidio)
+include(":vidio")
+project(":vidio").projectDir = file("com.sihiver.vidio")

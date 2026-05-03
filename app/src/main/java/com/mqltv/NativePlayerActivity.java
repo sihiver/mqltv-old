@@ -291,6 +291,28 @@ public class NativePlayerActivity extends Activity {
 
             mp.setOnErrorListener((player, what, extra) -> {
                 Log.e(TAG, "MediaPlayer error what=" + what + " extra=" + extra);
+                // MEDIA_ERROR_SERVER_DIED (100) indicates the native media server died.
+                // In that case we should release and recreate the MediaPlayer instead
+                // of finishing the Activity immediately.
+                if (what == MediaPlayer.MEDIA_ERROR_SERVER_DIED) {
+                    Toast.makeText(NativePlayerActivity.this, "Native media server died; restarting player", Toast.LENGTH_SHORT).show();
+                    // Delay a little to avoid tight restart loops.
+                    mainHandler.postDelayed(() -> {
+                        try {
+                            SurfaceHolder sh = surfaceView != null ? surfaceView.getHolder() : null;
+                            releasePlayer();
+                            if (sh != null && !isFinishing()) {
+                                startPlayback(sh);
+                            }
+                        } catch (Throwable t) {
+                            Log.e(TAG, "Failed to restart after MEDIA_ERROR_SERVER_DIED", t);
+                            // Fallback: finish the activity if restart fails.
+                            finish();
+                        }
+                    }, 500);
+                    return true;
+                }
+
                 Toast.makeText(NativePlayerActivity.this, "Native player error: " + what, Toast.LENGTH_SHORT).show();
                 finish();
                 return true;

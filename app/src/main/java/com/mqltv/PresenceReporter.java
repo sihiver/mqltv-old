@@ -27,6 +27,7 @@ public final class PresenceReporter {
 
     // Heartbeat: keep presence fresh while internal player is open.
     private static final long HEARTBEAT_MS = 30_000L;
+    private static final int SEND_RETRY_COUNT = 2;
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
@@ -52,13 +53,17 @@ public final class PresenceReporter {
     public static void reportOnlineLaunch(Context context, String channelTitle, String channelUrl) {
         if (context == null) return;
         AppContextHolder.init(context);
+
+        // Stop any previous heartbeat and clear old state before setting new channel.
+        MAIN.removeCallbacks(HEARTBEAT);
+        hbTitle = channelTitle;
+        hbUrl = channelUrl;
+
+        // Send "online" and start heartbeat for the new channel.
         send(context.getApplicationContext(), "online", channelTitle, channelUrl);
         lastOnlineAtMs = android.os.SystemClock.elapsedRealtime();
 
         // External player launches won't call startPlayback(), so keep the presence fresh.
-        hbTitle = channelTitle;
-        hbUrl = channelUrl;
-        MAIN.removeCallbacks(HEARTBEAT);
         MAIN.postDelayed(HEARTBEAT, HEARTBEAT_MS);
     }
 
@@ -86,6 +91,15 @@ public final class PresenceReporter {
         if (context == null) return;
         AppContextHolder.init(context);
 
+        // If we recently sent an "online" (within a short handoff window),
+        // skip sending an "offline" to avoid a race where the old Activity
+        // sends offline after a new Activity already sent online.
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (now - lastOnlineAtMs <= 3000) {
+            // Quick handoff: do not clear heartbeat/state or send offline.
+            return;
+        }
+
         MAIN.removeCallbacks(HEARTBEAT);
         hbTitle = null;
         hbUrl = null;
@@ -102,32 +116,45 @@ public final class PresenceReporter {
         String baseUrl = AuthPrefs.getBaseUrl(context);
         if (baseUrl == null) return;
 
-        String endpoint = joinUrl(baseUrl, "/public/presence");
+        String endpoint = joinUrl(baseUrl, "/public/presence").trim();
+        if (endpoint.isEmpty()) return;
 
         // Fire-and-forget; do not block UI.
         NetworkExecutors.io().execute(() -> {
-            try {
-                JSONObject payload = new JSONObject();
-                payload.put("appKey", appKey);
-                payload.put("status", status);
-                if (channelTitle != null) payload.put("channelTitle", channelTitle);
-                if (channelUrl != null) payload.put("channelUrl", channelUrl);
+            // Retry logic: attempt up to SEND_RETRY_COUNT times if network error occurs.
+            int attempt = 0;
+            while (attempt < SEND_RETRY_COUNT) {
+                attempt++;
+                try {
+                    JSONObject payload = new JSONObject();
+                    payload.put("appKey", appKey);
+                    payload.put("status", status);
+                    if (channelTitle != null) payload.put("channelTitle", channelTitle);
+                    if (channelUrl != null) payload.put("channelUrl", channelUrl);
 
-                Request req = new Request.Builder()
-                        .url(endpoint)
-                        .post(RequestBody.create(JSON, payload.toString()))
-                        .header("Accept", "application/json")
-                        .build();
+                    Request req = new Request.Builder()
+                            .url(endpoint)
+                            .post(RequestBody.create(JSON, payload.toString()))
+                            .header("Accept", "application/json")
+                            .build();
 
-                try (Response resp = NetworkClient.getClient().newCall(req).execute()) {
-                    // Ignore response body.
-                    if (!resp.isSuccessful()) {
-                        // Keep it silent; presence must never break playback.
+                    try (Response resp = NetworkClient.getClient().newCall(req).execute()) {
+                        if (resp.isSuccessful()) {
+                            return; // Success; exit retry loop.
+                        }
                     }
+                } catch (IOException e) {
+                    if (attempt < SEND_RETRY_COUNT) {
+                        try {
+                            Thread.sleep(500); // Brief backoff before retry.
+                        } catch (InterruptedException ignored) {
+                            return;
+                        }
+                    }
+                } catch (Throwable ignored) {
                 }
-            } catch (IOException ignored) {
-            } catch (Throwable ignored) {
             }
+            // All retries exhausted or other error; silently fail (do not break playback).
         });
     }
 

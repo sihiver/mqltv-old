@@ -143,6 +143,13 @@ public final class PlayerChannelOverlayController {
             header.setOnClickListener(v -> {
                 // no-op; header is mainly for category navigation
             });
+            header.setFocusable(true);
+            header.setFocusableInTouchMode(true);
+        }
+
+        if (categoryText != null) {
+            categoryText.setFocusable(true);
+            categoryText.setFocusableInTouchMode(true);
         }
 
         View left = activity.findViewById(R.id.player_channel_overlay_arrow_left);
@@ -275,7 +282,7 @@ public final class PlayerChannelOverlayController {
             // If a row is focused, treat OK as "play".
             if (list != null) {
                 View f = activity.getCurrentFocus();
-                int pos = f != null ? list.getChildAdapterPosition(f) : RecyclerView.NO_POSITION;
+                int pos = getAdapterPositionForView(f);
                 if (pos != RecyclerView.NO_POSITION) {
                     Channel c = adapter.getItem(pos);
                     if (c != null) {
@@ -291,6 +298,15 @@ public final class PlayerChannelOverlayController {
 
         if (key == KeyEvent.KEYCODE_DPAD_UP) {
             if (shouldThrottleDirectionalNav(key, repeat, event.getEventTime())) return true;
+            // Boundary: when already at the first row, move focus to header instead of forcing
+            // a focus/scroll operation that can crash on some TV devices.
+            int curPos = getFocusedListAdapterPosition();
+            if (curPos == 0) {
+                if (header != null && header.requestFocus()) return true;
+                if (categoryText != null && categoryText.requestFocus()) return true;
+                if (list != null) list.requestFocus();
+                return true;
+            }
             moveFocusByDelta(-1);
             return true;
         }
@@ -312,6 +328,20 @@ public final class PlayerChannelOverlayController {
         }
 
         return false;
+    }
+
+    private int getFocusedListAdapterPosition() {
+        View focused = activity.getCurrentFocus();
+        return getAdapterPositionForView(focused);
+    }
+
+    private int getAdapterPositionForView(View v) {
+        if (list == null || v == null) return RecyclerView.NO_POSITION;
+        // v can be a nested child (TextView/ImageView) inside a RecyclerView row.
+        // getChildAdapterPosition() expects the direct itemView with RecyclerView.LayoutParams.
+        View itemView = list.findContainingItemView(v);
+        if (itemView == null) return RecyclerView.NO_POSITION;
+        return list.getChildAdapterPosition(itemView);
     }
 
     private void onDigitPressed(int digit) {
@@ -596,7 +626,7 @@ public final class PlayerChannelOverlayController {
         if (focused != null) {
             View directNext = focused.focusSearch(delta > 0 ? View.FOCUS_DOWN : View.FOCUS_UP);
             if (directNext != null && directNext != focused && directNext.requestFocus()) {
-                int pos = list.getChildAdapterPosition(directNext);
+                int pos = getAdapterPositionForView(directNext);
                 if (pos != RecyclerView.NO_POSITION) focusedAdapterPosition = pos;
                 pendingFocusPosition = RecyclerView.NO_POSITION;
                 if (pendingFocusRunnable != null) {
@@ -608,7 +638,7 @@ public final class PlayerChannelOverlayController {
         }
 
         int current = RecyclerView.NO_POSITION;
-        if (focused != null) current = list.getChildAdapterPosition(focused);
+        if (focused != null) current = getAdapterPositionForView(focused);
         if (current == RecyclerView.NO_POSITION) {
             current = focusedAdapterPosition;
         }

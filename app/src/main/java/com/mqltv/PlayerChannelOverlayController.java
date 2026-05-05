@@ -2,7 +2,6 @@ package com.mqltv;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -78,7 +77,7 @@ public final class PlayerChannelOverlayController {
 
     private TextView typedNumberView;
 
-    private final ChannelAdapter adapter = new ChannelAdapter();
+    private final ChannelAdapter adapter = new ChannelAdapter(this);
 
     private volatile List<Channel> allChannels = Collections.emptyList();
     private final List<String> categories = new ArrayList<>();
@@ -89,9 +88,21 @@ public final class PlayerChannelOverlayController {
 
     private static final long NUMBER_COMMIT_DELAY_MS = 1200L;
     private static final long NUMBER_HIDE_DELAY_MS = 1800L;
+    private static final long DPAD_REPEAT_THROTTLE_MS = 150L;
+    private static final long FOCUS_RETRY_DELAY_MS = 45L;
+    private static final int MAX_FOCUS_RETRIES = 12;
+    
     private final StringBuilder numberBuffer = new StringBuilder(4);
     private final Runnable commitNumberRunnable = this::commitPendingChannelNumber;
     private final Runnable hideNumberRunnable = this::hideTypedNumber;
+    
+    // Focus restoration state to handle rapid navigation
+    private int pendingFocusPosition = RecyclerView.NO_POSITION;
+    private int focusedAdapterPosition = RecyclerView.NO_POSITION;
+    private int focusRetryCount = 0;
+    private Runnable pendingFocusRunnable = null;
+    private long lastDirectionalNavAtMs = 0L;
+    private int lastDirectionalNavKey = KeyEvent.KEYCODE_UNKNOWN;
 
     public PlayerChannelOverlayController(@NonNull Activity activity, @NonNull PlayerLauncher launcher) {
         this.activity = activity;
@@ -123,6 +134,9 @@ public final class PlayerChannelOverlayController {
             list.setAdapter(adapter);
             list.setHasFixedSize(false);
             list.setItemViewCacheSize(18);
+            list.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+            list.setFocusable(true);
+            list.setFocusableInTouchMode(true);
         }
 
         if (header != null) {
@@ -179,6 +193,14 @@ public final class PlayerChannelOverlayController {
     public void hide() {
         if (root == null) return;
         root.setVisibility(View.GONE);
+        
+        // Clean up any pending focus operations
+        if (pendingFocusRunnable != null) {
+            MAIN.removeCallbacks(pendingFocusRunnable);
+            pendingFocusRunnable = null;
+        }
+        pendingFocusPosition = RecyclerView.NO_POSITION;
+        focusRetryCount = 0;
     }
 
     public void destroy() {
@@ -190,6 +212,10 @@ public final class PlayerChannelOverlayController {
         try {
             MAIN.removeCallbacks(commitNumberRunnable);
             MAIN.removeCallbacks(hideNumberRunnable);
+            if (pendingFocusRunnable != null) {
+                MAIN.removeCallbacks(pendingFocusRunnable);
+                pendingFocusRunnable = null;
+            }
         } catch (Throwable ignored) {
         }
     }
@@ -198,6 +224,7 @@ public final class PlayerChannelOverlayController {
         if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
 
         int key = event.getKeyCode();
+        int repeat = event.getRepeatCount();
 
         int digit = digitFromKeyCode(key);
         if (digit >= 0) {
@@ -262,11 +289,24 @@ public final class PlayerChannelOverlayController {
 
         if (!isVisible()) return false;
 
+        if (key == KeyEvent.KEYCODE_DPAD_UP) {
+            if (shouldThrottleDirectionalNav(key, repeat, event.getEventTime())) return true;
+            moveFocusByDelta(-1);
+            return true;
+        }
+        if (key == KeyEvent.KEYCODE_DPAD_DOWN) {
+            if (shouldThrottleDirectionalNav(key, repeat, event.getEventTime())) return true;
+            moveFocusByDelta(1);
+            return true;
+        }
+
         if (key == KeyEvent.KEYCODE_DPAD_LEFT) {
+            if (shouldThrottleDirectionalNav(key, repeat, event.getEventTime())) return true;
             prevCategory();
             return true;
         }
         if (key == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            if (shouldThrottleDirectionalNav(key, repeat, event.getEventTime())) return true;
             nextCategory();
             return true;
         }
@@ -376,6 +416,27 @@ public final class PlayerChannelOverlayController {
         MAIN.removeCallbacks(commitNumberRunnable);
         MAIN.removeCallbacks(hideNumberRunnable);
         hideTypedNumber();
+    }
+
+    private boolean shouldThrottleDirectionalNav(int key, int repeat, long eventTime) {
+        if (repeat <= 0) {
+            lastDirectionalNavKey = key;
+            lastDirectionalNavAtMs = eventTime;
+            return false;
+        }
+
+        if (key != lastDirectionalNavKey) {
+            lastDirectionalNavKey = key;
+            lastDirectionalNavAtMs = eventTime;
+            return false;
+        }
+
+        if (eventTime - lastDirectionalNavAtMs < DPAD_REPEAT_THROTTLE_MS) {
+            return true;
+        }
+
+        lastDirectionalNavAtMs = eventTime;
+        return false;
     }
 
     private static int digitFromKeyCode(int keyCode) {
@@ -513,20 +574,129 @@ public final class PlayerChannelOverlayController {
         int target = adapter.findPositionByUrl(currentUrl);
         if (target < 0) target = 0;
 
+        focusAdapterPosition(target);
+    }
+
+    private void moveFocusByDelta(int delta) {
+        if (list == null) return;
+
+        int count = adapter.getItemCount();
+        if (count <= 0) return;
+
+        // Prefer moving the actual focus highlight (best UX) and only scroll when needed.
+        View focused = activity.getCurrentFocus();
+        // If the RecyclerView itself is focused, try to focus the current/first row first.
+        if (focused == list) {
+            int startPos = focusedAdapterPosition;
+            if (startPos == RecyclerView.NO_POSITION) startPos = adapter.findPositionByUrl(currentUrl);
+            if (startPos == RecyclerView.NO_POSITION) startPos = 0;
+            focusAdapterPosition(startPos);
+            return;
+        }
+        if (focused != null) {
+            View directNext = focused.focusSearch(delta > 0 ? View.FOCUS_DOWN : View.FOCUS_UP);
+            if (directNext != null && directNext != focused && directNext.requestFocus()) {
+                int pos = list.getChildAdapterPosition(directNext);
+                if (pos != RecyclerView.NO_POSITION) focusedAdapterPosition = pos;
+                pendingFocusPosition = RecyclerView.NO_POSITION;
+                if (pendingFocusRunnable != null) {
+                    MAIN.removeCallbacks(pendingFocusRunnable);
+                    pendingFocusRunnable = null;
+                }
+                return;
+            }
+        }
+
+        int current = RecyclerView.NO_POSITION;
+        if (focused != null) current = list.getChildAdapterPosition(focused);
+        if (current == RecyclerView.NO_POSITION) {
+            current = focusedAdapterPosition;
+        }
+        if (current == RecyclerView.NO_POSITION) {
+            current = adapter.findPositionByUrl(currentUrl);
+        }
+        if (current == RecyclerView.NO_POSITION) {
+            current = 0;
+        }
+
+        int next = current + delta;
+        if (next < 0) next = 0;
+        if (next >= count) next = count - 1;
+
+        focusAdapterPosition(next);
+    }
+
+    private void focusAdapterPosition(int target) {
+        if (list == null) return;
+
+        int count = adapter.getItemCount();
+        if (count <= 0) return;
+
+        if (target < 0) target = 0;
+        if (target >= count) target = count - 1;
+
+        if (pendingFocusRunnable != null) {
+            MAIN.removeCallbacks(pendingFocusRunnable);
+            pendingFocusRunnable = null;
+        }
+
+        pendingFocusPosition = target;
+        focusedAdapterPosition = target;
+        focusRetryCount = 0;
+
+        // Don't pin the row to the top; let RecyclerView keep a natural scroll feel.
+        list.scrollToPosition(target);
+
         final int pos = target;
-        list.scrollToPosition(pos);
-        list.post(() -> {
-            RecyclerView.ViewHolder vh = list.findViewHolderForAdapterPosition(pos);
-            if (vh != null && vh.itemView != null) {
-                vh.itemView.requestFocus();
-            } else {
-                // If the target ViewHolder is not yet bound, avoid forcing the header to take focus
-                // because that can steal focus and cause the UI to appear frozen. Instead, request
-                // focus on the RecyclerView itself and let the system move focus to the child when
-                // it becomes available.
+        list.post(() -> requestFocusForPosition(pos));
+    }
+
+    private void requestFocusForPosition(int pos) {
+        if (list == null) return;
+        if (pos != pendingFocusPosition) return;
+
+        RecyclerView.ViewHolder vh = list.findViewHolderForAdapterPosition(pos);
+        if (vh != null && vh.itemView != null && vh.itemView.requestFocus()) {
+            focusRetryCount = 0;
+            pendingFocusPosition = RecyclerView.NO_POSITION;
+            pendingFocusRunnable = null;
+            focusedAdapterPosition = pos;
+            return;
+        }
+
+        attemptFocusRetry(pos);
+    }
+    
+    private void attemptFocusRetry(int pos) {
+        if (list == null || pos != pendingFocusPosition) return;
+
+        if (focusRetryCount >= MAX_FOCUS_RETRIES) {
+            // Give up and focus the RecyclerView itself as last resort
+            if (list != null) {
                 list.requestFocus();
             }
-        });
+            pendingFocusPosition = RecyclerView.NO_POSITION;
+            return;
+        }
+        
+        focusRetryCount++;
+        long delay = FOCUS_RETRY_DELAY_MS + (focusRetryCount * 10L);
+        
+        pendingFocusRunnable = () -> {
+            if (list == null || pos != pendingFocusPosition) return;
+            RecyclerView.ViewHolder vh = list.findViewHolderForAdapterPosition(pos);
+            if (vh != null && vh.itemView != null && vh.itemView.requestFocus()) {
+                focusRetryCount = 0;
+                pendingFocusPosition = RecyclerView.NO_POSITION;
+                pendingFocusRunnable = null;
+                focusedAdapterPosition = pos;
+            } else {
+                // Still not bound, retry again
+                attemptFocusRetry(pos);
+            }
+        };
+        
+        MAIN.postDelayed(pendingFocusRunnable, delay);
     }
 
     private void bindInfo(Channel c, int absoluteIndex) {
@@ -730,9 +900,14 @@ public final class PlayerChannelOverlayController {
             void onChannelClicked(Channel c);
         }
 
+        private final PlayerChannelOverlayController controller;
         private Listener listener;
         private final List<Channel> items = new ArrayList<>();
         private String currentUrl;
+
+        ChannelAdapter(PlayerChannelOverlayController controller) {
+            this.controller = controller;
+        }
 
         void setListener(Listener l) {
             listener = l;
@@ -782,9 +957,13 @@ public final class PlayerChannelOverlayController {
 
         @Override
         public void onBindViewHolder(@NonNull VH holder, int position) {
-            Channel c = items.get(position);
+            int adapterPos = holder.getBindingAdapterPosition();
+            if (adapterPos == RecyclerView.NO_POSITION || adapterPos >= items.size()) return;
 
-            holder.number.setText(String.valueOf(position + 1));
+            Channel c = items.get(adapterPos);
+            final Channel boundChannel = c;
+
+            holder.number.setText(String.valueOf(adapterPos + 1));
             holder.title.setText(c != null && c.getTitle() != null ? c.getTitle() : "Channel");
 
             String group = c != null ? c.getGroupTitle() : null;
@@ -805,13 +984,27 @@ public final class PlayerChannelOverlayController {
 
             holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
                 if (hasFocus && listener != null) {
-                    listener.onChannelFocused(c, position);
+                    int livePos = holder.getBindingAdapterPosition();
+                    if (livePos == RecyclerView.NO_POSITION) return;
+                    controller.focusedAdapterPosition = livePos;
+                    controller.pendingFocusPosition = RecyclerView.NO_POSITION;
+                    if (controller.pendingFocusRunnable != null) {
+                        MAIN.removeCallbacks(controller.pendingFocusRunnable);
+                        controller.pendingFocusRunnable = null;
+                    }
+                    listener.onChannelFocused(boundChannel, livePos);
                 }
             });
 
             holder.itemView.setOnClickListener(v -> {
-                if (listener != null) listener.onChannelClicked(c);
+                if (listener == null) return;
+                int livePos = holder.getBindingAdapterPosition();
+                if (livePos == RecyclerView.NO_POSITION) return;
+                listener.onChannelClicked(boundChannel);
             });
+
+            holder.itemView.setFocusable(true);
+            holder.itemView.setFocusableInTouchMode(true);
         }
 
         @Override
@@ -819,7 +1012,7 @@ public final class PlayerChannelOverlayController {
             return items.size();
         }
 
-        static final class VH extends RecyclerView.ViewHolder {
+        final class VH extends RecyclerView.ViewHolder {
             final TextView number;
             final ImageView logoImg;
             final TextView logoText;

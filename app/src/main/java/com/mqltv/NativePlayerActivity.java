@@ -34,7 +34,6 @@ public class NativePlayerActivity extends Activity {
 
     private SurfaceView surfaceView;
     private ProgressBar loading;
-    private View controls;
     private ImageButton playPause;
 
     private MediaPlayer mediaPlayer;
@@ -142,7 +141,7 @@ public class NativePlayerActivity extends Activity {
 
         surfaceView = findViewById(R.id.native_surface_view);
         loading = findViewById(R.id.native_loading);
-        controls = findViewById(R.id.native_controls_container);
+        View controls = findViewById(R.id.native_controls_container);
         playPause = findViewById(R.id.native_btn_play_pause);
 
         title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
@@ -161,7 +160,7 @@ public class NativePlayerActivity extends Activity {
             }
             finish();
         });
-        if (channelOverlay != null) channelOverlay.setCurrentChannel(url);
+        channelOverlay.setCurrentChannel(url);
 
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
 
@@ -499,15 +498,6 @@ public class NativePlayerActivity extends Activity {
             boolean playing = mediaPlayer.isPlaying();
             playPause.setImageResource(playing ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
         } catch (Throwable ignored) {
-        }
-    }
-
-    private void toggleControls() {
-        if (controls == null) return;
-        if (controls.getVisibility() == View.VISIBLE) {
-            controls.setVisibility(View.GONE);
-        } else {
-            controls.setVisibility(View.VISIBLE);
         }
     }
 

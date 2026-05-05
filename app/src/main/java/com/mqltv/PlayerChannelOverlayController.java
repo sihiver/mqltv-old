@@ -519,8 +519,12 @@ public final class PlayerChannelOverlayController {
             RecyclerView.ViewHolder vh = list.findViewHolderForAdapterPosition(pos);
             if (vh != null && vh.itemView != null) {
                 vh.itemView.requestFocus();
-            } else if (header != null) {
-                header.requestFocus();
+            } else {
+                // If the target ViewHolder is not yet bound, avoid forcing the header to take focus
+                // because that can steal focus and cause the UI to appear frozen. Instead, request
+                // focus on the RecyclerView itself and let the system move focus to the child when
+                // it becomes available.
+                list.requestFocus();
             }
         });
     }
@@ -735,8 +739,18 @@ public final class PlayerChannelOverlayController {
         }
 
         void setCurrentUrl(String url) {
+            // Only refresh the rows that changed (previous/current) to avoid full
+            // adapter refresh which can cause focus loss during rapid navigation.
+            String prev = currentUrl;
+            if (prev == null ? url == null : prev.equals(url)) {
+                currentUrl = url;
+                return;
+            }
+            int prevPos = findPositionByUrl(prev);
             currentUrl = url;
-            notifyDataSetChanged();
+            int newPos = findPositionByUrl(url);
+            if (prevPos >= 0) notifyItemChanged(prevPos);
+            if (newPos >= 0 && newPos != prevPos) notifyItemChanged(newPos);
         }
 
         Channel getItem(int position) {

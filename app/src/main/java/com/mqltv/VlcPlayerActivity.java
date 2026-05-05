@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.annotation.SuppressLint;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -236,8 +237,7 @@ public class VlcPlayerActivity extends FragmentActivity {
         // Tuning for old CPUs: fewer threads + lighter decode.
         int cores = 1;
         try { cores = Math.max(1, Runtime.getRuntime().availableProcessors()); } catch (Exception ignored) {}
-        int avThreads = legacySdk ? Math.min(2, cores) : Math.min(4, cores);
-        final int avThreadsFinal = avThreads;
+        final int avThreadsFinal = legacySdk ? Math.min(2, cores) : Math.min(4, cores);
         options.add("--avcodec-threads=" + avThreadsFinal);
         options.add(legacySdk ? "--avcodec-skiploopfilter=nonref" : "--avcodec-skiploopfilter=all");
         if (legacySdk) {
@@ -286,25 +286,22 @@ public class VlcPlayerActivity extends FragmentActivity {
         libVLC = new LibVLC(this, options);
         mediaPlayer = new MediaPlayer(libVLC);
         // Video scale is handled by SurfaceView/TextureView layout.
-        mediaPlayer.setEventListener(new MediaPlayer.EventListener() {
-            @Override
-            public void onEvent(MediaPlayer.Event event) {
-                if (event.type == MediaPlayer.Event.Buffering) {
-                    if (loading != null) {
-                        loading.setVisibility(event.getBuffering() < 100f ? View.VISIBLE : View.GONE);
-                    }
+        mediaPlayer.setEventListener(event -> {
+            if (event.type == MediaPlayer.Event.Buffering) {
+                if (loading != null) {
+                    loading.setVisibility(event.getBuffering() < 100f ? View.VISIBLE : View.GONE);
                 }
-                if (event.type == MediaPlayer.Event.EncounteredError) {
-                    Toast.makeText(VlcPlayerActivity.this, "VLC playback error", Toast.LENGTH_LONG).show();
-                }
+            }
+            if (event.type == MediaPlayer.Event.EncounteredError) {
+                Toast.makeText(VlcPlayerActivity.this, "VLC playback error", Toast.LENGTH_LONG).show();
+            }
 
-                if (event.type == MediaPlayer.Event.Playing
-                        || event.type == MediaPlayer.Event.Paused
-                        || event.type == MediaPlayer.Event.Stopped
-                        || event.type == MediaPlayer.Event.TimeChanged
-                        || event.type == MediaPlayer.Event.LengthChanged) {
-                    updateUiFromPlayer();
-                }
+            if (event.type == MediaPlayer.Event.Playing
+                    || event.type == MediaPlayer.Event.Paused
+                    || event.type == MediaPlayer.Event.Stopped
+                    || event.type == MediaPlayer.Event.TimeChanged
+                    || event.type == MediaPlayer.Event.LengthChanged) {
+                updateUiFromPlayer();
             }
         });
 
@@ -384,6 +381,7 @@ public class VlcPlayerActivity extends FragmentActivity {
         });
     }
 
+    @SuppressLint("RestrictedApi")
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (channelOverlay != null && channelOverlay.handleKeyEvent(event)) {
@@ -467,7 +465,7 @@ public class VlcPlayerActivity extends FragmentActivity {
         if (seekBar != null) {
             if (length > 0) {
                 seekBar.setEnabled(true);
-                int progress = (int) ((time * 1000L) / Math.max(1L, length));
+                int progress = (int) ((time * 1000L) / length);
                 seekBar.setProgress(progress);
             } else {
                 seekBar.setEnabled(false);

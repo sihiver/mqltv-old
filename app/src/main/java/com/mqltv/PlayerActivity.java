@@ -1,11 +1,14 @@
 package com.mqltv;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.KeyEvent;
+import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -30,6 +33,7 @@ public class PlayerActivity extends FragmentActivity {
 
     private ExoPlayer player;
     private PlayerView playerView;
+    private ProgressBar loadingView;
 
     private PlayerChannelOverlayController channelOverlay;
 
@@ -57,6 +61,7 @@ public class PlayerActivity extends FragmentActivity {
         setContentView(R.layout.activity_player);
 
         playerView = findViewById(R.id.player_view);
+        loadingView = findViewById(R.id.player_loading);
 
         String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
         if (title != null) {
@@ -79,6 +84,7 @@ public class PlayerActivity extends FragmentActivity {
         });
     }
 
+    @SuppressLint("RestrictedApi")
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (channelOverlay != null && channelOverlay.handleKeyEvent(event)) return true;
@@ -140,6 +146,7 @@ public class PlayerActivity extends FragmentActivity {
         player.addListener(new Player.Listener() {
             @Override
             public void onPlayerError(@NonNull PlaybackException error) {
+                if (loadingView != null) loadingView.setVisibility(View.GONE);
                 String msg = "Playback error: " + error.getErrorCodeName();
                 Throwable cause = error.getCause();
                 boolean codecNotSupported = false;
@@ -169,6 +176,22 @@ public class PlayerActivity extends FragmentActivity {
                         finish();
                     }
                 }
+            }
+
+            @Override
+            public void onPlaybackStateChanged(int state) {
+                if (loadingView == null) return;
+                if (state == Player.STATE_BUFFERING || state == Player.STATE_IDLE) {
+                    loadingView.setVisibility(View.VISIBLE);
+                } else if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
+                    loadingView.setVisibility(View.GONE);
+                }
+            }
+
+            @Override
+            public void onIsLoadingChanged(boolean isLoading) {
+                if (loadingView == null) return;
+                loadingView.setVisibility(isLoading ? View.VISIBLE : View.GONE);
             }
         });
 

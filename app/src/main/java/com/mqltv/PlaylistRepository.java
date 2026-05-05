@@ -17,18 +17,18 @@ import okhttp3.ResponseBody;
 
 public final class PlaylistRepository {
     private static final String DEFAULT_ASSET = "channels.m3u";
-    private Context context;
 
     public List<Channel> loadDefault(Context context) {
         try (InputStream inputStream = context.getAssets().open(DEFAULT_ASSET)) {
-            return M3UParser.parse(inputStream);
+            List<Channel> channels = M3UParser.parse(inputStream);
+            return dedup(channels);
         } catch (IOException e) {
             return Collections.emptyList();
         }
     }
 
+    @SuppressWarnings("unused")
     public List<Channel> loadFromUrl(Context context, String playlistUrl) {
-        this.context = context;
         if (playlistUrl == null || playlistUrl.trim().isEmpty()) {
             return Collections.emptyList();
         }
@@ -48,7 +48,8 @@ public final class PlaylistRepository {
                     return Collections.emptyList();
                 }
                 inputStream = new BufferedInputStream(body.byteStream());
-                return M3UParser.parse(inputStream);
+                List<Channel> channels = M3UParser.parse(inputStream);
+                return dedup(channels);
             }
         } catch (IOException e) {
             return Collections.emptyList();

@@ -18,6 +18,7 @@ import android.widget.TextView;
 import android.net.Uri;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.IOException;
@@ -32,6 +33,12 @@ import okhttp3.ResponseBody;
 
 public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.VH> {
 
+    public interface Listener {
+        void onChannelClicked(Channel channel, int position);
+
+        void onChannelFocused(Channel channel, int position);
+    }
+
     private static final String TAG = "ChannelLogo";
 
     private static final ExecutorService IMAGE_EXECUTOR = Executors.newFixedThreadPool(3);
@@ -45,11 +52,33 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
 
     private final List<Channel> items = new ArrayList<>();
 
+    @Nullable
+    private Listener listener;
+
+    public ChannelCardAdapter() {
+        setHasStableIds(true);
+    }
+
+    public void setListener(@Nullable Listener listener) {
+        this.listener = listener;
+    }
+
     @SuppressLint("NotifyDataSetChanged")
     public void submit(List<Channel> channels) {
         items.clear();
         if (channels != null) items.addAll(channels);
         notifyDataSetChanged();
+    }
+
+    public int findPositionByUrl(String url) {
+        if (TextUtils.isEmpty(url)) return -1;
+        for (int i = 0; i < items.size(); i++) {
+            Channel c = items.get(i);
+            if (c == null) continue;
+            String u = c.getUrl();
+            if (url.equals(u)) return i;
+        }
+        return -1;
     }
 
     @NonNull
@@ -60,8 +89,17 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
     }
 
     @Override
+    public long getItemId(int position) {
+        if (position < 0 || position >= items.size()) return RecyclerView.NO_ID;
+        Channel c = items.get(position);
+        String url = c != null ? c.getUrl() : null;
+        return url == null ? RecyclerView.NO_ID : url.hashCode();
+    }
+
+    @Override
     public void onBindViewHolder(@NonNull VH holder, int position) {
         Channel c = items.get(position);
+        if (c == null) return;
         holder.name.setText(c.getTitle());
 
         String logoUrl = c.getLogoUrl();
@@ -82,6 +120,14 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
         clickTarget.setOnClickListener(v -> {
             if (!LoginGuard.ensureLoggedIn(v.getContext())) return;
             if (!SubscriptionGuard.ensureNotExpired(v.getContext())) return;
+
+            if (listener != null) {
+                int pos = holder.getBindingAdapterPosition();
+                if (pos != RecyclerView.NO_POSITION) {
+                    listener.onChannelClicked(c, pos);
+                }
+            }
+
             RecentChannelsStore.record(v.getContext(), c);
             PresenceReporter.reportOnlineLaunch(v.getContext(), c.getTitle(), c.getUrl());
             Intent intent = PlayerIntents.createPreferredPlayIntent(v.getContext(), c.getTitle(), c.getUrl());
@@ -90,6 +136,19 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
             } catch (Exception e) {
                 // Fallback to internal player if external launch fails for any reason.
                 v.getContext().startActivity(PlayerIntents.createPlayIntent(v.getContext(), c.getTitle(), c.getUrl()));
+            }
+        });
+
+        holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
+            float s = hasFocus ? 1.05f : 1.0f;
+            v.animate().scaleX(s).scaleY(s).setDuration(120).start();
+            v.setActivated(hasFocus);
+
+            if (hasFocus && listener != null) {
+                int pos = holder.getBindingAdapterPosition();
+                if (pos != RecyclerView.NO_POSITION) {
+                    listener.onChannelFocused(c, pos);
+                }
             }
         });
     }

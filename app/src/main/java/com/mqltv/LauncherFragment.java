@@ -40,12 +40,15 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
     private static final String ARG_INITIAL_FOCUS_POSITION = "initial_focus_position";
     private static final String ARG_INITIAL_APPS_INDEX = "initial_apps_index";
+    private static final String ARG_INITIAL_RECENT_URL = "initial_recent_url";
+    private static final String ARG_INITIAL_RECENT_INDEX = "initial_recent_index";
 
     private static final int LIVE_TV_CARD_POSITION = 0;
     private static final int RADIO_CARD_POSITION = 1;
     private static final int SETTINGS_BUTTON_POSITION = 2;
     private static final int PROFILE_BUTTON_POSITION = 3;
     private static final int APPS_ROW_POSITION = 4;
+    private static final int RECENT_ROW_POSITION = 5;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -57,13 +60,19 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private int lastSelectedCardPosition = LIVE_TV_CARD_POSITION;
     private int lastSelectedAppIndex = 0;
 
+    private int lastSelectedRecentIndex = 0;
+    @Nullable
+    private String lastSelectedRecentUrl;
+
     private RecyclerView appsList;
 
-    static LauncherFragment newInstance(int initialFocusPosition, int initialAppsIndex) {
+    static LauncherFragment newInstance(int initialFocusPosition, int initialAppsIndex, @Nullable String initialRecentUrl, int initialRecentIndex) {
         LauncherFragment fragment = new LauncherFragment();
         Bundle args = new Bundle();
         args.putInt(ARG_INITIAL_FOCUS_POSITION, initialFocusPosition);
         args.putInt(ARG_INITIAL_APPS_INDEX, Math.max(0, initialAppsIndex));
+        args.putString(ARG_INITIAL_RECENT_URL, initialRecentUrl);
+        args.putInt(ARG_INITIAL_RECENT_INDEX, Math.max(0, initialRecentIndex));
         fragment.setArguments(args);
         return fragment;
     }
@@ -97,6 +106,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (args != null) {
             lastSelectedCardPosition = args.getInt(ARG_INITIAL_FOCUS_POSITION, LIVE_TV_CARD_POSITION);
             lastSelectedAppIndex = Math.max(0, args.getInt(ARG_INITIAL_APPS_INDEX, 0));
+            lastSelectedRecentUrl = args.getString(ARG_INITIAL_RECENT_URL, null);
+            lastSelectedRecentIndex = Math.max(0, args.getInt(ARG_INITIAL_RECENT_INDEX, 0));
         }
     }
 
@@ -259,6 +270,19 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             recentList.setClipToPadding(false);
             recentList.setClipChildren(false);
             recentAdapter = new ChannelCardAdapter();
+            recentAdapter.setListener(new ChannelCardAdapter.Listener() {
+                @Override
+                public void onChannelClicked(Channel channel, int position) {
+                    if (channel == null) return;
+                    syncRecentFocusState(channel.getUrl(), position);
+                }
+
+                @Override
+                public void onChannelFocused(Channel channel, int position) {
+                    if (channel == null) return;
+                    syncRecentFocusState(channel.getUrl(), position);
+                }
+            });
             recentList.setAdapter(recentAdapter);
         }
 
@@ -308,12 +332,44 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 }
             } else if (lastSelectedCardPosition == APPS_ROW_POSITION) {
                 requestFocusToApp(lastSelectedAppIndex);
+            } else if (lastSelectedCardPosition == RECENT_ROW_POSITION) {
+                requestFocusToRecent(lastSelectedRecentUrl, lastSelectedRecentIndex);
             } else {
                 // Lock header focus while card focus is being restored to prevent bouncing.
                 setHeaderButtonsFocusable(false);
                 requestFocusToCard(lastSelectedCardPosition);
             }
         }
+    }
+
+    private void requestFocusToRecent(@Nullable String url, int indexFallback) {
+        if (recentList == null || recentAdapter == null) return;
+        int target = -1;
+        if (url != null) {
+            try {
+                target = recentAdapter.findPositionByUrl(url);
+            } catch (Exception ignored) {
+            }
+        }
+        if (target < 0) target = Math.max(0, indexFallback);
+        final int finalTarget = target;
+        recentList.post(() -> {
+            if (recentList == null) return;
+            recentList.scrollToPosition(finalTarget);
+            requestRecentFocusWithRetry(finalTarget, 0);
+        });
+    }
+
+    private void requestRecentFocusWithRetry(int index, int attempt) {
+        if (recentList == null) return;
+        RecyclerView.ViewHolder vh = recentList.findViewHolderForAdapterPosition(index);
+        boolean focused = false;
+        if (vh != null && vh.itemView != null) {
+            focused = vh.itemView.requestFocus();
+        }
+        if (focused) return;
+        if (attempt >= 8) return;
+        recentList.postDelayed(() -> requestRecentFocusWithRetry(index, attempt + 1), 24);
     }
 
     private void requestFocusToApp(int index) {
@@ -471,6 +527,15 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         }
     }
 
+    private void syncRecentFocusState(@Nullable String url, int index) {
+        lastSelectedCardPosition = RECENT_ROW_POSITION;
+        lastSelectedRecentUrl = url;
+        lastSelectedRecentIndex = Math.max(0, index);
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).setHomeRecentFocus(lastSelectedRecentUrl, lastSelectedRecentIndex);
+        }
+    }
+
     private void syncFocusFromCurrentView() {
         View root = getView();
         if (root == null) return;
@@ -503,6 +568,24 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 int pos = vh.getBindingAdapterPosition();
                 if (pos != RecyclerView.NO_POSITION) {
                     syncAppsFocusState(pos);
+                }
+            }
+        }
+
+        if (recentList != null) {
+            RecyclerView.ViewHolder vh = recentList.findContainingViewHolder(focused);
+            if (vh != null) {
+                int pos = vh.getBindingAdapterPosition();
+                if (pos != RecyclerView.NO_POSITION && recentAdapter != null) {
+                    // Prefer URL for stability when the recent list order changes.
+                    // If we can't resolve URL, keep index.
+                    String url = null;
+                    try {
+                        // We don't have direct accessors; URL will be updated by adapter callbacks in most cases.
+                        url = lastSelectedRecentUrl;
+                    } catch (Exception ignored) {
+                    }
+                    syncRecentFocusState(url, pos);
                 }
             }
         }
@@ -569,6 +652,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     recentAdapter.submit(recent);
                 } else {
                     recentAdapter.submit(new ArrayList<>());
+                }
+
+                // If we are returning to the Recent row, re-apply focus after data refresh.
+                if (has && lastSelectedCardPosition == RECENT_ROW_POSITION) {
+                    requestFocusToRecent(lastSelectedRecentUrl, lastSelectedRecentIndex);
                 }
             });
         });

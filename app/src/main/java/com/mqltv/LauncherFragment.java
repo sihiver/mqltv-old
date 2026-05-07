@@ -39,11 +39,13 @@ import java.util.concurrent.Executors;
 public class LauncherFragment extends Fragment implements LauncherCardAdapter.Listener {
 
     private static final String ARG_INITIAL_FOCUS_POSITION = "initial_focus_position";
+    private static final String ARG_INITIAL_APPS_INDEX = "initial_apps_index";
 
     private static final int LIVE_TV_CARD_POSITION = 0;
     private static final int RADIO_CARD_POSITION = 1;
     private static final int SETTINGS_BUTTON_POSITION = 2;
     private static final int PROFILE_BUTTON_POSITION = 3;
+    private static final int APPS_ROW_POSITION = 4;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -53,11 +55,15 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private View settingsButton;
     private View profileButton;
     private int lastSelectedCardPosition = LIVE_TV_CARD_POSITION;
+    private int lastSelectedAppIndex = 0;
 
-    static LauncherFragment newInstance(int initialFocusPosition) {
+    private RecyclerView appsList;
+
+    static LauncherFragment newInstance(int initialFocusPosition, int initialAppsIndex) {
         LauncherFragment fragment = new LauncherFragment();
         Bundle args = new Bundle();
         args.putInt(ARG_INITIAL_FOCUS_POSITION, initialFocusPosition);
+        args.putInt(ARG_INITIAL_APPS_INDEX, Math.max(0, initialAppsIndex));
         fragment.setArguments(args);
         return fragment;
     }
@@ -90,6 +96,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         Bundle args = getArguments();
         if (args != null) {
             lastSelectedCardPosition = args.getInt(ARG_INITIAL_FOCUS_POSITION, LIVE_TV_CARD_POSITION);
+            lastSelectedAppIndex = Math.max(0, args.getInt(ARG_INITIAL_APPS_INDEX, 0));
         }
     }
 
@@ -203,7 +210,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         adapter = new LauncherCardAdapter(this);
         cardsList.setAdapter(adapter);
 
-        RecyclerView appsList = v.findViewById(R.id.launcher_apps);
+        appsList = v.findViewById(R.id.launcher_apps);
         if (appsList != null) {
             appsList.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
             appsList.setHasFixedSize(false);
@@ -233,6 +240,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 @Override
                 public void onAddClicked() {
                     showAddAppDialog(appContext);
+                }
+
+                @Override
+                public void onAppFocused(LauncherAppEntry entry, int position) {
+                    syncAppsFocusState(position);
                 }
             });
             appsList.setAdapter(appsAdapter);
@@ -294,12 +306,36 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                         profileButton.requestFocus();
                     });
                 }
+            } else if (lastSelectedCardPosition == APPS_ROW_POSITION) {
+                requestFocusToApp(lastSelectedAppIndex);
             } else {
                 // Lock header focus while card focus is being restored to prevent bouncing.
                 setHeaderButtonsFocusable(false);
                 requestFocusToCard(lastSelectedCardPosition);
             }
         }
+    }
+
+    private void requestFocusToApp(int index) {
+        if (appsList == null) return;
+        final int target = Math.max(0, index);
+        appsList.post(() -> {
+            if (appsList == null) return;
+            appsList.scrollToPosition(target);
+            requestAppFocusWithRetry(target, 0);
+        });
+    }
+
+    private void requestAppFocusWithRetry(int index, int attempt) {
+        if (appsList == null) return;
+        RecyclerView.ViewHolder vh = appsList.findViewHolderForAdapterPosition(index);
+        boolean focused = false;
+        if (vh != null && vh.itemView != null) {
+            focused = vh.itemView.requestFocus();
+        }
+        if (focused) return;
+        if (attempt >= 6) return;
+        appsList.postDelayed(() -> requestAppFocusWithRetry(index, attempt + 1), 24);
     }
 
     @Override
@@ -427,6 +463,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         }
     }
 
+    private void syncAppsFocusState(int index) {
+        lastSelectedCardPosition = APPS_ROW_POSITION;
+        lastSelectedAppIndex = Math.max(0, index);
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).setHomeAppsFocus(lastSelectedAppIndex);
+        }
+    }
+
     private void syncFocusFromCurrentView() {
         View root = getView();
         if (root == null) return;
@@ -449,6 +493,16 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 int pos = vh.getBindingAdapterPosition();
                 if (pos == LIVE_TV_CARD_POSITION || pos == RADIO_CARD_POSITION) {
                     syncHomeFocusState(pos);
+                }
+            }
+        }
+
+        if (appsList != null) {
+            RecyclerView.ViewHolder vh = appsList.findContainingViewHolder(focused);
+            if (vh != null) {
+                int pos = vh.getBindingAdapterPosition();
+                if (pos != RecyclerView.NO_POSITION) {
+                    syncAppsFocusState(pos);
                 }
             }
         }

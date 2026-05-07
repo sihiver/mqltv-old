@@ -27,6 +27,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         void onAppClicked(LauncherAppEntry entry);
         void onAppLongPressed(LauncherAppEntry entry);
         void onAddClicked();
+        void onAppFocused(LauncherAppEntry entry, int position);
     }
 
     private final List<LauncherAppEntry> items = new ArrayList<>();
@@ -107,6 +108,13 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
             v.animate().scaleX(s).scaleY(s).setDuration(120).start();
             v.setActivated(hasFocus);
             if (v.getBackground() != null) v.getBackground().setState(v.getDrawableState());
+
+            if (hasFocus && listener != null) {
+                int pos = holder.getBindingAdapterPosition();
+                if (pos != RecyclerView.NO_POSITION) {
+                    listener.onAppFocused(e, pos);
+                }
+            }
         });
     }
 

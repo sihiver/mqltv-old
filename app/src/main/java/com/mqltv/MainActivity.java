@@ -9,6 +9,7 @@ import androidx.fragment.app.FragmentActivity;
 public class MainActivity extends FragmentActivity {
     private NavDestination currentDestination;
     private int homeFocusPosition = 0;
+    private int homeAppsIndex = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +53,11 @@ public class MainActivity extends FragmentActivity {
         homeFocusPosition = position;
     }
 
+    public void setHomeAppsFocus(int index) {
+        homeFocusPosition = 4;
+        homeAppsIndex = Math.max(0, index);
+    }
+
     private void showPlaceholder(String title) {
         getSupportFragmentManager()
                 .beginTransaction()
@@ -83,7 +89,7 @@ public class MainActivity extends FragmentActivity {
         switch (destination) {
             case HOME:
                 getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.content_container, LauncherFragment.newInstance(homeFocusPosition))
+                    .replace(R.id.content_container, LauncherFragment.newInstance(homeFocusPosition, homeAppsIndex))
                         .commit();
                 break;
             case LIVE_TV:

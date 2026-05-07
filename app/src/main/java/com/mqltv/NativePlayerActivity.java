@@ -65,9 +65,13 @@ public class NativePlayerActivity extends Activity {
     private boolean started = false;
     private boolean didResyncSeek = false;
 
+    // Debounce buffering events to avoid repeated spinner display
+    private boolean bufferingDebounceActive = false;
+
     private final Runnable showBufferingIfStillBuffering = new Runnable() {
         @Override
         public void run() {
+            bufferingDebounceActive = false;
             if (mediaPlayer == null) return;
             if (!isBuffering) return;
             // If we're already playing smoothly, don't re-show spinner.
@@ -217,6 +221,7 @@ public class NativePlayerActivity extends Activity {
         audioMuted = false;
         firstVideoFrameRendered = false;
         isBuffering = true;
+        bufferingDebounceActive = false;
         lastPositionMs = -1;
         lastPositionChangedAtMs = 0;
 
@@ -250,19 +255,20 @@ public class NativePlayerActivity extends Activity {
                 if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) {
                     isBuffering = true;
                     mainHandler.removeCallbacks(showBufferingIfStillBuffering);
-                    // After video has started, only show spinner if buffering persists.
-                    if (firstVideoFrameRendered) {
-                        mainHandler.postDelayed(showBufferingIfStillBuffering, 500);
-                    } else {
-                        showLoading(true);
-                    }
                     setMuted(true);
+                    
+                    // Debounce: only show spinner if buffering persists after a delay
+                    if (!bufferingDebounceActive) {
+                        bufferingDebounceActive = true;
+                        // Increase delay to 1500ms to avoid showing spinner for brief hiccups
+                        mainHandler.postDelayed(showBufferingIfStillBuffering, 1500);
+                    }
                 } else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END) {
                     isBuffering = false;
                     mainHandler.removeCallbacks(showBufferingIfStillBuffering);
-                    // If video has rendered, hide loading. Some devices may not send this reliably,
-                    // so VIDEO_RENDERING_START also hides the spinner unconditionally.
-                    if (firstVideoFrameRendered) showLoading(false);
+                    bufferingDebounceActive = false;
+                    // Always hide loading when buffering ends
+                    showLoading(false);
                     // Don't unmute yet unless we already have video rendering.
                     // Some STBs report BUFFERING_END before the first frame, which causes audio lead.
                     if (firstVideoFrameRendered) {
@@ -274,6 +280,7 @@ public class NativePlayerActivity extends Activity {
                     // Do this unconditionally; some devices never report BUFFERING_END.
                     isBuffering = false;
                     mainHandler.removeCallbacks(showBufferingIfStillBuffering);
+                    bufferingDebounceActive = false;
                     showLoading(false);
                     // ZTE B760H sometimes has persistent A/V offset (audio leads).
                     // A seek-to-current-position forces a pipeline flush and often re-aligns.
@@ -464,6 +471,8 @@ public class NativePlayerActivity extends Activity {
         mediaPlayer = null;
         prepared = false;
         started = false;
+        bufferingDebounceActive = false;
+        mainHandler.removeCallbacks(showBufferingIfStillBuffering);
 
         if (mp != null) {
             try {

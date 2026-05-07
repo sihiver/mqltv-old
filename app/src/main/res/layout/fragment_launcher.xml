@@ -185,10 +185,12 @@
             android:layout_width="42dp"
             android:layout_height="42dp"
             android:background="@drawable/launcher_card_bg_radio_80"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
             android:clickable="true"
-            android:contentDescription="Settings">
+            android:contentDescription="Settings"
+            android:nextFocusDown="@+id/launcher_cards"
+            android:nextFocusLeft="@+id/launcher_profile">
 
             <ImageView
                 android:id="@+id/launcher_settings_icon"
@@ -219,10 +221,12 @@
             android:layout_width="42dp"
             android:layout_height="42dp"
             android:background="@drawable/launcher_card_bg_radio_80"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
             android:clickable="true"
-            android:contentDescription="Profile">
+            android:contentDescription="Profile"
+            android:nextFocusDown="@+id/launcher_cards"
+            android:nextFocusRight="@id/launcher_settings">
 
             <TextView
                 android:id="@+id/launcher_profile_letter"

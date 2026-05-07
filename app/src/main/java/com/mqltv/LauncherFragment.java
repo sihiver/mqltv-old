@@ -38,11 +38,29 @@ import java.util.concurrent.Executors;
 
 public class LauncherFragment extends Fragment implements LauncherCardAdapter.Listener {
 
+    private static final String ARG_INITIAL_FOCUS_POSITION = "initial_focus_position";
+
+    private static final int LIVE_TV_CARD_POSITION = 0;
+    private static final int RADIO_CARD_POSITION = 1;
+    private static final int SETTINGS_BUTTON_POSITION = 2;
+    private static final int PROFILE_BUTTON_POSITION = 3;
+
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private RecyclerView cardsList;
     private LauncherCardAdapter adapter;
+    private View settingsButton;
+    private View profileButton;
+    private int lastSelectedCardPosition = LIVE_TV_CARD_POSITION;
+
+    static LauncherFragment newInstance(int initialFocusPosition) {
+        LauncherFragment fragment = new LauncherFragment();
+        Bundle args = new Bundle();
+        args.putInt(ARG_INITIAL_FOCUS_POSITION, initialFocusPosition);
+        fragment.setArguments(args);
+        return fragment;
+    }
 
     private LauncherAppsAdapter appsAdapter;
     private List<LauncherAppEntry> allLaunchableAppsCache;
@@ -65,6 +83,15 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             mainHandler.postDelayed(this, 10_000);
         }
     };
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        Bundle args = getArguments();
+        if (args != null) {
+            lastSelectedCardPosition = args.getInt(ARG_INITIAL_FOCUS_POSITION, LIVE_TV_CARD_POSITION);
+        }
+    }
 
     @Nullable
     @Override
@@ -118,14 +145,20 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             search.setOnClickListener(null);
         }
 
-        View settings = v.findViewById(R.id.launcher_settings);
-        if (settings != null) settings.setOnClickListener(view -> {
+        settingsButton = v.findViewById(R.id.launcher_settings);
+        if (settingsButton != null) settingsButton.setOnClickListener(view -> {
+            syncHomeFocusState(SETTINGS_BUTTON_POSITION);
             if (getActivity() instanceof MainActivity) {
                 ((MainActivity) getActivity()).openSettings();
             }
         });
+        if (settingsButton != null) {
+            settingsButton.setOnFocusChangeListener((view, hasFocus) -> {
+                if (hasFocus) syncHomeFocusState(SETTINGS_BUTTON_POSITION);
+            });
+        }
 
-        View profile = v.findViewById(R.id.launcher_profile);
+        profileButton = v.findViewById(R.id.launcher_profile);
         TextView profileLetter = v.findViewById(R.id.launcher_profile_letter);
         if (profileLetter != null) {
             String name = AuthPrefs.getDisplayName(appContext);
@@ -137,8 +170,9 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             }
             profileLetter.setText(letter);
         }
-        if (profile != null) {
-            profile.setOnClickListener(view -> {
+        if (profileButton != null) {
+            profileButton.setOnClickListener(view -> {
+                syncHomeFocusState(PROFILE_BUTTON_POSITION);
                 if (AuthPrefs.isLoggedIn(appContext)) {
                     Intent i = new Intent(appContext, AccountActivity.class);
                     i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -148,6 +182,9 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     LoginGuard.ensureLoggedIn(appContext);
                 }
             });
+            profileButton.setOnFocusChangeListener((view, hasFocus) -> {
+                if (hasFocus) syncHomeFocusState(PROFILE_BUTTON_POSITION);
+            });
         }
 
         cardsList = v.findViewById(R.id.launcher_cards);
@@ -156,6 +193,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         cardsList.setItemViewCacheSize(8);
         cardsList.setClipToPadding(false);
         cardsList.setClipChildren(false);
+        cardsList.setPreserveFocusAfterLayout(true);
 
         try {
             new StartSnapHelper().attachToRecyclerView(cardsList);
@@ -218,14 +256,6 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         cards.add(new LauncherCard("Radios", "+0 Stations", R.drawable.internet_radio_icon, NavDestination.SHOWS));
         adapter.submit(cards);
 
-        // Default focus to first card.
-        v.post(() -> {
-            if (cardsList != null && cardsList.getChildCount() > 0) {
-                View first = cardsList.getChildAt(0);
-                if (first != null) first.requestFocus();
-            }
-        });
-
         loadCounts(appContext);
         loadLauncherApps(appContext);
         loadRecentLive(appContext);
@@ -244,11 +274,37 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             updateNetworkIcon(getContext().getApplicationContext());
             mainHandler.removeCallbacks(headerTicker);
             mainHandler.post(headerTicker);
+
+            // Restore focus based on last visited position
+            if (lastSelectedCardPosition == SETTINGS_BUTTON_POSITION) {
+                if (settingsButton != null) {
+                    mainHandler.post(() -> {
+                        setHeaderButtonsFocusable(true);
+                        settingsButton.setFocusable(true);
+                        settingsButton.setFocusableInTouchMode(true);
+                        settingsButton.requestFocus();
+                    });
+                }
+            } else if (lastSelectedCardPosition == PROFILE_BUTTON_POSITION) {
+                if (profileButton != null) {
+                    mainHandler.post(() -> {
+                        setHeaderButtonsFocusable(true);
+                        profileButton.setFocusable(true);
+                        profileButton.setFocusableInTouchMode(true);
+                        profileButton.requestFocus();
+                    });
+                }
+            } else {
+                // Lock header focus while card focus is being restored to prevent bouncing.
+                setHeaderButtonsFocusable(false);
+                requestFocusToCard(lastSelectedCardPosition);
+            }
         }
     }
 
     @Override
     public void onPause() {
+        syncFocusFromCurrentView();
         super.onPause();
         if (adapter != null) adapter.setHostActive(false);
     }
@@ -309,12 +365,98 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 cards.add(new LauncherCard("Live TV's", "+" + liveCount + " Channels", R.drawable.tv_play_icon, NavDestination.LIVE_TV));
                 cards.add(new LauncherCard("Radios", "+0 Stations", R.drawable.internet_radio_icon, NavDestination.SHOWS));
                 adapter.submit(cards);
+
+                // After async card refresh, restore card focus to prevent fallback to header buttons.
+                if (lastSelectedCardPosition == LIVE_TV_CARD_POSITION || lastSelectedCardPosition == RADIO_CARD_POSITION) {
+                    setHeaderButtonsFocusable(false);
+                    requestFocusToCard(lastSelectedCardPosition);
+                }
             });
         });
     }
 
+    private void requestLiveTvFocus() {
+        requestFocusToCard(LIVE_TV_CARD_POSITION);
+    }
+
+    private void requestFocusToCard(int position) {
+        if (cardsList == null) return;
+
+        cardsList.post(() -> {
+            if (cardsList == null) return;
+            if (position < 0) return;
+            cardsList.scrollToPosition(position);
+            requestCardFocusWithRetry(position, 0);
+        });
+    }
+
+    private void requestCardFocusWithRetry(int position, int attempt) {
+        if (cardsList == null) return;
+        RecyclerView.ViewHolder vh = cardsList.findViewHolderForAdapterPosition(position);
+        boolean focused = false;
+        if (vh != null && vh.itemView != null) {
+            focused = vh.itemView.requestFocus();
+        }
+        if (focused) {
+            // Re-enable header controls after focus is stable on the selected card.
+            mainHandler.postDelayed(() -> setHeaderButtonsFocusable(true), 120);
+            return;
+        }
+        if (attempt >= 6) {
+            mainHandler.postDelayed(() -> setHeaderButtonsFocusable(true), 120);
+            return;
+        }
+        cardsList.postDelayed(() -> requestCardFocusWithRetry(position, attempt + 1), 24);
+    }
+
+    private void setHeaderButtonsFocusable(boolean focusable) {
+        if (settingsButton != null) {
+            settingsButton.setFocusable(focusable);
+            settingsButton.setFocusableInTouchMode(focusable);
+        }
+        if (profileButton != null) {
+            profileButton.setFocusable(focusable);
+            profileButton.setFocusableInTouchMode(focusable);
+        }
+    }
+
+    private void syncHomeFocusState(int position) {
+        lastSelectedCardPosition = position;
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).setHomeFocusPosition(position);
+        }
+    }
+
+    private void syncFocusFromCurrentView() {
+        View root = getView();
+        if (root == null) return;
+
+        View focused = root.findFocus();
+        if (focused == null) return;
+
+        if (focused == settingsButton) {
+            syncHomeFocusState(SETTINGS_BUTTON_POSITION);
+            return;
+        }
+        if (focused == profileButton) {
+            syncHomeFocusState(PROFILE_BUTTON_POSITION);
+            return;
+        }
+
+        if (cardsList != null) {
+            RecyclerView.ViewHolder vh = cardsList.findContainingViewHolder(focused);
+            if (vh != null) {
+                int pos = vh.getBindingAdapterPosition();
+                if (pos == LIVE_TV_CARD_POSITION || pos == RADIO_CARD_POSITION) {
+                    syncHomeFocusState(pos);
+                }
+            }
+        }
+    }
+
     @Override
     public void onDestroy() {
+        syncFocusFromCurrentView();
         super.onDestroy();
         if (adapter != null) adapter.release();
         executor.shutdownNow();
@@ -593,8 +735,24 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     @Override
     public void onCardClicked(LauncherCard card) {
         if (card == null) return;
+        // Save which card was clicked for focus restore on resume
+        if (card.getDestination() == NavDestination.LIVE_TV) {
+            syncHomeFocusState(LIVE_TV_CARD_POSITION);
+        } else if (card.getDestination() == NavDestination.SHOWS) {
+            syncHomeFocusState(RADIO_CARD_POSITION);
+        }
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).navigateTo(card.getDestination());
+        }
+    }
+
+    @Override
+    public void onCardFocused(LauncherCard card) {
+        if (card == null) return;
+        if (card.getDestination() == NavDestination.LIVE_TV) {
+            syncHomeFocusState(LIVE_TV_CARD_POSITION);
+        } else if (card.getDestination() == NavDestination.SHOWS) {
+            syncHomeFocusState(RADIO_CARD_POSITION);
         }
     }
 }

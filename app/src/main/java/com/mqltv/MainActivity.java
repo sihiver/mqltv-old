@@ -8,6 +8,7 @@ import androidx.fragment.app.FragmentActivity;
 
 public class MainActivity extends FragmentActivity {
     private NavDestination currentDestination;
+    private int homeFocusPosition = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,11 +35,21 @@ public class MainActivity extends FragmentActivity {
 
     public void navigateTo(NavDestination destination) {
         if (destination == null) return;
+        if (destination == NavDestination.LIVE_TV) {
+            homeFocusPosition = 0;
+        } else if (destination == NavDestination.SHOWS) {
+            homeFocusPosition = 1;
+        }
         showDestination(destination);
     }
 
     public void openSettings() {
+        homeFocusPosition = 2;
         showSettings();
+    }
+
+    public void setHomeFocusPosition(int position) {
+        homeFocusPosition = position;
     }
 
     private void showPlaceholder(String title) {
@@ -72,7 +83,7 @@ public class MainActivity extends FragmentActivity {
         switch (destination) {
             case HOME:
                 getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.content_container, new LauncherFragment())
+                        .replace(R.id.content_container, LauncherFragment.newInstance(homeFocusPosition))
                         .commit();
                 break;
             case LIVE_TV:

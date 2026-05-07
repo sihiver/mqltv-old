@@ -46,11 +46,16 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
 
     public interface Listener {
         void onCardClicked(LauncherCard card);
+        void onCardFocused(LauncherCard card);
     }
 
     private final List<LauncherCard> items = new ArrayList<>();
     private final Listener listener;
     private LauncherCardStyle cardStyle;
+
+    private static final Object PAYLOAD_STYLE = new Object();
+    private static final Object PAYLOAD_CONTENT = new Object();
+    private static final Object PAYLOAD_LIVETV_BG_STATE = new Object();
 
     private SimpleExoPlayer liveTvBgPlayer;
     private boolean liveTvBgFailed;
@@ -61,11 +66,14 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
 
     public LauncherCardAdapter(Listener listener) {
         this.listener = listener;
+        setHasStableIds(true);
     }
 
     public void setCardStyle(LauncherCardStyle style) {
         this.cardStyle = style;
-        notifyDataSetChanged();
+        if (getItemCount() > 0) {
+            notifyItemRangeChanged(0, getItemCount(), PAYLOAD_STYLE);
+        }
     }
 
     public void setHostActive(boolean active) {
@@ -95,9 +103,51 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
     }
 
     public void submit(List<LauncherCard> cards) {
+        if (cards == null) {
+            items.clear();
+            notifyDataSetChanged();
+            return;
+        }
+
+        // If the list shape is unchanged (same size and same destinations), update in-place to
+        // preserve focused ViewHolders and avoid focus jumping.
+        boolean sameShape = items.size() == cards.size();
+        if (sameShape) {
+            for (int i = 0; i < items.size(); i++) {
+                LauncherCard old = items.get(i);
+                LauncherCard neu = cards.get(i);
+                if (old == null || neu == null || old.getDestination() != neu.getDestination()) {
+                    sameShape = false;
+                    break;
+                }
+            }
+        }
+
+        if (sameShape) {
+            items.clear();
+            items.addAll(cards);
+            notifyItemRangeChanged(0, items.size(), PAYLOAD_CONTENT);
+            return;
+        }
+
         items.clear();
-        if (cards != null) items.addAll(cards);
+        items.addAll(cards);
         notifyDataSetChanged();
+    }
+
+    @Override
+    public long getItemId(int position) {
+        LauncherCard card = position >= 0 && position < items.size() ? items.get(position) : null;
+        if (card == null || card.getDestination() == null) return position;
+        return card.getDestination().ordinal();
+    }
+
+    private int findLiveTvCardPosition() {
+        for (int i = 0; i < items.size(); i++) {
+            LauncherCard c = items.get(i);
+            if (c != null && c.getDestination() == NavDestination.LIVE_TV) return i;
+        }
+        return 0;
     }
 
     @NonNull
@@ -117,37 +167,60 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
 
     @Override
     public void onBindViewHolder(@NonNull VH holder, int position) {
-        LauncherCard card = items.get(position);
-        boolean isLiveTv = card != null && card.getDestination() == NavDestination.LIVE_TV;
-        boolean isRadio = card != null && card.getDestination() == NavDestination.SHOWS;
-        assert card != null;
-        holder.title.setText(card.getTitle());
-        holder.subtitle.setText(card.getSubtitle() != null ? card.getSubtitle() : "");
-        holder.icon.setImageResource(card.getIconRes());
-        holder.indicator.setVisibility(View.INVISIBLE);
+        onBindViewHolder(holder, position, java.util.Collections.emptyList());
+    }
 
-        int colorPrimary = ContextCompat.getColor(holder.itemView.getContext(), R.color.mql_text_primary);
+    @Override
+    public void onBindViewHolder(@NonNull VH holder, int position, @NonNull List<Object> payloads) {
+        LauncherCard card = position >= 0 && position < items.size() ? items.get(position) : null;
+        if (card == null) return;
+
+        boolean isLiveTv = card.getDestination() == NavDestination.LIVE_TV;
+        boolean isRadio = card.getDestination() == NavDestination.SHOWS;
+
+        boolean isPartial = payloads != null && !payloads.isEmpty();
+        boolean needsContent = !isPartial || payloads.contains(PAYLOAD_CONTENT);
+        boolean needsStyle = !isPartial || payloads.contains(PAYLOAD_STYLE);
+        boolean needsLiveTvState = !isPartial || payloads.contains(PAYLOAD_LIVETV_BG_STATE);
+
         int colorSecondary = ContextCompat.getColor(holder.itemView.getContext(), R.color.mql_text_secondary);
         int colorAccent = ContextCompat.getColor(holder.itemView.getContext(), R.color.mql_accent);
-        holder.icon.setColorFilter(colorSecondary);
 
-        if (isRadio) {
-            if (cardStyle != null) {
-                StateListDrawable bg = createCardBackground(holder.itemView.getContext(), cardStyle, 18);
-                bg.setAlpha(204); // ~80% opacity
-                holder.itemView.setBackground(bg);
+        if (needsContent) {
+            holder.title.setText(card.getTitle());
+            holder.subtitle.setText(card.getSubtitle() != null ? card.getSubtitle() : "");
+            holder.icon.setImageResource(card.getIconRes());
+        }
+        if (!isPartial) {
+            holder.indicator.setVisibility(View.INVISIBLE);
+        }
+
+        // Avoid overriding focused tint during payload updates.
+        holder.icon.setColorFilter(holder.itemView.hasFocus() ? colorAccent : colorSecondary);
+
+        if (needsStyle) {
+            if (isRadio) {
+                if (cardStyle != null) {
+                    StateListDrawable bg = createCardBackground(holder.itemView.getContext(), cardStyle, 18);
+                    bg.setAlpha(204); // ~80% opacity
+                    holder.itemView.setBackground(bg);
+                } else {
+                    holder.itemView.setBackgroundResource(R.drawable.launcher_card_bg_radio_80);
+                }
             } else {
-                holder.itemView.setBackgroundResource(R.drawable.launcher_card_bg_radio_80);
-            }
-        } else {
-            if (cardStyle != null) {
-                holder.itemView.setBackground(createCardBackground(holder.itemView.getContext(), cardStyle, isLiveTv ? 0 : 18));
-            } else {
-                holder.itemView.setBackgroundResource(isLiveTv ? R.drawable.launcher_card_bg_square : R.drawable.launcher_card_bg);
+                if (cardStyle != null) {
+                    holder.itemView.setBackground(createCardBackground(holder.itemView.getContext(), cardStyle, isLiveTv ? 0 : 18));
+                } else {
+                    holder.itemView.setBackgroundResource(isLiveTv ? R.drawable.launcher_card_bg_square : R.drawable.launcher_card_bg);
+                }
             }
         }
 
-        bindLiveTvVideo(holder, card);
+        if (!isPartial) {
+            bindLiveTvVideo(holder, card);
+        } else if (needsLiveTvState && isLiveTv) {
+            bindLiveTvVideo(holder, card);
+        }
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onCardClicked(card);
@@ -170,6 +243,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
 
             // Keep focused card fully visible (avoid partial cut on the left).
             if (hasFocus) {
+                if (listener != null) listener.onCardFocused(card);
                 holder.icon.setColorFilter(colorAccent);
                 View parent = (View) v.getParent();
                 if (parent instanceof RecyclerView) {
@@ -279,7 +353,12 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
                 p.prepare();
             }
             p.setPlayWhenReady(hostActive);
-            notifyDataSetChanged();
+            int livePos = findLiveTvCardPosition();
+            if (livePos >= 0 && livePos < getItemCount()) {
+                notifyItemChanged(livePos, PAYLOAD_LIVETV_BG_STATE);
+            } else {
+                notifyDataSetChanged();
+            }
         } catch (Exception e) {
             Log.e(TAG, "failed switching to local fallback", e);
             liveTvBgFailed = true;
@@ -342,7 +421,12 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
                         p.stop(true);
                     } catch (Exception ignored) {
                     }
-                    notifyDataSetChanged();
+                    int livePos = findLiveTvCardPosition();
+                    if (livePos >= 0 && livePos < getItemCount()) {
+                        notifyItemChanged(livePos, PAYLOAD_LIVETV_BG_STATE);
+                    } else {
+                        notifyDataSetChanged();
+                    }
                 }
 
                 @Override

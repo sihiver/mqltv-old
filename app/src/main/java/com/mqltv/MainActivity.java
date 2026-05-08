@@ -1,12 +1,19 @@
 package com.mqltv;
 
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 
 import androidx.fragment.app.FragmentActivity;
 
 public class MainActivity extends FragmentActivity {
+    private static final String PREFS_HOME_STATE = "home_state";
+    private static final String KEY_FOCUS_POS = "focus_pos";
+    private static final String KEY_APPS_INDEX = "apps_index";
+    private static final String KEY_RECENT_URL = "recent_url";
+    private static final String KEY_RECENT_INDEX = "recent_index";
+
     private NavDestination currentDestination;
     private int homeFocusPosition = 0;
     private int homeAppsIndex = 0;
@@ -16,6 +23,7 @@ public class MainActivity extends FragmentActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        restoreHomeState();
 
         setContentView(R.layout.activity_main);
 
@@ -36,6 +44,12 @@ public class MainActivity extends FragmentActivity {
         AccountStatusRefresher.refreshIfDue(this);
     }
 
+    @Override
+    protected void onPause() {
+        persistHomeState();
+        super.onPause();
+    }
+
     public void navigateTo(NavDestination destination) {
         if (destination == null) return;
         if (destination == NavDestination.LIVE_TV) {
@@ -43,27 +57,32 @@ public class MainActivity extends FragmentActivity {
         } else if (destination == NavDestination.SHOWS) {
             homeFocusPosition = 1;
         }
+        persistHomeState();
         showDestination(destination);
     }
 
     public void openSettings() {
         homeFocusPosition = 2;
+        persistHomeState();
         showSettings();
     }
 
     public void setHomeFocusPosition(int position) {
         homeFocusPosition = position;
+        persistHomeState();
     }
 
     public void setHomeAppsFocus(int index) {
         homeFocusPosition = 4;
         homeAppsIndex = Math.max(0, index);
+        persistHomeState();
     }
 
     public void setHomeRecentFocus(String url, int index) {
         homeFocusPosition = 5;
         homeRecentUrl = url;
         homeRecentIndex = Math.max(0, index);
+        persistHomeState();
     }
 
     private void showPlaceholder(String title) {
@@ -130,5 +149,33 @@ public class MainActivity extends FragmentActivity {
             showDestination(NavDestination.HOME);
         }
         // At root: ignore back to avoid exiting the Home app.
+    }
+
+    private void persistHomeState() {
+        try {
+            SharedPreferences sp = getSharedPreferences(PREFS_HOME_STATE, MODE_PRIVATE);
+            sp.edit()
+                    .putInt(KEY_FOCUS_POS, homeFocusPosition)
+                    .putInt(KEY_APPS_INDEX, homeAppsIndex)
+                    .putString(KEY_RECENT_URL, homeRecentUrl)
+                    .putInt(KEY_RECENT_INDEX, homeRecentIndex)
+                    .apply();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void restoreHomeState() {
+        try {
+            SharedPreferences sp = getSharedPreferences(PREFS_HOME_STATE, MODE_PRIVATE);
+            homeFocusPosition = sp.getInt(KEY_FOCUS_POS, 0);
+            homeAppsIndex = Math.max(0, sp.getInt(KEY_APPS_INDEX, 0));
+            homeRecentUrl = sp.getString(KEY_RECENT_URL, null);
+            homeRecentIndex = Math.max(0, sp.getInt(KEY_RECENT_INDEX, 0));
+        } catch (Exception ignored) {
+            homeFocusPosition = 0;
+            homeAppsIndex = 0;
+            homeRecentUrl = null;
+            homeRecentIndex = 0;
+        }
     }
 }

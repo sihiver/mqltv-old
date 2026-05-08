@@ -635,6 +635,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
             mainHandler.post(() -> {
                 if (appsAdapter != null) appsAdapter.submit(row);
+                // Jika terakhir user berada di baris Apps, pastikan fokus dikembalikan
+                // setelah data aplikasi selesai dimuat (khususnya penting di Android 4.x).
+                if (lastSelectedCardPosition == APPS_ROW_POSITION) {
+                    requestFocusToApp(lastSelectedAppIndex);
+                }
             });
         });
     }

@@ -87,30 +87,32 @@ public class LiveTvFragment extends Fragment {
         categoryList.setItemViewCacheSize(12);
         // Block category focus by default; only open when explicitly navigated via DPAD_UP from grid row 1.
         categoryList.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
-        categoryAdapter = new LiveTvCategoryAdapter(position -> {
-            applyCategory(appContext, position);
-            // After selecting a category, lock focus back to grid.
-            lockCategoryFocus();
-            if (grid != null) {
-                grid.post(() -> {
-                    if (grid == null) return;
-                    View first = grid.getChildAt(0);
-                    if (first != null) first.requestFocus();
-                });
-            }
-        });
+        // Listener: just update the grid, don't lock or move focus.
+        categoryAdapter = new LiveTvCategoryAdapter(position -> applyCategory(appContext, position));
         categoryList.setAdapter(categoryAdapter);
-        // Detect when focus leaves category back to grid, re-lock.
+        // DPAD_DOWN from any category item → lock category, return to grid.
         categoryList.addOnChildAttachStateChangeListener(new RecyclerView.OnChildAttachStateChangeListener() {
             @Override
             public void onChildViewAttachedToWindow(@NonNull View view) {
-                view.setOnFocusChangeListener((fv, hasFocus) -> {
-                    if (!hasFocus) lockCategoryFocus();
+                view.setOnKeyListener((cv, keyCode, event) -> {
+                    if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        lockCategoryFocus();
+                        if (grid != null) {
+                            grid.post(() -> {
+                                if (grid == null) return;
+                                View first = grid.getChildAt(0);
+                                if (first != null) first.requestFocus();
+                            });
+                        }
+                        return true;
+                    }
+                    return false;
                 });
             }
             @Override
             public void onChildViewDetachedFromWindow(@NonNull View view) {
-                view.setOnFocusChangeListener(null);
+                view.setOnKeyListener(null);
             }
         });
 
@@ -121,6 +123,7 @@ public class LiveTvFragment extends Fragment {
         grid.setItemViewCacheSize(24);
         grid.setClipToPadding(false);
         grid.addItemDecoration(new GridSpacingItemDecoration(dpToPx(v), dpToPx(v), dpToPx(v)));
+        grid.setPreserveFocusAfterLayout(true);
         gridAdapter = new LiveTvChannelGridAdapter();
         grid.setAdapter(gridAdapter);
 
@@ -242,7 +245,6 @@ public class LiveTvFragment extends Fragment {
         }
 
         if (gridAdapter != null) gridAdapter.submit(out);
-        if (grid != null) grid.scrollToPosition(0);
     }
 
     private void lockCategoryFocus() {

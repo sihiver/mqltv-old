@@ -1,6 +1,8 @@
 package com.mqltv;
 
 import android.annotation.SuppressLint;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,6 +23,9 @@ public final class LiveTvCategoryAdapter extends RecyclerView.Adapter<LiveTvCate
     private final List<String> labels = new ArrayList<>();
     private final Listener listener;
     private int selected = 0;
+
+    private final Handler debounce = new Handler(Looper.getMainLooper());
+    private Runnable pendingSelect = null;
 
     public LiveTvCategoryAdapter(Listener listener) {
         this.listener = listener;
@@ -61,6 +66,18 @@ public final class LiveTvCategoryAdapter extends RecyclerView.Adapter<LiveTvCate
         holder.text.setOnFocusChangeListener((v, hasFocus) -> {
             float s = hasFocus ? 1.04f : 1.0f;
             v.animate().scaleX(s).scaleY(s).setDuration(120).start();
+
+            if (hasFocus && listener != null) {
+                // Debounce: hanya update grid jika fokus diam 180ms (tidak loncat saat ditahan).
+                if (pendingSelect != null) debounce.removeCallbacks(pendingSelect);
+                int pos = holder.getBindingAdapterPosition();
+                pendingSelect = () -> {
+                    if (pos != RecyclerView.NO_POSITION && listener != null) {
+                        listener.onCategorySelected(pos);
+                    }
+                };
+                debounce.postDelayed(pendingSelect, 180);
+            }
         });
     }
 

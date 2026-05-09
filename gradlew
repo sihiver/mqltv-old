@@ -67,6 +67,16 @@ esac
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar:$APP_HOME/gradle/wrapper/gradle-wrapper-shared.jar:$APP_HOME/gradle/wrapper/gradle-cli.jar
 
+# Force JDK 17 for AGP 8.x when available.
+# This keeps project builds consistent even if IDE/system JAVA_HOME points to Java 11.
+if [ -x "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" ]; then
+    JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+    export JAVA_HOME
+elif [ -x "/usr/lib/jvm/java-1.17.0-openjdk-amd64/bin/java" ]; then
+    JAVA_HOME="/usr/lib/jvm/java-1.17.0-openjdk-amd64"
+    export JAVA_HOME
+fi
+
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then
     if [ -x "$JAVA_HOME/jre/sh/java" ] ; then

@@ -38,6 +38,11 @@ fi
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 		--device)
+			if [[ $# -lt 2 || -z "${2:-}" || "${2:0:1}" == "-" ]]; then
+				echo "Error: --device membutuhkan nilai, contoh: --device 192.168.1.10:5555" >&2
+				usage >&2
+				exit 2
+			fi
 			DEV="${2:-}"
 			shift 2
 			;;

@@ -135,6 +135,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         } finally {
             liveTvBgPlayer = null;
             liveTvBgPrepared = false;
+            liveTvBgPlayerInitializing = false;
         }
     }
 
@@ -174,8 +175,23 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
     @Override
     public long getItemId(int position) {
         LauncherCard card = position >= 0 && position < items.size() ? items.get(position) : null;
-        if (card == null || card.getDestination() == null) return position;
-        return card.getDestination().ordinal();
+        if (card == null) return RecyclerView.NO_ID;
+
+        // Stable ID must be unique per logical item, not only per destination type.
+        // Using destination ordinal alone collides when multiple cards share destination.
+        long h = 1125899906842597L; // prime seed
+
+        NavDestination dest = card.getDestination();
+        h = 31L * h + (dest != null ? dest.name().hashCode() : 0);
+
+        String title = card.getTitle();
+        h = 31L * h + (title != null ? title.hashCode() : 0);
+
+        String subtitle = card.getSubtitle();
+        h = 31L * h + (subtitle != null ? subtitle.hashCode() : 0);
+
+        h = 31L * h + card.getIconRes();
+        return h;
     }
 
     private int findLiveTvCardPosition() {
@@ -521,6 +537,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             }, 6000);
 
             liveTvBgPlayer = p;
+            liveTvBgPlayerInitializing = false;
             return p;
         } catch (Exception e) {
             Log.e(TAG, "failed creating bg player", e);

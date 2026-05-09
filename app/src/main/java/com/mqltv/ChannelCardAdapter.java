@@ -121,21 +121,23 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
             if (!LoginGuard.ensureLoggedIn(v.getContext())) return;
             if (!SubscriptionGuard.ensureNotExpired(v.getContext())) return;
 
+            int pos = holder.getBindingAdapterPosition();
+            if (pos == RecyclerView.NO_POSITION || pos < 0 || pos >= items.size()) return;
+            Channel fresh = items.get(pos);
+            if (fresh == null) return;
+
             if (listener != null) {
-                int pos = holder.getBindingAdapterPosition();
-                if (pos != RecyclerView.NO_POSITION) {
-                    listener.onChannelClicked(c, pos);
-                }
+                listener.onChannelClicked(fresh, pos);
             }
 
-            RecentChannelsStore.record(v.getContext(), c);
-            PresenceReporter.reportOnlineLaunch(v.getContext(), c.getTitle(), c.getUrl());
-            Intent intent = PlayerIntents.createPreferredPlayIntent(v.getContext(), c.getTitle(), c.getUrl());
+            RecentChannelsStore.record(v.getContext(), fresh);
+            PresenceReporter.reportOnlineLaunch(v.getContext(), fresh.getTitle(), fresh.getUrl());
+            Intent intent = PlayerIntents.createPreferredPlayIntent(v.getContext(), fresh.getTitle(), fresh.getUrl());
             try {
                 v.getContext().startActivity(intent);
             } catch (Exception e) {
                 // Fallback to internal player if external launch fails for any reason.
-                v.getContext().startActivity(PlayerIntents.createPlayIntent(v.getContext(), c.getTitle(), c.getUrl()));
+                v.getContext().startActivity(PlayerIntents.createPlayIntent(v.getContext(), fresh.getTitle(), fresh.getUrl()));
             }
         });
 
@@ -146,9 +148,10 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
 
             if (hasFocus && listener != null) {
                 int pos = holder.getBindingAdapterPosition();
-                if (pos != RecyclerView.NO_POSITION) {
-                    listener.onChannelFocused(c, pos);
-                }
+                if (pos == RecyclerView.NO_POSITION || pos < 0 || pos >= items.size()) return;
+                Channel fresh = items.get(pos);
+                if (fresh == null) return;
+                listener.onChannelFocused(fresh, pos);
             }
         });
     }

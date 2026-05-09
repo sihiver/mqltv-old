@@ -28,6 +28,7 @@ public final class PresenceReporter {
     // Heartbeat: keep presence fresh while internal player is open.
     private static final long HEARTBEAT_MS = 30_000L;
     private static final int SEND_RETRY_COUNT = 2;
+    private static final long RETRY_BACKOFF_MS = 500L;
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
@@ -107,6 +108,16 @@ public final class PresenceReporter {
         send(context.getApplicationContext(), "offline", null, null);
     }
 
+    private static boolean sleepBeforeRetry(int attempt) {
+        if (attempt >= SEND_RETRY_COUNT) return false;
+        try {
+            Thread.sleep(RETRY_BACKOFF_MS);
+            return true;
+        } catch (InterruptedException ignored) {
+            return false;
+        }
+    }
+
     private static void send(Context context, String status, String channelTitle, String channelUrl) {
         if (context == null) return;
 
@@ -142,16 +153,15 @@ public final class PresenceReporter {
                         if (resp.isSuccessful()) {
                             return; // Success; exit retry loop.
                         }
+                        // Server returned non-2xx; back off before retrying.
+                        if (!sleepBeforeRetry(attempt)) return;
                     }
                 } catch (IOException e) {
-                    if (attempt < SEND_RETRY_COUNT) {
-                        try {
-                            Thread.sleep(500); // Brief backoff before retry.
-                        } catch (InterruptedException ignored) {
-                            return;
-                        }
-                    }
+                    // Network error; back off before retrying.
+                    if (!sleepBeforeRetry(attempt)) return;
                 } catch (Throwable ignored) {
+                    // Unexpected error; keep behavior non-fatal but avoid tight retry loop.
+                    if (!sleepBeforeRetry(attempt)) return;
                 }
             }
             // All retries exhausted or other error; silently fail (do not break playback).

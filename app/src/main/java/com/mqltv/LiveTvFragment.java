@@ -95,23 +95,41 @@ public class LiveTvFragment extends Fragment {
         // Listener: just update the grid, don't lock or move focus.
         categoryAdapter = new LiveTvCategoryAdapter(position -> applyCategory(appContext, position));
         categoryList.setAdapter(categoryAdapter);
-        // DPAD_DOWN from any category item → lock category, return to grid.
+        // Key handling on each category tab item.
         categoryList.addOnChildAttachStateChangeListener(new RecyclerView.OnChildAttachStateChangeListener() {
             @Override
             public void onChildViewAttachedToWindow(@NonNull View view) {
                 view.setOnKeyListener((cv, keyCode, event) -> {
                     if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                        // Block upward navigation so focus cannot escape the category bar
+                        // (prevents focus animation from disappearing into title/header area).
+                        return true;
+                    }
+
                     if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                        lockCategoryFocus();
+                        // Scroll grid back to position 0 so the first row is visible.
+                        if (grid != null && grid.getLayoutManager() != null) {
+                            grid.getLayoutManager().scrollToPosition(0);
+                        }
                         if (grid != null) {
                             grid.post(() -> {
                                 if (grid == null) return;
                                 View first = grid.getChildAt(0);
-                                if (first != null) first.requestFocus();
+                                if (first != null) {
+                                    first.requestFocus();
+                                }
+                                // Lock AFTER focus has moved to the grid so Android's focus
+                                // engine doesn't redirect to an unexpected view (e.g. last tab).
+                                lockCategoryFocus();
                             });
+                        } else {
+                            lockCategoryFocus();
                         }
                         return true;
                     }
+
                     return false;
                 });
             }

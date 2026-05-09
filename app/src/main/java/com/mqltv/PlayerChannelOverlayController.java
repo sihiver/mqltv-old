@@ -416,13 +416,28 @@ public final class PlayerChannelOverlayController {
 
     private void playChannelByNumber(int channelNumber) {
         int idx = channelNumber - 1;
-        if (allChannels == null || idx < 0 || idx >= allChannels.size()) return;
-        Channel c = allChannels.get(idx);
+
+        // Use the channel list of the currently active category (not the global allChannels list),
+        // so pressing "5" plays the 5th channel within the active category, not the 5th globally.
+        List<Channel> activeList = currentCategoryChannels();
+        if (activeList == null || activeList.isEmpty()) {
+            activeList = allChannels;
+        }
+
+        if (activeList == null || idx < 0 || idx >= activeList.size()) return;
+        Channel c = activeList.get(idx);
         if (c == null) return;
 
-        // Number selection should behave like direct tuning.
         hide();
         launcher.play(c);
+    }
+
+    /** Returns the channel list for the currently selected category. */
+    private List<Channel> currentCategoryChannels() {
+        if (categories.isEmpty() || categoryIndex < 0 || categoryIndex >= categories.size()) {
+            return null;
+        }
+        return byCategory.get(categories.get(categoryIndex));
     }
 
     private void updateTypedNumberUi() {

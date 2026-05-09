@@ -20,6 +20,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -32,6 +33,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import okhttp3.Request;
 import okhttp3.Response;
@@ -80,6 +82,8 @@ public final class PlayerChannelOverlayController {
     private final ChannelAdapter adapter = new ChannelAdapter(this);
 
     private volatile List<Channel> allChannels = Collections.emptyList();
+    private final AtomicBoolean isLoading = new AtomicBoolean(false);
+    private Runnable pendingAfterLoad = null;
     private final List<String> categories = new ArrayList<>();
     private final Map<String, List<Channel>> byCategory = new LinkedHashMap<>();
     private int categoryIndex = 0;
@@ -174,6 +178,9 @@ public final class PlayerChannelOverlayController {
                 launcher.play(c);
             }
         });
+
+        // Pre-load channel list in background immediately so overlay opens instantly.
+        startLoad(null);
     }
 
     public void setCurrentChannel(String url) {
@@ -384,34 +391,11 @@ public final class PlayerChannelOverlayController {
     }
 
     private void ensureLoadedThen(@NonNull Runnable action) {
-        if (allChannels != null && !allChannels.isEmpty()) {
+        if (!allChannels.isEmpty()) {
             action.run();
             return;
         }
-
-        worker.execute(() -> {
-            List<Channel> loaded = loadChannels(appContext);
-            final List<Channel> loadedFinal = (loaded != null) ? loaded : Collections.emptyList();
-            final CategoryState state = buildCategories(loadedFinal);
-
-            MAIN.post(() -> {
-                allChannels = loadedFinal;
-                categories.clear();
-                categories.addAll(state.labels);
-                byCategory.clear();
-                byCategory.putAll(state.map);
-
-                if (isVisible()) {
-                    int idx = pickInitialCategoryIndex(state, currentUrl);
-                    if (idx < 0) idx = 0;
-                    categoryIndex = idx;
-                    applyCategory(categoryIndex);
-                    focusCurrentChannel();
-                }
-
-                action.run();
-            });
-        });
+        startLoad(action);
     }
 
     private void playChannelByNumber(int channelNumber) {
@@ -522,30 +506,71 @@ public final class PlayerChannelOverlayController {
     }
 
     private void ensureLoadedThenApply() {
-        if (allChannels != null && !allChannels.isEmpty() && !categories.isEmpty()) {
+        if (!allChannels.isEmpty() && !categories.isEmpty()) {
             applyCategory(categoryIndex);
             focusCurrentChannel();
             return;
         }
+        // Data is being pre-loaded or not started yet; startLoad will apply when done.
+        startLoad(null);
+    }
 
+    /**
+     * Single entry point for background channel loading.
+     * Guards against concurrent loads with {@link #isLoading}.
+     * When data is ready: applies category if overlay is visible, then runs {@code onDone} (if any).
+     */
+    private void startLoad(@Nullable Runnable onDone) {
+        if (!allChannels.isEmpty()) {
+            // Already loaded.
+            if (onDone != null) onDone.run();
+            return;
+        }
+        if (!isLoading.compareAndSet(false, true)) {
+            // Another load is already in progress; queue the callback for when it finishes.
+            if (onDone != null) {
+                final Runnable prev = pendingAfterLoad;
+                pendingAfterLoad = () -> {
+                    if (prev != null) prev.run();
+                    onDone.run();
+                };
+            }
+            return;
+        }
+
+        // Show loading hint while fetching.
+        if (categoryText != null) categoryText.setText("Memuat...");
+
+        final Runnable callback = onDone;
         worker.execute(() -> {
             List<Channel> loaded = loadChannels(appContext);
             final List<Channel> loadedFinal = (loaded != null) ? loaded : Collections.emptyList();
             final CategoryState state = buildCategories(loadedFinal);
 
             MAIN.post(() -> {
+                isLoading.set(false);
                 allChannels = loadedFinal;
                 categories.clear();
                 categories.addAll(state.labels);
                 byCategory.clear();
                 byCategory.putAll(state.map);
 
+                // Always pick the initial category so categoryIndex is ready
+                // when show() is called later, even if overlay is not yet open.
                 int idx = pickInitialCategoryIndex(state, currentUrl);
-                if (idx < 0) idx = 0;
-                categoryIndex = idx;
+                categoryIndex = (idx >= 0) ? idx : 0;
 
-                applyCategory(categoryIndex);
-                focusCurrentChannel();
+                if (isVisible()) {
+                    applyCategory(categoryIndex);
+                    focusCurrentChannel();
+                }
+
+                if (callback != null) callback.run();
+
+                // Flush any callbacks that were queued while loading.
+                Runnable queued = pendingAfterLoad;
+                pendingAfterLoad = null;
+                if (queued != null) queued.run();
             });
         });
     }

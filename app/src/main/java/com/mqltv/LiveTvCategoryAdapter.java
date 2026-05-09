@@ -71,13 +71,15 @@ public final class LiveTvCategoryAdapter extends RecyclerView.Adapter<LiveTvCate
                 int pos = holder.getBindingAdapterPosition();
                 if (pos == RecyclerView.NO_POSITION) return;
 
-                // Immediately update visual active indicator (no delay).
-                if (pos != selected) {
-                    int old = selected;
-                    selected = pos;
-                    notifyItemChanged(old);
-                    // Current item already has focus, just mark it visually.
-                    v.setActivated(true);
+                final int old = selected;
+                selected = pos;
+                v.setActivated(true);
+
+                // Post to the next looper cycle so both focus-change events (old=false, new=true)
+                // have completed before we rebind the outgoing tab — this ensures it reads the
+                // already-updated `selected` and correctly sets setActivated(false).
+                if (old != pos) {
+                    debounce.post(() -> notifyItemChanged(old));
                 }
 
                 // Debounce grid data update: only reload after focus settles.
@@ -87,6 +89,7 @@ public final class LiveTvCategoryAdapter extends RecyclerView.Adapter<LiveTvCate
                 };
                 debounce.postDelayed(pendingSelect, 150);
             } else {
+                // When losing focus, reflect whether this tab is still the active category.
                 v.setActivated(selected == holder.getBindingAdapterPosition());
             }
         });

@@ -44,6 +44,7 @@ public class LiveTvFragment extends Fragment {
     private RecyclerView grid;
 
     private int selectedCategoryPosition = 0;
+    private boolean categoryUnlocked = false;
 
     private final List<String> categoryKeys = new ArrayList<>();
     private final List<String> categoryLabels = new ArrayList<>();
@@ -248,6 +249,7 @@ public class LiveTvFragment extends Fragment {
     }
 
     private void lockCategoryFocus() {
+        categoryUnlocked = false;
         if (categoryList != null) {
             categoryList.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         }
@@ -257,6 +259,11 @@ public class LiveTvFragment extends Fragment {
         if (categoryList == null) return;
         // Unlock so category items can receive focus.
         categoryList.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+
+        // Guard: if already unlocked (category bar already focused), skip re-queuing focus
+        // so repeated DPAD_UP key-repeat events don't flood the post queue and cause tab jumps.
+        if (categoryUnlocked) return;
+        categoryUnlocked = true;
 
         final int pos = selectedCategoryPosition;
         if (pos < 0) return;

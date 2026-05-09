@@ -67,16 +67,27 @@ public final class LiveTvCategoryAdapter extends RecyclerView.Adapter<LiveTvCate
             float s = hasFocus ? 1.04f : 1.0f;
             v.animate().scaleX(s).scaleY(s).setDuration(120).start();
 
-            if (hasFocus && listener != null) {
-                // Debounce: hanya update grid jika fokus diam 180ms (tidak loncat saat ditahan).
-                if (pendingSelect != null) debounce.removeCallbacks(pendingSelect);
+            if (hasFocus) {
                 int pos = holder.getBindingAdapterPosition();
+                if (pos == RecyclerView.NO_POSITION) return;
+
+                // Immediately update visual active indicator (no delay).
+                if (pos != selected) {
+                    int old = selected;
+                    selected = pos;
+                    notifyItemChanged(old);
+                    // Current item already has focus, just mark it visually.
+                    v.setActivated(true);
+                }
+
+                // Debounce grid data update: only reload after focus settles.
+                if (pendingSelect != null) debounce.removeCallbacks(pendingSelect);
                 pendingSelect = () -> {
-                    if (pos != RecyclerView.NO_POSITION && listener != null) {
-                        listener.onCategorySelected(pos);
-                    }
+                    if (listener != null) listener.onCategorySelected(pos);
                 };
-                debounce.postDelayed(pendingSelect, 180);
+                debounce.postDelayed(pendingSelect, 150);
+            } else {
+                v.setActivated(selected == holder.getBindingAdapterPosition());
             }
         });
     }

@@ -28,9 +28,17 @@ import androidx.fragment.app.Fragment;
 
 import java.io.File;
 import java.io.InputStream;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
@@ -384,39 +392,97 @@ public class SettingsFragment extends Fragment {
 
     private void downloadWallpaperUrl(Context appContext, String url) {
         executor.execute(() -> {
-            boolean ok = false;
-            String error = null;
-            Response resp = null;
-            try {
-                Request req = new Request.Builder().url(url).get().build();
-                resp = NetworkClient.getClient().newCall(req).execute();
-                if (!resp.isSuccessful() || resp.body() == null) {
-                    error = "HTTP " + (resp != null ? resp.code() : 0);
-                } else {
-                    long len = resp.body().contentLength();
-                    if (len > 0 && len > 25L * 1024L * 1024L) {
-                        error = "File terlalu besar";
-                    } else {
-                        try (InputStream is = resp.body().byteStream()) {
-                            ok = LauncherWallpaper.save(appContext, is);
-                        }
-                        if (!ok) error = "Gagal simpan file";
-                    }
-                }
-            } catch (Exception e) {
-                error = e.getMessage();
-            } finally {
-                try { if (resp != null) resp.close(); } catch (Exception ignored) {}
+            DownloadResult result = downloadWallpaperOnce(appContext, url);
+
+            // Android lama sering gagal TLS trust anchor. Jika URL HTTPS, coba fallback HTTP.
+            if (!result.ok && result.sslError && url.startsWith("https://")) {
+                String httpUrl = "http://" + url.substring("https://".length());
+                result = downloadWallpaperOnce(appContext, httpUrl);
             }
 
-            final boolean finalOk = ok;
-            final String finalError = error;
+            final boolean finalOk = result.ok;
+            final String finalError = result.error;
             mainHandler.post(() -> {
                 updateWallpaperStatus(appContext);
                 loadSettingsWallpaper(appContext);
                 Toast.makeText(getContext(), finalOk ? "Wallpaper tersimpan" : ("Gagal: " + (finalError != null ? finalError : "unknown")), Toast.LENGTH_SHORT).show();
             });
         });
+    }
+
+    private static final class DownloadResult {
+        final boolean ok;
+        final String error;
+        final boolean sslError;
+
+        DownloadResult(boolean ok, String error, boolean sslError) {
+            this.ok = ok;
+            this.error = error;
+            this.sslError = sslError;
+        }
+    }
+
+    private static DownloadResult downloadWallpaperOnce(Context appContext, String url) {
+        boolean ok = false;
+        String error = null;
+        boolean sslError = false;
+        Response resp = null;
+        try {
+            Request req = new Request.Builder().url(url).get().build();
+            resp = buildWallpaperClient().newCall(req).execute();
+            if (!resp.isSuccessful() || resp.body() == null) {
+                error = "HTTP " + (resp != null ? resp.code() : 0);
+            } else {
+                long len = resp.body().contentLength();
+                if (len > 0 && len > 25L * 1024L * 1024L) {
+                    error = "File terlalu besar";
+                } else {
+                    try (InputStream is = resp.body().byteStream()) {
+                        ok = LauncherWallpaper.save(appContext, is);
+                    }
+                    if (!ok) error = "Gagal simpan file";
+                }
+            }
+        } catch (Exception e) {
+            sslError = isSslError(e);
+            error = e.getMessage();
+        } finally {
+            try { if (resp != null) resp.close(); } catch (Exception ignored) {}
+        }
+        return new DownloadResult(ok, error, sslError);
+    }
+
+    @SuppressWarnings("TrustAllX509TrustManager")
+    private static OkHttpClient buildWallpaperClient() {
+        try {
+            X509TrustManager trustAll = new X509TrustManager() {
+                @Override public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+                @Override public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+                @Override public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+            };
+            SSLContext sc = SSLContext.getInstance("TLS");
+            sc.init(null, new TrustManager[]{trustAll}, new SecureRandom());
+            return new OkHttpClient.Builder()
+                    .sslSocketFactory(sc.getSocketFactory(), trustAll)
+                    .hostnameVerifier((hostname, session) -> true)
+                    .connectTimeout(12, TimeUnit.SECONDS)
+                    .readTimeout(25, TimeUnit.SECONDS)
+                    .build();
+        } catch (Exception ignored) {
+            return NetworkClient.getClient();
+        }
+    }
+
+    private static boolean isSslError(Throwable t) {
+        while (t != null) {
+            if (t instanceof javax.net.ssl.SSLHandshakeException
+                    || t instanceof java.security.cert.CertificateException
+                    || t instanceof java.security.cert.CertPathValidatorException) {
+                return true;
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 
     @Override

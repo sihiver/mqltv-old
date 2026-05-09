@@ -1082,13 +1082,9 @@ public final class PlayerChannelOverlayController {
 
         @Override
         public void onBindViewHolder(@NonNull VH holder, int position) {
-            int adapterPos = holder.getBindingAdapterPosition();
-            if (adapterPos == RecyclerView.NO_POSITION || adapterPos >= items.size()) return;
+            Channel c = position < items.size() ? items.get(position) : null;
 
-            Channel c = items.get(adapterPos);
-            final Channel boundChannel = c;
-
-            holder.number.setText(String.valueOf(adapterPos + 1));
+            holder.number.setText(String.valueOf(position + 1));
             holder.title.setText(c != null && c.getTitle() != null ? c.getTitle() : "Channel");
 
             String group = c != null ? c.getGroupTitle() : null;
@@ -1099,7 +1095,6 @@ public final class PlayerChannelOverlayController {
             boolean isCurrent = c != null && currentUrl != null && currentUrl.equals(c.getUrl());
             holder.itemView.setActivated(isCurrent);
 
-            // Progress indicator: just a subtle animation based on time so it looks alive.
             long now = System.currentTimeMillis();
             int p = (int) ((now / 1000L) % 1000L);
             holder.progress.setProgress(p);
@@ -1107,25 +1102,29 @@ public final class PlayerChannelOverlayController {
             String logoUrl = c != null ? c.getLogoUrl() : null;
             bindLogoInto(holder.logoImg, holder.logoText, logoUrl);
 
+            // Always use fresh position + fresh channel from items to avoid stale references
+            // when the adapter data changes between bind and click/focus events.
             holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
                 if (hasFocus && listener != null) {
                     int livePos = holder.getBindingAdapterPosition();
-                    if (livePos == RecyclerView.NO_POSITION) return;
+                    if (livePos == RecyclerView.NO_POSITION || livePos >= items.size()) return;
+                    Channel fresh = items.get(livePos);
                     controller.focusedAdapterPosition = livePos;
                     controller.pendingFocusPosition = RecyclerView.NO_POSITION;
                     if (controller.pendingFocusRunnable != null) {
                         MAIN.removeCallbacks(controller.pendingFocusRunnable);
                         controller.pendingFocusRunnable = null;
                     }
-                    listener.onChannelFocused(boundChannel, livePos);
+                    listener.onChannelFocused(fresh, livePos);
                 }
             });
 
             holder.itemView.setOnClickListener(v -> {
                 if (listener == null) return;
                 int livePos = holder.getBindingAdapterPosition();
-                if (livePos == RecyclerView.NO_POSITION) return;
-                listener.onChannelClicked(boundChannel);
+                if (livePos == RecyclerView.NO_POSITION || livePos >= items.size()) return;
+                Channel fresh = items.get(livePos);
+                listener.onChannelClicked(fresh);
             });
 
             holder.itemView.setFocusable(true);

@@ -34,8 +34,17 @@ import com.google.android.exoplayer2.upstream.RawResourceDataSource;
 import com.google.android.exoplayer2.util.Util;
 import com.google.android.exoplayer2.video.VideoListener;
 
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+import okhttp3.OkHttpClient;
 
 public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapter.VH> {
 
@@ -60,6 +69,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
     private SimpleExoPlayer liveTvBgPlayer;
     private boolean liveTvBgFailed;
     private boolean liveTvBgFallbackToLocal;
+    private boolean liveTvBgHttpRetried;
     private boolean liveTvBgRenderedFirstFrame;
     private boolean liveTvBgPrepared;
     private boolean hostActive = true;
@@ -376,7 +386,10 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             String url = Constants.LAUNCHER_LIVETV_CARD_VIDEO_URL;
             boolean hasRemote = true;
 
-            DataSource.Factory remoteFactory = new OkHttpDataSourceFactory(NetworkClient.getClient(), "MQLTV/1.0");
+            // Use an SSL-tolerant client for background video: old Android (API 21-22) often lacks
+            // trust anchors for modern CAs (e.g. Let's Encrypt). This is decorative video only,
+            // so bypassing strict SSL validation is acceptable here.
+            DataSource.Factory remoteFactory = new OkHttpDataSourceFactory(buildBgVideoClient(), "MQLTV/1.0");
             String userAgent = Util.getUserAgent(app, "MQLTV");
             DataSource.Factory localFactory = new DefaultDataSourceFactory(app, userAgent);
 
@@ -410,6 +423,29 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
                 @Override
                 public void onPlayerError(@NonNull ExoPlaybackException error) {
                     Log.e(TAG, "bg video player error", error);
+
+                    // If HTTPS failed due to SSL (trust anchor), retry with HTTP before
+                    // giving up and switching to local fallback.
+                    if (!liveTvBgFallbackToLocal && !liveTvBgHttpRetried
+                            && isSslError(error) && url.startsWith("https://")) {
+                        liveTvBgHttpRetried = true;
+                        String httpUrl = "http://" + url.substring("https://".length());
+                        Log.w(TAG, "SSL error; retrying over HTTP: " + httpUrl);
+                        try {
+                            Uri httpUri = Uri.parse(httpUrl);
+                            MediaSource httpSource = buildMediaSource(app, httpUri, remoteFactory);
+                            p.setPlayWhenReady(false);
+                            p.stop(true);
+                            p.setMediaSource(httpSource);
+                            if (liveTvBgPrepared) p.prepare();
+                            p.setPlayWhenReady(hostActive);
+                        } catch (Exception e2) {
+                            Log.e(TAG, "HTTP retry failed", e2);
+                            switchToLocalFallback(app, p, localFactory);
+                        }
+                        return;
+                    }
+
                     if (!liveTvBgFallbackToLocal) {
                         switchToLocalFallback(app, p, localFactory);
                         return;
@@ -452,6 +488,47 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             liveTvBgFailed = true;
             return null;
         }
+    }
+
+    /**
+     * OkHttpClient for background decorative video that bypasses SSL certificate validation.
+     * Old Android (API 21-22) lacks trust anchors for modern CAs; since this is non-sensitive
+     * decorative content, strict validation is not required.
+     */
+    @SuppressLint("TrustAllX509TrustManager")
+    private static OkHttpClient buildBgVideoClient() {
+        try {
+            X509TrustManager trustAll = new X509TrustManager() {
+                @Override public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+                @Override public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+                @Override public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+            };
+            SSLContext sc = SSLContext.getInstance("TLS");
+            sc.init(null, new TrustManager[]{trustAll}, new SecureRandom());
+            return new OkHttpClient.Builder()
+                    .sslSocketFactory(sc.getSocketFactory(), trustAll)
+                    .hostnameVerifier((hostname, session) -> true)
+                    .connectTimeout(12, TimeUnit.SECONDS)
+                    .readTimeout(20, TimeUnit.SECONDS)
+                    .build();
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to build SSL-tolerant client, using default", e);
+            return NetworkClient.getClient();
+        }
+    }
+
+    /** Returns true if the ExoPlaybackException was caused by an SSL handshake failure. */
+    private static boolean isSslError(ExoPlaybackException error) {
+        Throwable t = error.getCause();
+        while (t != null) {
+            if (t instanceof javax.net.ssl.SSLHandshakeException
+                    || t instanceof java.security.cert.CertificateException
+                    || t instanceof java.security.cert.CertPathValidatorException) {
+                return true;
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 
     private static StateListDrawable createCardBackground(Context context, LauncherCardStyle style, int radiusDp) {

@@ -1,5 +1,6 @@
 package com.mqltv;
 
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -21,6 +22,7 @@ import com.google.android.exoplayer2.DefaultLoadControl;
 import com.google.android.exoplayer2.DefaultRenderersFactory;
 import com.google.android.exoplayer2.RenderersFactory;
 import com.google.android.exoplayer2.mediacodec.MediaCodecRenderer;
+import com.google.android.exoplayer2.video.MediaCodecVideoDecoderException;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
@@ -109,11 +111,20 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
 
         DefaultTrackSelector trackSelector = new DefaultTrackSelector(this);
         boolean limit480p = PlaybackPrefs.isExoLimit480p(this);
-        if (android.os.Build.VERSION.SDK_INT <= 19 || limit480p) {
+        int sdk = android.os.Build.VERSION.SDK_INT;
+        if (sdk <= 19 || limit480p) {
+            // API ≤19: force lowest bitrate + cap at 480p (very limited decoders).
             trackSelector.setParameters(
                 trackSelector.buildUponParameters()
                     .setForceLowestBitrate(true)
                     .setMaxVideoSize(854, 480)
+            );
+        } else if (sdk <= 22) {
+            // API 20–22: OMX.google.h264.decoder often crashes on 1080p streams.
+            // Cap at 720p to stay within a safer operating range.
+            trackSelector.setParameters(
+                trackSelector.buildUponParameters()
+                    .setMaxVideoSize(1280, 720)
             );
         }
 
@@ -143,24 +154,58 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
             public void onPlayerError(@NonNull ExoPlaybackException error) {
                 Log.e(TAG, "Legacy Exo error type=" + error.type, error);
 
-                boolean codecNotSupported = false;
+                boolean isDecoderFailure = false;
+                String reason = "error=" + error.type;
+
                 if (error.type == ExoPlaybackException.TYPE_RENDERER) {
                     Exception rendererEx = error.getRendererException();
+
                     if (rendererEx instanceof MediaCodecRenderer.DecoderInitializationException) {
-                        codecNotSupported = true;
+                        // Codec could not be initialized (format/profile unsupported).
+                        isDecoderFailure = true;
+                        reason = "codec tidak didukung";
+                    } else if (rendererEx instanceof MediaCodecVideoDecoderException) {
+                        // Decoder crashed at runtime (e.g. SIGSEGV in OMX.google.h264.decoder).
+                        isDecoderFailure = true;
+                        reason = "decoder video gagal saat runtime";
+                    } else if (rendererEx != null) {
+                        Throwable cause = rendererEx.getCause();
+                        if (cause instanceof IllegalStateException) {
+                            // MediaCodec dequeueOutputBuffer() in illegal state.
+                            isDecoderFailure = true;
+                            reason = "MediaCodec status error";
+                        }
                     }
                 }
 
-                String msg = "Legacy Exo error: " + error.type;
-                if (codecNotSupported) msg = "Legacy Exo: codec/decoder not supported";
-                Toast.makeText(LegacyExoPlayerActivity.this, msg, Toast.LENGTH_LONG).show();
+                if (isDecoderFailure) {
+                    Log.w(TAG, "Decoder failure (" + reason + "), releasing player and falling back to VLC.");
 
-                // If AUTO chose legacy and it fails, try Media3 ExoPlayer as a fallback.
-                if (codecNotSupported && PlaybackPrefs.getPlayerMode(LegacyExoPlayerActivity.this) == PlaybackPrefs.PLAYER_MODE_AUTO) {
-                    String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
+                    // Release immediately to stop further decoder activity / prevent native crash.
+                    if (player != null) {
+                        player.stop();
+                        player.release();
+                        player = null;
+                    }
+
+                    Toast.makeText(LegacyExoPlayerActivity.this,
+                            "Decoder gagal, beralih ke VLC…", Toast.LENGTH_SHORT).show();
+
+                    String title   = getIntent().getStringExtra(Constants.EXTRA_TITLE);
                     String playUrl = getIntent().getStringExtra(Constants.EXTRA_URL);
-                    startActivity(PlayerIntents.createPlayIntent(LegacyExoPlayerActivity.this, title, playUrl));
+
+                    // Fallback to VLC — it has its own H.264 decoder and is more robust
+                    // on STBs where OMX.google.h264.decoder is buggy.
+                    // Do NOT use createPlayIntent() on old Android (≤19) because
+                    // getTargetPlayerActivity() would return LegacyExoPlayerActivity again.
+                    Intent vlcIntent = new Intent(LegacyExoPlayerActivity.this, VlcPlayerActivity.class);
+                    vlcIntent.putExtra(Constants.EXTRA_TITLE, title);
+                    vlcIntent.putExtra(Constants.EXTRA_URL, playUrl);
+                    startActivity(vlcIntent);
                     finish();
+                } else {
+                    Toast.makeText(LegacyExoPlayerActivity.this,
+                            "Playback error: " + reason, Toast.LENGTH_SHORT).show();
                 }
             }
         });

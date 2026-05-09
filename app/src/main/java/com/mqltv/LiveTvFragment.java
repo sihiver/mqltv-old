@@ -244,7 +244,18 @@ public class LiveTvFragment extends Fragment {
         List<Channel> out = new ArrayList<>();
 
         if (CAT_ALL.equals(key)) {
-            if (base != null) out.addAll(base);
+            if (base != null) {
+                // Local channels first, then the rest.
+                List<Channel> local = new ArrayList<>();
+                List<Channel> rest  = new ArrayList<>();
+                for (Channel c : base) {
+                    if (c == null) continue;
+                    if (isLocalGroup(c.getGroupTitle())) local.add(c);
+                    else rest.add(c);
+                }
+                out.addAll(local);
+                out.addAll(rest);
+            }
         } else {
             if (base != null) {
                 for (Channel c : base) {
@@ -309,6 +320,13 @@ public class LiveTvFragment extends Fragment {
         }
     }
 
+    private static boolean isLocalGroup(String groupTitle) {
+        if (groupTitle == null) return false;
+        String u = groupTitle.trim().toUpperCase(Locale.US);
+        return u.equals("LOCAL") || u.startsWith("LOCAL ") || u.startsWith("LOCAL|")
+                || u.contains("|LOCAL") || u.contains("LOCAL|");
+    }
+
     private static CategoryData buildCategories(List<Channel> channels) {
         List<String> keys = new ArrayList<>();
         List<String> labels = new ArrayList<>();
@@ -318,6 +336,8 @@ public class LiveTvFragment extends Fragment {
 
         // Keep insertion order; de-dupe by display label (case-insensitive).
         Map<String, String> seen = new LinkedHashMap<>();
+        Map<String, String> localSeen = new LinkedHashMap<>();
+
         if (channels != null) {
             for (Channel c : channels) {
                 if (c == null) continue;
@@ -326,12 +346,19 @@ public class LiveTvFragment extends Fragment {
                 g = g.trim();
                 if (g.isEmpty()) continue;
                 String label = g.toUpperCase(Locale.US);
-                if (!seen.containsKey(label)) {
-                    seen.put(label, g);
+                if (isLocalGroup(g)) {
+                    if (!localSeen.containsKey(label)) localSeen.put(label, g);
+                } else {
+                    if (!seen.containsKey(label)) seen.put(label, g);
                 }
             }
         }
 
+        // Local categories first, then the rest.
+        for (Map.Entry<String, String> e : localSeen.entrySet()) {
+            keys.add(e.getValue());
+            labels.add(e.getKey());
+        }
         for (Map.Entry<String, String> e : seen.entrySet()) {
             keys.add(e.getValue());
             labels.add(e.getKey());

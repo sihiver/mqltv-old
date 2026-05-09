@@ -824,13 +824,37 @@ public final class PlayerChannelOverlayController {
         }
     }
 
+    private static boolean isLocalGroup(String groupTitle) {
+        if (groupTitle == null) return false;
+        String u = groupTitle.trim().toUpperCase(Locale.US);
+        return u.equals("LOCAL") || u.startsWith("LOCAL ") || u.startsWith("LOCAL|")
+                || u.contains("|LOCAL") || u.contains("LOCAL|");
+    }
+
     private static CategoryState buildCategories(List<Channel> channels) {
         List<String> labels = new ArrayList<>();
         Map<String, List<Channel>> map = new LinkedHashMap<>();
 
         String all = "ALL CHANNELS";
         labels.add(all);
-        map.put(all, channels != null ? channels : Collections.emptyList());
+
+        // For ALL CHANNELS: Local channels first, then the rest.
+        List<Channel> localAll = new ArrayList<>();
+        List<Channel> restAll  = new ArrayList<>();
+        if (channels != null) {
+            for (Channel c : channels) {
+                if (c == null) continue;
+                if (isLocalGroup(c.getGroupTitle())) localAll.add(c);
+                else restAll.add(c);
+            }
+        }
+        List<Channel> orderedAll = new ArrayList<>(localAll);
+        orderedAll.addAll(restAll);
+        map.put(all, orderedAll);
+
+        // Collect per-category buckets: Local groups first, then others.
+        Map<String, List<Channel>> localGroups = new LinkedHashMap<>();
+        Map<String, List<Channel>> otherGroups = new LinkedHashMap<>();
 
         if (channels != null) {
             for (Channel c : channels) {
@@ -838,13 +862,23 @@ public final class PlayerChannelOverlayController {
                 String g = c.getGroupTitle();
                 g = g == null ? "" : g.trim();
                 if (g.isEmpty()) continue;
-                if (!map.containsKey(g)) {
-                    map.put(g, new ArrayList<>());
-                    labels.add(g);
+                if (isLocalGroup(g)) {
+                    if (!localGroups.containsKey(g)) localGroups.put(g, new ArrayList<>());
+                    localGroups.get(g).add(c);
+                } else {
+                    if (!otherGroups.containsKey(g)) otherGroups.put(g, new ArrayList<>());
+                    otherGroups.get(g).add(c);
                 }
-                List<Channel> list = map.get(g);
-                if (list != null) list.add(c);
             }
+        }
+
+        for (Map.Entry<String, List<Channel>> e : localGroups.entrySet()) {
+            labels.add(e.getKey());
+            map.put(e.getKey(), e.getValue());
+        }
+        for (Map.Entry<String, List<Channel>> e : otherGroups.entrySet()) {
+            labels.add(e.getKey());
+            map.put(e.getKey(), e.getValue());
         }
 
         return new CategoryState(labels, map);

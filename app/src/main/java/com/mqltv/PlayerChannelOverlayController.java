@@ -582,6 +582,11 @@ public final class PlayerChannelOverlayController {
         String label = categories.get(index);
         if (categoryText != null) categoryText.setText(label);
 
+        // Sync selected category back to LiveTvFragment SharedPreferences,
+        // so next time the overlay opens (or LiveTvFragment resumes) the tab matches.
+        appContext.getSharedPreferences(LiveTvFragment.PREFS_LIVETV_SYNC, Context.MODE_PRIVATE)
+                  .edit().putString(LiveTvFragment.KEY_LAST_TAB_LABEL, label).apply();
+
         List<Channel> listForCat = byCategory.get(label);
         if (listForCat == null) listForCat = Collections.emptyList();
         adapter.submit(listForCat);

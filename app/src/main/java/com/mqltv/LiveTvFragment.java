@@ -33,6 +33,10 @@ public class LiveTvFragment extends Fragment {
 
     private static final String CAT_ALL = "__ALL__";
 
+    /** SharedPreferences used to sync the active tab label to PlayerChannelOverlayController. */
+    static final String PREFS_LIVETV_SYNC  = "mqltv_livetv_sync";
+    static final String KEY_LAST_TAB_LABEL = "last_tab_label";
+
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -215,6 +219,15 @@ public class LiveTvFragment extends Fragment {
         selectedCategoryPosition = position;
 
         String key = categoryKeys.get(position);
+
+        // Sync active tab label so overlay can open on the same category.
+        if (position < categoryLabels.size()) {
+            String syncLabel = categoryLabels.get(position);
+            if (syncLabel != null) {
+                context.getSharedPreferences(PREFS_LIVETV_SYNC, Context.MODE_PRIVATE)
+                       .edit().putString(KEY_LAST_TAB_LABEL, syncLabel).apply();
+            }
+        }
 
         if (title != null && position < categoryLabels.size()) {
             String label = categoryLabels.get(position);

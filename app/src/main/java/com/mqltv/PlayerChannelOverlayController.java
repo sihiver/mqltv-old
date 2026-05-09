@@ -805,22 +805,38 @@ public final class PlayerChannelOverlayController {
         return new CategoryState(labels, map);
     }
 
-    private static int pickInitialCategoryIndex(CategoryState state, String currentUrl) {
+    private int pickInitialCategoryIndex(CategoryState state, String currentUrl) {
         if (state == null || state.labels == null || state.labels.isEmpty()) return 0;
-        if (currentUrl == null || currentUrl.trim().isEmpty()) return 0;
 
-        // Prefer the category of the current channel.
-        for (Map.Entry<String, List<Channel>> e : state.map.entrySet()) {
-            List<Channel> list = e.getValue();
-            if (list == null) continue;
-            for (Channel c : list) {
-                if (c != null && currentUrl.equals(c.getUrl())) {
-                    String label = e.getKey();
-                    int idx = state.labels.indexOf(label);
-                    return idx >= 0 ? idx : 0;
+        // 1. Check the tab that was last active in LiveTvFragment (synced via SharedPreferences).
+        String savedTab = appContext
+                .getSharedPreferences(LiveTvFragment.PREFS_LIVETV_SYNC, Context.MODE_PRIVATE)
+                .getString(LiveTvFragment.KEY_LAST_TAB_LABEL, null);
+
+        if (savedTab != null && !savedTab.trim().isEmpty()) {
+            for (int i = 0; i < state.labels.size(); i++) {
+                if (savedTab.equalsIgnoreCase(state.labels.get(i))) {
+                    return i;
                 }
             }
         }
+
+        // 2. Fall back: find the category of the currently playing channel,
+        //    skipping "ALL CHANNELS" so the URL is not matched against the catch-all bucket first.
+        if (currentUrl != null && !currentUrl.trim().isEmpty()) {
+            for (Map.Entry<String, List<Channel>> e : state.map.entrySet()) {
+                if ("ALL CHANNELS".equalsIgnoreCase(e.getKey())) continue;
+                List<Channel> list = e.getValue();
+                if (list == null) continue;
+                for (Channel c : list) {
+                    if (c != null && currentUrl.equals(c.getUrl())) {
+                        int idx = state.labels.indexOf(e.getKey());
+                        return idx >= 0 ? idx : 0;
+                    }
+                }
+            }
+        }
+
         return 0;
     }
 

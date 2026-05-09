@@ -38,6 +38,7 @@ import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLContext;
@@ -66,7 +67,11 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
     private static final Object PAYLOAD_CONTENT = new Object();
     private static final Object PAYLOAD_LIVETV_BG_STATE = new Object();
 
+    // Cached SSL-tolerant client — pre-warmed in background so first bind is fast.
+    private static volatile OkHttpClient cachedBgVideoClient;
+
     private SimpleExoPlayer liveTvBgPlayer;
+    private boolean liveTvBgPlayerInitializing;
     private boolean liveTvBgFailed;
     private boolean liveTvBgFallbackToLocal;
     private boolean liveTvBgHttpRetried;
@@ -77,6 +82,27 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
     public LauncherCardAdapter(Listener listener) {
         this.listener = listener;
         setHasStableIds(true);
+    }
+
+    /**
+     * Call this as early as possible (e.g. from Activity.onCreate) to pre-warm the
+     * SSL client and ExoPlayer on a deferred main-thread post so the launcher UI
+     * appears immediately without waiting for network/codec initialization.
+     */
+    public void preWarm(Context context) {
+        // Build SSL client on a background thread (SSLContext.init can be slow).
+        Executors.newSingleThreadExecutor().execute(() -> {
+            if (cachedBgVideoClient == null) {
+                cachedBgVideoClient = buildBgVideoClient();
+            }
+            // After client is ready, init the ExoPlayer on the main thread
+            // (SimpleExoPlayer.Builder must run on main thread).
+            new Handler(Looper.getMainLooper()).post(() -> {
+                if (liveTvBgPlayer == null && !liveTvBgFailed && !liveTvBgPlayerInitializing) {
+                    ensureLiveTvPlayer(context.getApplicationContext());
+                }
+            });
+        });
     }
 
     public void setCardStyle(LauncherCardStyle style) {
@@ -298,39 +324,9 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         holder.video.setVisibility(View.VISIBLE);
         holder.videoScrim.setVisibility(View.VISIBLE);
 
-        SimpleExoPlayer p = ensureLiveTvPlayer(holder.itemView.getContext());
-        if (p == null) {
-            holder.video.setVisibility(View.GONE);
-            holder.videoScrim.setVisibility(View.GONE);
-            return;
-        }
-
-        // Attach after layout pass.
-        holder.video.post(() -> {
-            if (liveTvBgFailed) return;
-            try {
-                p.setVideoSurfaceView(holder.video);
-                Log.d(TAG, "attached SurfaceView to player");
-            } catch (Exception e) {
-                Log.w(TAG, "failed attaching SurfaceView", e);
-                return;
-            }
-            try {
-                if (!liveTvBgPrepared) {
-                    liveTvBgPrepared = true;
-                    p.prepare();
-                    Log.d(TAG, "prepared bg player after surface attach");
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "failed preparing bg player", e);
-                liveTvBgFailed = true;
-                return;
-            }
-            try {
-                p.setPlayWhenReady(hostActive);
-            } catch (Exception ignored) {
-            }
-        });
+        // Defer player attach to after layout so the launcher UI is drawn first.
+        // If the player isn't ready yet (still initializing via preWarm), retry shortly.
+        holder.video.post(() -> attachPlayerToSurface(holder));
     }
 
     private static MediaSource buildMediaSource(Context context, Uri uri, DataSource.Factory dataSourceFactory) {
@@ -347,6 +343,48 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
     }
 
     @SuppressLint("NotifyDataSetChanged")
+    private static final long PLAYER_ATTACH_RETRY_MS = 300L;
+
+    private void attachPlayerToSurface(@NonNull VH holder) {
+        if (holder.video == null || holder.video.getWindowToken() == null) return;
+        if (liveTvBgFailed) {
+            holder.video.setVisibility(View.GONE);
+            if (holder.videoScrim != null) holder.videoScrim.setVisibility(View.GONE);
+            return;
+        }
+
+        SimpleExoPlayer p = liveTvBgPlayer;
+
+        if (p == null) {
+            // Player not ready yet (still initializing); retry after a short delay.
+            holder.video.postDelayed(() -> attachPlayerToSurface(holder), PLAYER_ATTACH_RETRY_MS);
+            return;
+        }
+
+        try {
+            p.setVideoSurfaceView(holder.video);
+            Log.d(TAG, "attached SurfaceView to player");
+        } catch (Exception e) {
+            Log.w(TAG, "failed attaching SurfaceView", e);
+            return;
+        }
+        try {
+            if (!liveTvBgPrepared) {
+                liveTvBgPrepared = true;
+                p.prepare();
+                Log.d(TAG, "prepared bg player after surface attach");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "failed preparing bg player", e);
+            liveTvBgFailed = true;
+            return;
+        }
+        try {
+            p.setPlayWhenReady(hostActive);
+        } catch (Exception ignored) {
+        }
+    }
+
     private void switchToLocalFallback(Context app, SimpleExoPlayer p, DataSource.Factory localFactory) {
         if (liveTvBgFallbackToLocal) return;
         liveTvBgFallbackToLocal = true;
@@ -378,18 +416,19 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
     private SimpleExoPlayer ensureLiveTvPlayer(Context context) {
         if (liveTvBgPlayer != null) return liveTvBgPlayer;
         if (context == null) return null;
+        if (liveTvBgPlayerInitializing) return null;
+        liveTvBgPlayerInitializing = true;
 
         try {
             Context app = context.getApplicationContext();
 
-            // Prefer remote URL when configured; fall back to a bundled baseline MP4 if decode/network fails.
             String url = Constants.LAUNCHER_LIVETV_CARD_VIDEO_URL;
             boolean hasRemote = true;
 
-            // Use an SSL-tolerant client for background video: old Android (API 21-22) often lacks
-            // trust anchors for modern CAs (e.g. Let's Encrypt). This is decorative video only,
-            // so bypassing strict SSL validation is acceptable here.
-            DataSource.Factory remoteFactory = new OkHttpDataSourceFactory(buildBgVideoClient(), "MQLTV/1.0");
+            // Use cached SSL-tolerant client (pre-warmed by preWarm() in background).
+            OkHttpClient bgClient = cachedBgVideoClient != null ? cachedBgVideoClient : buildBgVideoClient();
+            if (cachedBgVideoClient == null) cachedBgVideoClient = bgClient;
+            DataSource.Factory remoteFactory = new OkHttpDataSourceFactory(bgClient, "MQLTV/1.0");
             String userAgent = Util.getUserAgent(app, "MQLTV");
             DataSource.Factory localFactory = new DefaultDataSourceFactory(app, userAgent);
 
@@ -486,6 +525,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         } catch (Exception e) {
             Log.e(TAG, "failed creating bg player", e);
             liveTvBgFailed = true;
+            liveTvBgPlayerInitializing = false;
             return null;
         }
     }

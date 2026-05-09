@@ -220,6 +220,9 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
         adapter = new LauncherCardAdapter(this);
         cardsList.setAdapter(adapter);
+        // Pre-warm SSL client + ExoPlayer in background so video is ready by the time
+        // the user scrolls to the Live TV card (no blocking on first bind).
+        adapter.preWarm(v.getContext());
 
         appsList = v.findViewById(R.id.launcher_apps);
         if (appsList != null) {

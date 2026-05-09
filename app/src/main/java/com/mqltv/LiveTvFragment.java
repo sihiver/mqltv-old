@@ -85,8 +85,34 @@ public class LiveTvFragment extends Fragment {
         categoryList.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
         categoryList.setHasFixedSize(false);
         categoryList.setItemViewCacheSize(12);
-        categoryAdapter = new LiveTvCategoryAdapter(position -> applyCategory(appContext, position));
+        // Block category focus by default; only open when explicitly navigated via DPAD_UP from grid row 1.
+        categoryList.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        categoryAdapter = new LiveTvCategoryAdapter(position -> {
+            applyCategory(appContext, position);
+            // After selecting a category, lock focus back to grid.
+            lockCategoryFocus();
+            if (grid != null) {
+                grid.post(() -> {
+                    if (grid == null) return;
+                    View first = grid.getChildAt(0);
+                    if (first != null) first.requestFocus();
+                });
+            }
+        });
         categoryList.setAdapter(categoryAdapter);
+        // Detect when focus leaves category back to grid, re-lock.
+        categoryList.addOnChildAttachStateChangeListener(new RecyclerView.OnChildAttachStateChangeListener() {
+            @Override
+            public void onChildViewAttachedToWindow(@NonNull View view) {
+                view.setOnFocusChangeListener((fv, hasFocus) -> {
+                    if (!hasFocus) lockCategoryFocus();
+                });
+            }
+            @Override
+            public void onChildViewDetachedFromWindow(@NonNull View view) {
+                view.setOnFocusChangeListener(null);
+            }
+        });
 
         grid = v.findViewById(R.id.live_tv_grid);
         GridLayoutManager glm = new GridLayoutManager(v.getContext(), 6);
@@ -117,7 +143,7 @@ public class LiveTvFragment extends Fragment {
 
                         int pos = grid.getChildAdapterPosition(v1);
                         if (pos != RecyclerView.NO_POSITION && pos < spanCount) {
-                            focusSelectedCategory();
+                            unlockAndFocusCategory();
                             return true;
                         }
                         return false;
@@ -219,20 +245,29 @@ public class LiveTvFragment extends Fragment {
         if (grid != null) grid.scrollToPosition(0);
     }
 
-    private void focusSelectedCategory() {
+    private void lockCategoryFocus() {
+        if (categoryList != null) {
+            categoryList.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        }
+    }
+
+    private void unlockAndFocusCategory() {
         if (categoryList == null) return;
+        // Unlock so category items can receive focus.
+        categoryList.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
 
         final int pos = selectedCategoryPosition;
         if (pos < 0) return;
 
         categoryList.scrollToPosition(pos);
         categoryList.post(() -> {
+            if (categoryList == null) return;
             RecyclerView.ViewHolder vh = categoryList.findViewHolderForAdapterPosition(pos);
             if (vh != null && vh.itemView != null) {
                 vh.itemView.requestFocus();
             } else {
-                // If not laid out yet, try again shortly.
                 categoryList.postDelayed(() -> {
+                    if (categoryList == null) return;
                     RecyclerView.ViewHolder vh2 = categoryList.findViewHolderForAdapterPosition(pos);
                     if (vh2 != null && vh2.itemView != null) {
                         vh2.itemView.requestFocus();

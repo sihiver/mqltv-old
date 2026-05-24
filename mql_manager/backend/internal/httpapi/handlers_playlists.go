@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"mqltv.local/mql_manager/backend/internal/channels"
+	"mqltv.local/mql_manager/backend/internal/playlists"
+	"mqltv.local/mql_manager/backend/internal/users"
 )
 
 func fetchText(ctxr *http.Request, rawURL string) (string, error) {
@@ -47,17 +49,9 @@ func (a API) handlePlaylists(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
-		// add publicUrl
 		out := make([]map[string]any, 0, len(items))
 		for _, p := range items {
-			out = append(out, map[string]any{
-				"id":         p.ID,
-				"name":       p.Name,
-				"sourceType": p.SourceType,
-				"sourceUrl":  p.SourceURL,
-				"createdAt":  p.CreatedAt,
-				"publicUrl":  fmt.Sprintf("/public/m3u/%d.m3u", p.ID),
-			})
+			out = append(out, playlistPublicResponse(p))
 		}
 		writeJSON(w, http.StatusOK, out)
 	case http.MethodPost:
@@ -88,14 +82,7 @@ func (a API) handlePlaylists(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, err)
 			return
 		}
-		writeJSON(w, http.StatusCreated, map[string]any{
-			"id":         p.ID,
-			"name":       p.Name,
-			"sourceType": p.SourceType,
-			"sourceUrl":  p.SourceURL,
-			"createdAt":  p.CreatedAt,
-			"publicUrl":  fmt.Sprintf("/public/m3u/%d.m3u", p.ID),
-		})
+		writeJSON(w, http.StatusCreated, playlistPublicResponse(p))
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -134,14 +121,34 @@ func (a API) handlePlaylistUpload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{
-		"id":         p.ID,
-		"name":       p.Name,
-		"sourceType": p.SourceType,
-		"sourceUrl":  p.SourceURL,
-		"createdAt":  p.CreatedAt,
-		"publicUrl":  fmt.Sprintf("/public/m3u/%d.m3u", p.ID),
-	})
+	writeJSON(w, http.StatusCreated, playlistPublicResponse(p))
+}
+
+func playlistPublicResponse(p playlists.Playlist) map[string]any {
+	m3uURL := fmt.Sprintf("/public/m3u/%d.m3u", p.ID)
+	jsonURL := fmt.Sprintf("/public/json/%d.json", p.ID)
+	publicURL := m3uURL
+	if p.ContentFormat == "json" {
+		publicURL = jsonURL
+	}
+	return map[string]any{
+		"id":            p.ID,
+		"name":          p.Name,
+		"sourceType":    p.SourceType,
+		"sourceUrl":     p.SourceURL,
+		"contentFormat": p.ContentFormat,
+		"createdAt":     p.CreatedAt,
+		"publicUrl":     publicURL,
+		"publicM3uUrl":  m3uURL,
+		"publicJsonUrl": jsonURL,
+	}
+}
+
+func playlistServesJSON(p playlists.Playlist, content string) bool {
+	if p.ContentFormat == "json" {
+		return true
+	}
+	return channels.IsJSONPlaylistContent(content)
 }
 
 // importPlaylistM3U imports channels and removes the playlist row if import fails
@@ -251,7 +258,81 @@ func (a API) handlePublicM3UByPlaylistID(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Playlist JSON: default JSON (meski path .m3u). Tambahkan ?format=m3u untuk player IPTV.
+	if playlistServesJSON(p, content) && strings.ToLower(strings.TrimSpace(r.URL.Query().Get("format"))) != "m3u" {
+		a.servePublicPlaylistJSON(w, r, id, content)
+		return
+	}
+
+	chs, err := a.Channels.ListChannels(r.Context(), &id, "", 50000)
+	if err == nil && len(chs) > 0 {
+		w.Header().Set("Content-Type", "application/vnd.apple.mpegurl; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		_ = channels.WriteM3U(w, chs)
+		return
+	}
+
 	servePlaylist(w, r, p.SourceType, p.SourceURL, content)
+}
+
+func (a API) handlePublicJSONByPlaylistID(w http.ResponseWriter, r *http.Request) {
+	// /public/json/{id}.json — export Vision+ format dengan semua field tersimpan.
+	seg := strings.Trim(strings.TrimPrefix(r.URL.Path, "/public/json/"), "/")
+	seg = strings.TrimSuffix(seg, ".json")
+	id, err := strconv.ParseInt(seg, 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	_, content, err := a.Playlists.Get(r.Context(), id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	a.servePublicPlaylistJSON(w, r, id, content)
+}
+
+func (a API) servePublicPlaylistJSON(w http.ResponseWriter, r *http.Request, playlistID int64, storedContent string) {
+	chs, err := a.Channels.ListChannels(r.Context(), &playlistID, "", 50000)
+	if err == nil && len(chs) > 0 {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		countryName, country := parsePlaylistCountryMeta(storedContent)
+		_ = channels.WriteVisionPlusJSON(w, chs, countryName, country)
+		return
+	}
+
+	if channels.IsJSONPlaylistContent(storedContent) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		_, _ = io.WriteString(w, storedContent)
+		if !strings.HasSuffix(strings.TrimSpace(storedContent), "\n") {
+			_, _ = io.WriteString(w, "\n")
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func parsePlaylistCountryMeta(content string) (countryName, country string) {
+	content = strings.TrimSpace(content)
+	if !strings.HasPrefix(content, "{") {
+		return "", ""
+	}
+	var root struct {
+		CountryName string `json:"country_name"`
+		Country     string `json:"country"`
+	}
+	if err := json.Unmarshal([]byte(content), &root); err != nil {
+		return "", ""
+	}
+	return strings.TrimSpace(root.CountryName), strings.TrimSpace(root.Country)
 }
 
 func (a API) handlePublicUserPlaylist(w http.ResponseWriter, r *http.Request) {
@@ -265,7 +346,7 @@ func (a API) handlePublicUserPlaylist(w http.ResponseWriter, r *http.Request) {
 	}
 	appKey := parts[0]
 	file := parts[1]
-	if file == "playlist.m3u" {
+	if file == "playlist.m3u" || file == "playlist.json" {
 		a.servePublicUserPlaylistByAppKey(w, r, appKey)
 		return
 	}
@@ -386,7 +467,6 @@ func (a API) servePublicUserPlaylistByAppKey(w http.ResponseWriter, r *http.Requ
 	}
 
 	// If user has a subscription and it is expired, block playlist.
-	// (If user has no subscription, allow as "free" account.)
 	var latestExpires string
 	_ = a.Users.DB.QueryRowContext(r.Context(), `
 SELECT COALESCE(expires_at, '')
@@ -405,90 +485,142 @@ LIMIT 1
 		}
 	}
 
-	// If user has selected channels, generate M3U from those.
-	hasCh, err := a.userHasChannels(r, u.ID)
+	res, ok, err := a.resolveUserPlaylist(r, u)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if hasCh {
-		chs, err := a.Channels.ListUserChannels(r.Context(), u.ID)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		writeM3UFromChannels(w, chs)
-		return
-	}
-
-	// If user has selected packages, generate M3U from channels in those packages.
-	hasPk, err := a.userHasPackages(r, u.ID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if hasPk {
-		chs, err := a.Users.ListUserPackageChannels(r.Context(), u.ID)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		writeM3UFromChannels(w, chs)
-		return
-	}
-
-	// fallback: old behavior
-	if u.PlaylistID == nil {
+	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	pl, content, err := a.Playlists.Get(r.Context(), *u.PlaylistID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		w.WriteHeader(http.StatusInternalServerError)
+	// Vision+ / Sihiver: kirim JSON lengkap (url_license, header_iptv, jenis, ...).
+	if a.shouldServeUserPlaylistAsJSON(r, res) {
+		a.servePublicUserPlaylistJSON(w, r, res)
 		return
 	}
 
-	servePlaylist(w, r, pl.SourceType, pl.SourceURL, content)
+	if len(res.channels) > 0 {
+		writeM3UFromChannels(w, res.channels)
+		return
+	}
+
+	// Playlist inline/URL tanpa channel di DB.
+	if res.playlist != nil {
+		servePlaylist(w, r, res.playlist.SourceType, res.playlist.SourceURL, res.storedContent)
+		return
+	}
+
+	w.WriteHeader(http.StatusNotFound)
+}
+
+type userPlaylistResolve struct {
+	channels      []channels.Channel
+	storedContent string
+	playlist      *playlists.Playlist
+}
+
+func (a API) resolveUserPlaylist(r *http.Request, u users.User) (userPlaylistResolve, bool, error) {
+	ctx := r.Context()
+	out := userPlaylistResolve{}
+
+	// Packages take precedence over manual channels. Admin "Packages" mode is meant
+	// to drive the public playlist; leftover user_channels rows must not hide sport+online merges.
+	hasPk, err := a.userHasPackages(r, u.ID)
+	if err != nil {
+		return out, false, err
+	}
+	if hasPk {
+		chs, err := a.Users.ListUserPackageChannels(ctx, u.ID)
+		if err != nil {
+			return out, false, err
+		}
+		out.channels = chs
+		return out, true, nil
+	}
+
+	hasCh, err := a.userHasChannels(r, u.ID)
+	if err != nil {
+		return out, false, err
+	}
+	if hasCh {
+		chs, err := a.Channels.ListUserChannels(ctx, u.ID)
+		if err != nil {
+			return out, false, err
+		}
+		out.channels = chs
+		return out, true, nil
+	}
+
+	if u.PlaylistID == nil {
+		return out, false, nil
+	}
+
+	pl, content, err := a.Playlists.Get(ctx, *u.PlaylistID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return out, false, nil
+		}
+		return out, false, err
+	}
+	out.storedContent = content
+	out.playlist = &pl
+
+	chs, err := a.Channels.ListChannels(ctx, u.PlaylistID, "", 50000)
+	if err != nil {
+		return out, false, err
+	}
+	out.channels = chs
+	return out, true, nil
+}
+
+func (a API) shouldServeUserPlaylistAsJSON(r *http.Request, res userPlaylistResolve) bool {
+	if strings.HasSuffix(r.URL.Path, "playlist.json") {
+		return true
+	}
+	if strings.ToLower(strings.TrimSpace(r.URL.Query().Get("format"))) == "json" {
+		return true
+	}
+	if strings.ToLower(strings.TrimSpace(r.URL.Query().Get("format"))) == "m3u" {
+		return false
+	}
+	if res.playlist != nil && playlistServesJSON(*res.playlist, res.storedContent) {
+		return true
+	}
+	if channels.IsJSONPlaylistContent(res.storedContent) && len(res.channels) == 0 {
+		return true
+	}
+	// Mixed packages (online JSON + sport M3U): default playlist.m3u stays M3U.
+	// Vision+ metadata is available via playlist.json or ?format=json.
+	return false
+}
+
+func (a API) servePublicUserPlaylistJSON(w http.ResponseWriter, r *http.Request, res userPlaylistResolve) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+
+	if len(res.channels) > 0 {
+		countryName, country := parsePlaylistCountryMeta(res.storedContent)
+		_ = channels.WriteVisionPlusJSON(w, res.channels, countryName, country)
+		return
+	}
+
+	if channels.IsJSONPlaylistContent(res.storedContent) {
+		_, _ = io.WriteString(w, res.storedContent)
+		if !strings.HasSuffix(strings.TrimSpace(res.storedContent), "\n") {
+			_, _ = io.WriteString(w, "\n")
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNotFound)
 }
 
 func writeM3UFromChannels(w http.ResponseWriter, chs []channels.Channel) {
 	w.Header().Set("Content-Type", "application/vnd.apple.mpegurl; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	_, _ = io.WriteString(w, "#EXTM3U\n")
-	for _, c := range chs {
-		name := c.Name
-		if name == "" {
-			name = c.TvgName
-		}
-		attrs := make([]string, 0, 4)
-		if c.TvgID != "" {
-			attrs = append(attrs, fmt.Sprintf("tvg-id=\"%s\"", escapeAttr(c.TvgID)))
-		}
-		if c.TvgName != "" {
-			attrs = append(attrs, fmt.Sprintf("tvg-name=\"%s\"", escapeAttr(c.TvgName)))
-		}
-		if c.TvgLogo != "" {
-			attrs = append(attrs, fmt.Sprintf("tvg-logo=\"%s\"", escapeAttr(c.TvgLogo)))
-		}
-		if c.GroupTitle != "" {
-			attrs = append(attrs, fmt.Sprintf("group-title=\"%s\"", escapeAttr(c.GroupTitle)))
-		}
-		meta := ""
-		if len(attrs) > 0 {
-			meta = " " + strings.Join(attrs, " ")
-		}
-		_, _ = io.WriteString(w, fmt.Sprintf("#EXTINF:-1%s,%s\n", meta, name))
-		_, _ = io.WriteString(w, c.StreamURL+"\n")
-	}
-}
-
-func escapeAttr(s string) string {
-	return strings.ReplaceAll(s, "\"", "")
+	_ = channels.WriteM3U(w, chs)
 }
 
 func servePlaylist(w http.ResponseWriter, r *http.Request, sourceType, sourceURL, content string) {

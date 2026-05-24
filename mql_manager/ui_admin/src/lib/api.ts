@@ -16,8 +16,11 @@ export type Playlist = {
   name: string
   sourceType: 'url' | 'inline'
   sourceUrl: string
+  contentFormat?: 'm3u' | 'json'
   createdAt: string
   publicUrl: string
+  publicM3uUrl?: string
+  publicJsonUrl?: string
 }
 
 export type Subscription = {
@@ -36,6 +39,8 @@ export type Channel = {
   tvgName: string
   tvgLogo: string
   groupTitle: string
+  sourceId?: string
+  extraJson?: string
   createdAt: string
 }
 

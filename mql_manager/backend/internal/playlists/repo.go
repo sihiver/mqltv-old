@@ -14,15 +14,28 @@ type Repo struct {
 }
 
 type Playlist struct {
-	ID         int64  `json:"id"`
-	Name       string `json:"name"`
-	SourceType string `json:"sourceType"` // url|inline
-	SourceURL  string `json:"sourceUrl"`
-	CreatedAt  string `json:"createdAt"`
+	ID            int64  `json:"id"`
+	Name          string `json:"name"`
+	SourceType    string `json:"sourceType"` // url|inline
+	SourceURL     string `json:"sourceUrl"`
+	ContentFormat string `json:"contentFormat"` // m3u|json
+	CreatedAt     string `json:"createdAt"`
+}
+
+func DetectContentFormat(content string) string {
+	if channelsIsJSON(content) {
+		return "json"
+	}
+	return "m3u"
+}
+
+func channelsIsJSON(content string) bool {
+	content = strings.TrimSpace(content)
+	return strings.HasPrefix(content, "{") || strings.HasPrefix(content, "[")
 }
 
 func (r Repo) List(ctx context.Context) ([]Playlist, error) {
-	rows, err := r.DB.QueryContext(ctx, `SELECT id, name, source_type, source_url, created_at FROM playlists ORDER BY id DESC`)
+	rows, err := r.DB.QueryContext(ctx, `SELECT id, name, source_type, source_url, content_format, created_at FROM playlists ORDER BY id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +44,7 @@ func (r Repo) List(ctx context.Context) ([]Playlist, error) {
 	out := make([]Playlist, 0)
 	for rows.Next() {
 		var p Playlist
-		if err := rows.Scan(&p.ID, &p.Name, &p.SourceType, &p.SourceURL, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.SourceType, &p.SourceURL, &p.ContentFormat, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
@@ -42,8 +55,8 @@ func (r Repo) List(ctx context.Context) ([]Playlist, error) {
 func (r Repo) Get(ctx context.Context, id int64) (Playlist, string, error) {
 	var p Playlist
 	var content string
-	err := r.DB.QueryRowContext(ctx, `SELECT id, name, source_type, source_url, content, created_at FROM playlists WHERE id = ?`, id).
-		Scan(&p.ID, &p.Name, &p.SourceType, &p.SourceURL, &content, &p.CreatedAt)
+	err := r.DB.QueryRowContext(ctx, `SELECT id, name, source_type, source_url, content, content_format, created_at FROM playlists WHERE id = ?`, id).
+		Scan(&p.ID, &p.Name, &p.SourceType, &p.SourceURL, &content, &p.ContentFormat, &p.CreatedAt)
 	return p, content, err
 }
 
@@ -67,7 +80,7 @@ func (r Repo) CreateFromURL(ctx context.Context, name, rawURL string) (Playlist,
 
 	createdAt := time.Now().UTC().Format(time.RFC3339)
 	res, err := r.DB.ExecContext(ctx,
-		`INSERT INTO playlists(name, source_type, source_url, content, created_at) VALUES(?, 'url', ?, '', ?)`,
+		`INSERT INTO playlists(name, source_type, source_url, content, content_format, created_at) VALUES(?, 'url', ?, '', 'm3u', ?)`,
 		name, rawURL, createdAt,
 	)
 	if err != nil {
@@ -89,10 +102,11 @@ func (r Repo) CreateInline(ctx context.Context, name, content string) (Playlist,
 	}
 
 	createdAt := time.Now().UTC().Format(time.RFC3339)
+	format := DetectContentFormat(content)
 	var id int64
 	err := r.DB.QueryRowContext(ctx,
-		`INSERT INTO playlists(name, source_type, source_url, content, created_at) VALUES(?, 'inline', '', ?, ?) RETURNING id`,
-		name, content, createdAt,
+		`INSERT INTO playlists(name, source_type, source_url, content, content_format, created_at) VALUES(?, 'inline', '', ?, ?, ?) RETURNING id`,
+		name, content, format, createdAt,
 	).Scan(&id)
 	if err != nil {
 		return Playlist{}, err

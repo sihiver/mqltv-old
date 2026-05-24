@@ -57,10 +57,19 @@
                   </el-input>
                 </el-form-item>
 
-                <el-form-item label="Public playlist URL">
+                <el-form-item label="Public playlist (M3U)">
                   <el-input :model-value="publicPlaylistAbsUrl" readonly class="mono">
                     <template #append>
                       <el-button :disabled="!publicPlaylistAbsUrl" @click="publicPlaylistAbsUrl && copy(publicPlaylistAbsUrl)">
+                        Copy
+                      </el-button>
+                    </template>
+                  </el-input>
+                </el-form-item>
+                <el-form-item label="Public playlist (JSON)">
+                  <el-input :model-value="publicPlaylistJsonAbsUrl" readonly class="mono">
+                    <template #append>
+                      <el-button :disabled="!publicPlaylistJsonAbsUrl" @click="publicPlaylistJsonAbsUrl && copy(publicPlaylistJsonAbsUrl)">
                         Copy
                       </el-button>
                     </template>
@@ -155,7 +164,7 @@
 
         <el-tab-pane label="Packages (Auto)" name="packages">
         <el-alert
-          title="Assign paket ke user. Jika user belum memilih channel manual, playlist publik akan di-generate dari paket yang dipilih."
+          title="Bisa pilih beberapa paket sekaligus (mis. Online + Sport). Buat dua paket terpisah: isi paket Online dari playlist JSON, paket Sport dari playlist M3U, lalu assign keduanya di sini. Untuk app Vision+/Sihiver gunakan URL playlist.json; M3U untuk player biasa."
           type="info"
           show-icon
           style="margin-bottom: 12px"
@@ -409,15 +418,22 @@ const publicPlaylistUrl = computed(() => {
   return `/public/users/${user.value.appKey}/playlist.m3u`
 })
 
-const publicPlaylistAbsUrl = computed(() => {
-  const rel = publicPlaylistUrl.value
+const publicPlaylistJsonUrl = computed(() => {
+  if (!user.value?.appKey) return ''
+  return `/public/users/${user.value.appKey}/playlist.json`
+})
+
+function absUrl(rel: string) {
   if (!rel) return ''
   try {
     return `${window.location.origin}${rel}`
   } catch {
     return rel
   }
-})
+}
+
+const publicPlaylistAbsUrl = computed(() => absUrl(publicPlaylistUrl.value))
+const publicPlaylistJsonAbsUrl = computed(() => absUrl(publicPlaylistJsonUrl.value))
 
 const latestSub = computed(() => {
   if (!subs.value.length) return null
@@ -508,12 +524,10 @@ async function savePackages() {
   if (!user.value) return
   savingPackages.value = true
   try {
-    // Packages mode should not keep custom channels.
-    if (selectedChannelIds.value.length > 0) {
-      await api.setUserChannels(user.value.id, [])
-      selectedChannelIds.value = []
-      applyChannelSelectionToTable()
-    }
+    // Package mode must not leave manual channels in DB (they used to override packages).
+    await api.setUserChannels(user.value.id, [])
+    selectedChannelIds.value = []
+    applyChannelSelectionToTable()
     const pk = await api.setUserPackages(user.value.id, selectedPackageIds.value)
     assignedPackages.value = pk
     ElMessage.success('Packages saved')

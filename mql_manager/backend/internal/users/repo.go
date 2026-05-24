@@ -125,7 +125,7 @@ func (r Repo) ListUserPackageChannels(ctx context.Context, userID int64) ([]chan
 	// Merge channels from all assigned packages. Group by channel id to avoid duplicates.
 	rows, err := r.DB.QueryContext(ctx, `
 SELECT
-  c.id, c.name, c.stream_url, c.tvg_id, c.tvg_name, c.tvg_logo, c.group_title, c.created_at
+  c.id, c.name, c.stream_url, c.tvg_id, c.tvg_name, c.tvg_logo, c.group_title, c.source_id, c.extra_json, c.created_at
 FROM user_packages up
 JOIN package_channels pc ON pc.package_id = up.package_id
 JOIN channels c ON c.id = pc.channel_id
@@ -140,8 +140,8 @@ ORDER BY MIN(up.package_id) ASC, MIN(pc.pos) ASC, c.group_title ASC, c.name ASC
 
 	out := make([]channels.Channel, 0)
 	for rows.Next() {
-		var c channels.Channel
-		if err := rows.Scan(&c.ID, &c.Name, &c.StreamURL, &c.TvgID, &c.TvgName, &c.TvgLogo, &c.GroupTitle, &c.CreatedAt); err != nil {
+		c, err := channels.ScanRow(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, c)

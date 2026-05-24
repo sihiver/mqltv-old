@@ -7,7 +7,7 @@
         </div>
         <div style="display:flex; gap: 10px; align-items:center;">
           <el-button @click="showUrl = true">Import URL</el-button>
-          <el-button type="primary" @click="showUpload = true">Upload M3U</el-button>
+          <el-button type="primary" @click="showUpload = true">Upload M3U / JSON</el-button>
         </div>
       </div>
 
@@ -23,11 +23,21 @@
             <span>{{ formatDateTimeID(scope.row.createdAt) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="Public URL" min-width="260">
+        <el-table-column label="Format" width="80">
+          <template #default="scope">
+            <el-tag size="small" :type="scope.row.contentFormat === 'json' ? 'warning' : 'info'">
+              {{ scope.row.contentFormat || 'm3u' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="Public URL" min-width="300">
           <template #default="scope">
             <div style="display:flex; gap:8px; align-items:center;">
               <el-input :model-value="scope.row.publicUrl" readonly size="small" />
               <el-button size="small" @click="copy(scope.row.publicUrl)">Copy</el-button>
+            </div>
+            <div v-if="scope.row.contentFormat === 'json' && scope.row.publicM3uUrl" style="margin-top:6px; color:#64748b; font-size:11px;">
+              M3U (player IPTV): {{ scope.row.publicM3uUrl }}
             </div>
           </template>
         </el-table-column>
@@ -71,7 +81,10 @@
           <el-input v-model="uploadName" placeholder="e.g. Local M3U" />
         </el-form-item>
         <el-form-item label="File">
-          <input type="file" accept=".m3u,.m3u8,application/x-mpegURL,audio/x-mpegurl" @change="onFile" />
+          <input type="file" accept=".m3u,.m3u8,.json,application/json,application/x-mpegURL,audio/x-mpegurl" @change="onFile" />
+          <div style="margin-top:8px; color:#64748b; font-size:12px;">
+            Mendukung M3U/M3U8 dan JSON Vision+ (field <code>info[]</code> dengan <code>name</code>, <code>hls</code>, <code>country_name</code>, dll).
+          </div>
           <div v-if="uploadFile" style="margin-top:8px; color:#64748b; font-size:12px;">
             Selected: {{ uploadFile.name }} ({{ Math.round(uploadFile.size / 1024) }} KB)
           </div>

@@ -42,6 +42,7 @@ func (a API) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/public/presence", a.handlePublicPresence)
 	mux.HandleFunc("/playlist.m3u", a.handlePublicRootPlaylist)
 	mux.HandleFunc("/public/m3u/", a.handlePublicM3UByPlaylistID)
+	mux.HandleFunc("/public/json/", a.handlePublicJSONByPlaylistID)
 	mux.HandleFunc("/public/users/", a.handlePublicUserPlaylist)
 }
 

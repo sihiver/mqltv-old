@@ -26,16 +26,20 @@ type Channel struct {
 	TvgName    string `json:"tvgName"`
 	TvgLogo    string `json:"tvgLogo"`
 	GroupTitle string `json:"groupTitle"`
+	SourceID   string `json:"sourceId"`
+	ExtraJSON  string `json:"extraJson"`
 	CreatedAt  string `json:"createdAt"`
 }
 
 type m3uItem struct {
 	Name       string
 	StreamURL  string
+	SourceID   string
 	TvgID      string
 	TvgName    string
 	TvgLogo    string
 	GroupTitle string
+	ExtraJSON  string
 }
 
 func (r Repo) ImportM3U(ctx context.Context, playlistID int64, content string) (int, error) {
@@ -46,12 +50,9 @@ func (r Repo) ImportM3U(ctx context.Context, playlistID int64, content string) (
 	if content == "" {
 		return 0, errors.New("content is required")
 	}
-	items, err := parseM3U(strings.NewReader(content))
+	items, err := parsePlaylistContent(content)
 	if err != nil {
 		return 0, err
-	}
-	if len(items) == 0 {
-		return 0, errors.New("no channels found in m3u")
 	}
 
 	tx, err := r.DB.BeginTx(ctx, nil)
@@ -79,21 +80,7 @@ func (r Repo) ImportM3U(ctx context.Context, playlistID int64, content string) (
 			continue
 		}
 
-		// RETURNING id is required: LastInsertId() after ON CONFLICT DO UPDATE can return a
-		// stale rowid from a previous insert in the same batch (or a deleted row), which
-		// triggers FOREIGN KEY constraint failed on playlist_channels.
-		var channelID int64
-		err := tx.QueryRowContext(ctx, `
-INSERT INTO channels(name, stream_url, tvg_id, tvg_name, tvg_logo, group_title, created_at)
-VALUES(?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT(stream_url) DO UPDATE SET
-  name=excluded.name,
-  tvg_id=excluded.tvg_id,
-  tvg_name=excluded.tvg_name,
-  tvg_logo=excluded.tvg_logo,
-  group_title=excluded.group_title
-RETURNING id
-`, it.Name, it.StreamURL, it.TvgID, it.TvgName, it.TvgLogo, it.GroupTitle, createdAt).Scan(&channelID)
+		channelID, err := upsertChannelTx(ctx, tx, it, createdAt)
 		if err != nil {
 			return imported, err
 		}
@@ -144,7 +131,7 @@ func (r Repo) ListChannels(ctx context.Context, playlistID *int64, q string, lim
 		order = "ORDER BY pc.pos ASC"
 	}
 
-	query := `SELECT c.id, c.name, c.stream_url, c.tvg_id, c.tvg_name, c.tvg_logo, c.group_title, c.created_at
+	query := `SELECT ` + channelSelectSQL + `
 FROM channels c ` + join + " " + w + " " + order + ` LIMIT ?`
 	args = append(args, limit)
 
@@ -156,8 +143,8 @@ FROM channels c ` + join + " " + w + " " + order + ` LIMIT ?`
 
 	out := make([]Channel, 0)
 	for rows.Next() {
-		var c Channel
-		if err := rows.Scan(&c.ID, &c.Name, &c.StreamURL, &c.TvgID, &c.TvgName, &c.TvgLogo, &c.GroupTitle, &c.CreatedAt); err != nil {
+		c, err := ScanRow(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, c)
@@ -167,7 +154,7 @@ FROM channels c ` + join + " " + w + " " + order + ` LIMIT ?`
 
 func (r Repo) ListUserChannels(ctx context.Context, userID int64) ([]Channel, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-SELECT c.id, c.name, c.stream_url, c.tvg_id, c.tvg_name, c.tvg_logo, c.group_title, c.created_at
+SELECT `+channelSelectSQL+`
 FROM user_channels uc
 JOIN channels c ON c.id = uc.channel_id
 WHERE uc.user_id = ?
@@ -180,13 +167,76 @@ ORDER BY c.group_title ASC, c.name ASC
 
 	out := make([]Channel, 0)
 	for rows.Next() {
-		var c Channel
-		if err := rows.Scan(&c.ID, &c.Name, &c.StreamURL, &c.TvgID, &c.TvgName, &c.TvgLogo, &c.GroupTitle, &c.CreatedAt); err != nil {
+		c, err := ScanRow(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, c)
 	}
 	return out, rows.Err()
+}
+
+func upsertChannelTx(ctx context.Context, tx *sql.Tx, it m3uItem, createdAt string) (int64, error) {
+	sourceID := strings.TrimSpace(it.SourceID)
+	extraJSON := strings.TrimSpace(it.ExtraJSON)
+
+	if sourceID != "" {
+		var existingID int64
+		err := tx.QueryRowContext(ctx, `SELECT id FROM channels WHERE source_id = ?`, sourceID).Scan(&existingID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return 0, err
+		}
+		if err == nil {
+			if _, err := tx.ExecContext(ctx, `
+UPDATE channels SET
+  name=?, stream_url=?, tvg_id=?, tvg_name=?, tvg_logo=?, group_title=?, extra_json=?
+WHERE id=?
+`, it.Name, it.StreamURL, it.TvgID, it.TvgName, it.TvgLogo, it.GroupTitle, extraJSON, existingID); err != nil {
+				return 0, err
+			}
+			return existingID, nil
+		}
+
+		var channelID int64
+		err = tx.QueryRowContext(ctx, `
+INSERT INTO channels(name, stream_url, tvg_id, tvg_name, tvg_logo, group_title, source_id, extra_json, created_at)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id
+`, it.Name, it.StreamURL, it.TvgID, it.TvgName, it.TvgLogo, it.GroupTitle, sourceID, extraJSON, createdAt).Scan(&channelID)
+		if err != nil {
+			return 0, err
+		}
+		return channelID, nil
+	}
+
+	// M3U tanpa source_id: upsert by stream_url (ambil row pertama jika duplikat).
+	var channelID int64
+	err := tx.QueryRowContext(ctx, `SELECT id FROM channels WHERE stream_url = ? AND source_id = '' LIMIT 1`, it.StreamURL).Scan(&channelID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return 0, err
+	}
+	if err == nil {
+		if _, err := tx.ExecContext(ctx, `
+UPDATE channels SET name=?, tvg_id=?, tvg_name=?, tvg_logo=?, group_title=?, extra_json=?
+WHERE id=?
+`, it.Name, it.TvgID, it.TvgName, it.TvgLogo, it.GroupTitle, extraJSON, channelID); err != nil {
+			return 0, err
+		}
+		return channelID, nil
+	}
+
+	err = tx.QueryRowContext(ctx, `
+INSERT INTO channels(name, stream_url, tvg_id, tvg_name, tvg_logo, group_title, source_id, extra_json, created_at)
+VALUES(?, ?, ?, ?, ?, ?, '', ?, ?)
+RETURNING id
+`, it.Name, it.StreamURL, it.TvgID, it.TvgName, it.TvgLogo, it.GroupTitle, extraJSON, createdAt).Scan(&channelID)
+	if err != nil {
+		return 0, err
+	}
+	if channelID <= 0 {
+		return 0, fmt.Errorf("channel id tidak valid untuk url %q", it.StreamURL)
+	}
+	return channelID, nil
 }
 
 func (r Repo) SetUserChannels(ctx context.Context, userID int64, channelIDs []int64) error {

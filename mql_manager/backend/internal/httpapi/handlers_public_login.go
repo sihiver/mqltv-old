@@ -80,9 +80,13 @@ LIMIT 1
 		}
 	}
 
+	m3uURL := fmt.Sprintf("/public/users/%s/playlist.m3u", u.AppKey)
+	jsonURL := fmt.Sprintf("/public/users/%s/playlist.json", u.AppKey)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":                true,
-		"user":              u,
-		"publicPlaylistUrl": fmt.Sprintf("/public/users/%s/playlist.m3u", u.AppKey),
+		"ok":                  true,
+		"user":                u,
+		"publicPlaylistUrl":   m3uURL,
+		"publicPlaylistJsonUrl": jsonURL,
+		"publicM3uUrl":        m3uURL,
 	})
 }

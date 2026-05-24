@@ -74,7 +74,7 @@ func (r Repo) Delete(ctx context.Context, id int64) error {
 
 func (r Repo) ListChannels(ctx context.Context, packageID int64) ([]channels.Channel, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-SELECT c.id, c.name, c.stream_url, c.tvg_id, c.tvg_name, c.tvg_logo, c.group_title, c.created_at
+SELECT c.id, c.name, c.stream_url, c.tvg_id, c.tvg_name, c.tvg_logo, c.group_title, c.source_id, c.extra_json, c.created_at
 FROM package_channels pc
 JOIN channels c ON c.id = pc.channel_id
 WHERE pc.package_id = ?
@@ -87,8 +87,8 @@ ORDER BY pc.pos ASC
 
 	out := make([]channels.Channel, 0)
 	for rows.Next() {
-		var c channels.Channel
-		if err := rows.Scan(&c.ID, &c.Name, &c.StreamURL, &c.TvgID, &c.TvgName, &c.TvgLogo, &c.GroupTitle, &c.CreatedAt); err != nil {
+		c, err := channels.ScanRow(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, c)

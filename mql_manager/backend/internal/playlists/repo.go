@@ -89,14 +89,17 @@ func (r Repo) CreateInline(ctx context.Context, name, content string) (Playlist,
 	}
 
 	createdAt := time.Now().UTC().Format(time.RFC3339)
-	res, err := r.DB.ExecContext(ctx,
-		`INSERT INTO playlists(name, source_type, source_url, content, created_at) VALUES(?, 'inline', '', ?, ?)`,
+	var id int64
+	err := r.DB.QueryRowContext(ctx,
+		`INSERT INTO playlists(name, source_type, source_url, content, created_at) VALUES(?, 'inline', '', ?, ?) RETURNING id`,
 		name, content, createdAt,
-	)
+	).Scan(&id)
 	if err != nil {
 		return Playlist{}, err
 	}
-	id, _ := res.LastInsertId()
+	if id <= 0 {
+		return Playlist{}, errors.New("failed to create playlist")
+	}
 	p, _, err := r.Get(ctx, id)
 	return p, err
 }

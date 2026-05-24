@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"io"
 	"regexp"
 	"strings"
@@ -38,6 +39,9 @@ type m3uItem struct {
 }
 
 func (r Repo) ImportM3U(ctx context.Context, playlistID int64, content string) (int, error) {
+	if playlistID <= 0 {
+		return 0, errors.New("invalid playlist id")
+	}
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return 0, errors.New("content is required")
@@ -56,6 +60,14 @@ func (r Repo) ImportM3U(ctx context.Context, playlistID int64, content string) (
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	var playlistExists int
+	if err := tx.QueryRowContext(ctx, `SELECT 1 FROM playlists WHERE id = ? LIMIT 1`, playlistID).Scan(&playlistExists); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, fmt.Errorf("playlist %d tidak ditemukan", playlistID)
+		}
+		return 0, err
+	}
+
 	if _, err := tx.ExecContext(ctx, `DELETE FROM playlist_channels WHERE playlist_id = ?`, playlistID); err != nil {
 		return 0, err
 	}
@@ -67,7 +79,11 @@ func (r Repo) ImportM3U(ctx context.Context, playlistID int64, content string) (
 			continue
 		}
 
-		res, err := tx.ExecContext(ctx, `
+		// RETURNING id is required: LastInsertId() after ON CONFLICT DO UPDATE can return a
+		// stale rowid from a previous insert in the same batch (or a deleted row), which
+		// triggers FOREIGN KEY constraint failed on playlist_channels.
+		var channelID int64
+		err := tx.QueryRowContext(ctx, `
 INSERT INTO channels(name, stream_url, tvg_id, tvg_name, tvg_logo, group_title, created_at)
 VALUES(?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(stream_url) DO UPDATE SET
@@ -76,17 +92,13 @@ ON CONFLICT(stream_url) DO UPDATE SET
   tvg_name=excluded.tvg_name,
   tvg_logo=excluded.tvg_logo,
   group_title=excluded.group_title
-`, it.Name, it.StreamURL, it.TvgID, it.TvgName, it.TvgLogo, it.GroupTitle, createdAt)
+RETURNING id
+`, it.Name, it.StreamURL, it.TvgID, it.TvgName, it.TvgLogo, it.GroupTitle, createdAt).Scan(&channelID)
 		if err != nil {
 			return imported, err
 		}
-
-		channelID, err := res.LastInsertId()
-		if err != nil || channelID == 0 {
-			err = tx.QueryRowContext(ctx, `SELECT id FROM channels WHERE stream_url = ?`, it.StreamURL).Scan(&channelID)
-			if err != nil {
-				return imported, err
-			}
+		if channelID <= 0 {
+			return imported, fmt.Errorf("channel id tidak valid untuk url %q", it.StreamURL)
 		}
 
 		if _, err := tx.ExecContext(ctx, `INSERT OR REPLACE INTO playlist_channels(playlist_id, channel_id, pos) VALUES(?, ?, ?)`, playlistID, channelID, i); err != nil {

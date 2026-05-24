@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -83,7 +84,7 @@ func (a API) handlePlaylists(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, err)
 			return
 		}
-		if _, err := a.Channels.ImportM3U(r.Context(), p.ID, content); err != nil {
+		if err := a.importPlaylistM3U(r.Context(), p.ID, content); err != nil {
 			writeError(w, http.StatusBadRequest, err)
 			return
 		}
@@ -129,7 +130,7 @@ func (a API) handlePlaylistUpload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	if _, err := a.Channels.ImportM3U(r.Context(), p.ID, content); err != nil {
+	if err := a.importPlaylistM3U(r.Context(), p.ID, content); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -141,6 +142,16 @@ func (a API) handlePlaylistUpload(w http.ResponseWriter, r *http.Request) {
 		"createdAt":  p.CreatedAt,
 		"publicUrl":  fmt.Sprintf("/public/m3u/%d.m3u", p.ID),
 	})
+}
+
+// importPlaylistM3U imports channels and removes the playlist row if import fails
+// (avoids orphan playlists after a failed upload).
+func (a API) importPlaylistM3U(ctx context.Context, playlistID int64, content string) error {
+	if _, err := a.Channels.ImportM3U(ctx, playlistID, content); err != nil {
+		_ = a.Playlists.Delete(ctx, playlistID)
+		return err
+	}
+	return nil
 }
 
 func (a API) handlePlaylistByID(w http.ResponseWriter, r *http.Request) {

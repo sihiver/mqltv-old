@@ -2,13 +2,15 @@ package com.mqltv;
 
 import android.content.Context;
 
-import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import okhttp3.Request;
@@ -20,7 +22,7 @@ public final class PlaylistRepository {
 
     public List<Channel> loadDefault(Context context) {
         try (InputStream inputStream = context.getAssets().open(DEFAULT_ASSET)) {
-            List<Channel> channels = M3UParser.parse(inputStream);
+            List<Channel> channels = PlaylistParser.parse(inputStream);
             return dedup(channels);
         } catch (IOException e) {
             return Collections.emptyList();
@@ -33,11 +35,11 @@ public final class PlaylistRepository {
             return Collections.emptyList();
         }
 
-        InputStream inputStream = null;
         try {
             Request request = new Request.Builder()
                     .url(playlistUrl)
                     .header("User-Agent", "MQLTV/1.0")
+                    .header("Accept", "application/json, application/vnd.apple.mpegurl, */*")
                     .build();
             try (Response response = NetworkClient.getClient().newCall(request).execute()) {
                 if (!response.isSuccessful()) {
@@ -47,19 +49,26 @@ public final class PlaylistRepository {
                 if (body == null) {
                     return Collections.emptyList();
                 }
-                inputStream = new BufferedInputStream(body.byteStream());
-                List<Channel> channels = M3UParser.parse(inputStream);
+                byte[] raw = body.bytes();
+                if (raw.length == 0) {
+                    return Collections.emptyList();
+                }
+                List<Channel> channels = parsePlaylistBytes(raw);
                 return dedup(channels);
             }
         } catch (IOException e) {
             return Collections.emptyList();
-        } finally {
-            if (inputStream != null) {
-                try {
-                    inputStream.close();
-                } catch (IOException ignored) {
-                }
-            }
+        }
+    }
+
+    private static List<Channel> parsePlaylistBytes(byte[] raw) throws IOException {
+        String head = new String(raw, 0, Math.min(raw.length, 512), StandardCharsets.UTF_8).trim();
+        if (VisionPlusPlaylistParser.looksLikeJson(head)) {
+            String content = new String(raw, StandardCharsets.UTF_8);
+            return VisionPlusPlaylistParser.parseContent(content);
+        }
+        try (InputStream in = new ByteArrayInputStream(raw)) {
+            return M3UParser.parse(in);
         }
     }
 
@@ -89,10 +98,15 @@ public final class PlaylistRepository {
             String title = c.getTitle();
 
             String key;
-            if (url != null && !url.trim().isEmpty()) {
-                key = "u:" + url.trim();
-            } else if (title != null && !title.trim().isEmpty()) {
-                key = "t:" + title.trim().toLowerCase();
+            String sourceId = c.getSourceId();
+            String titleKey = title != null ? title.trim().toLowerCase(Locale.US) : "";
+            if (sourceId != null && !sourceId.trim().isEmpty()) {
+                key = "id:" + sourceId.trim();
+            } else if (url != null && !url.trim().isEmpty()) {
+                // Many JSON events share the same manifest URL — include title in the key.
+                key = "u:" + url.trim() + "|t:" + titleKey;
+            } else if (!titleKey.isEmpty()) {
+                key = "t:" + titleKey;
             } else {
                 continue;
             }

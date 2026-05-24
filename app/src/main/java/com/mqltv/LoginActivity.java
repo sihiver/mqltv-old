@@ -211,6 +211,7 @@ public class LoginActivity extends FragmentActivity {
 
                     JSONObject json = new JSONObject(body);
                     String publicPlaylistPath = json.optString("publicPlaylistUrl", "");
+                    String publicPlaylistJsonPath = json.optString("publicPlaylistJsonUrl", "");
                     JSONObject userObj = json.optJSONObject("user");
                     String appKey = userObj != null ? userObj.optString("appKey", "") : "";
                     String expiresAt = userObj != null ? userObj.optString("expiresAt", "") : "";
@@ -234,11 +235,15 @@ public class LoginActivity extends FragmentActivity {
                         }
                     }
 
-                    if (publicPlaylistPath.trim().isEmpty()) {
+                    if (publicPlaylistPath.trim().isEmpty() && publicPlaylistJsonPath.trim().isEmpty()) {
                         throw new RuntimeException("Response login tidak valid");
                     }
 
-                    String fullPlaylistUrl = joinUrl(baseUrl, publicPlaylistPath);
+                    // Prefer JSON playlist (Vision+ metadata: url_license, header_iptv, jenis).
+                    String playlistPath = !publicPlaylistJsonPath.trim().isEmpty()
+                            ? publicPlaylistJsonPath.trim()
+                            : publicPlaylistPath.trim();
+                    String fullPlaylistUrl = joinUrl(baseUrl, playlistPath);
                     AuthPrefs.setLogin(getApplicationContext(), username, displayName, appKey, fullPlaylistUrl, plan, packagesRaw, expiresAt);
                 }
 

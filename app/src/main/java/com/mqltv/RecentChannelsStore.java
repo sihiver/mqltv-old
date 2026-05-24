@@ -34,10 +34,8 @@ public final class RecentChannelsStore {
 
         JSONArray out = new JSONArray();
 
-        // Put new item first.
         out.put(toJson(channel));
 
-        // Append others excluding duplicates.
         for (int i = 0; i < arr.length(); i++) {
             try {
                 JSONObject o = arr.getJSONObject(i);
@@ -82,6 +80,12 @@ public final class RecentChannelsStore {
             o.put("title", nullToEmpty(c.getTitle()));
             o.put("url", nullToEmpty(c.getUrl()));
             o.put("logo", nullToEmpty(c.getLogoUrl()));
+            o.put("group", nullToEmpty(c.getGroupTitle()));
+            o.put("sourceId", nullToEmpty(c.getSourceId()));
+            ChannelPlaybackMeta meta = c.getPlaybackMeta();
+            if (meta != null && !TextUtils.isEmpty(meta.getRawJson())) {
+                o.put("playbackMeta", meta.getRawJson());
+            }
             o.put("ts", System.currentTimeMillis());
         } catch (Exception ignored) {
         }
@@ -93,8 +97,24 @@ public final class RecentChannelsStore {
         String title = o.optString("title", "");
         String url = o.optString("url", "");
         String logo = o.optString("logo", "");
+        String group = o.optString("group", "");
+        String sourceId = o.optString("sourceId", "");
         if (TextUtils.isEmpty(url)) return null;
-        return new Channel(title, url, null, logo);
+
+        ChannelPlaybackMeta meta = null;
+        String metaRaw = o.optString("playbackMeta", "");
+        if (!TextUtils.isEmpty(metaRaw)) {
+            try {
+                meta = ChannelPlaybackMeta.fromVisionPlusObject(new JSONObject(metaRaw));
+            } catch (Exception ignored) {
+            }
+        }
+
+        return new Channel(title, url,
+                TextUtils.isEmpty(group) ? null : group,
+                TextUtils.isEmpty(logo) ? null : logo,
+                TextUtils.isEmpty(sourceId) ? null : sourceId,
+                meta);
     }
 
     private static String nullToEmpty(String s) {

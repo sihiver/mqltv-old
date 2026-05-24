@@ -158,9 +158,9 @@ public class NativePlayerActivity extends Activity {
             RecentChannelsStore.record(NativePlayerActivity.this, channel);
             PresenceReporter.reportOnlineLaunch(NativePlayerActivity.this, channel.getTitle(), channel.getUrl());
             try {
-                startActivity(PlayerIntents.createPreferredPlayIntent(NativePlayerActivity.this, channel.getTitle(), channel.getUrl()));
+                startActivity(PlayerIntents.createPreferredPlayIntent(NativePlayerActivity.this, channel));
             } catch (Exception e) {
-                startActivity(PlayerIntents.createPlayIntent(NativePlayerActivity.this, channel.getTitle(), channel.getUrl()));
+                startActivity(PlayerIntents.createPlayIntent(NativePlayerActivity.this, channel));
             }
             finish();
         });

@@ -81,9 +81,9 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
             RecentChannelsStore.record(LegacyExoPlayerActivity.this, channel);
             PresenceReporter.reportOnlineLaunch(LegacyExoPlayerActivity.this, channel.getTitle(), channel.getUrl());
             try {
-                startActivity(PlayerIntents.createPreferredPlayIntent(LegacyExoPlayerActivity.this, channel.getTitle(), channel.getUrl()));
+                startActivity(PlayerIntents.createPreferredPlayIntent(LegacyExoPlayerActivity.this, channel));
             } catch (Exception e) {
-                startActivity(PlayerIntents.createPlayIntent(LegacyExoPlayerActivity.this, channel.getTitle(), channel.getUrl()));
+                startActivity(PlayerIntents.createPlayIntent(LegacyExoPlayerActivity.this, channel));
             }
             finish();
         });
@@ -210,23 +210,25 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
             }
         });
 
-        String userAgent = Util.getUserAgent(this, "MQLTV");
-        DefaultHttpDataSource.Factory httpFactory = new DefaultHttpDataSource.Factory()
-            .setUserAgent(userAgent)
-            .setAllowCrossProtocolRedirects(true);
-        DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(this, httpFactory);
-
         Uri uri = Uri.parse(url);
-
-        int type = Util.inferContentType(uri);
-        MediaItem item = MediaItem.fromUri(uri);
-
+        ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromIntent(getIntent());
         MediaSource mediaSource;
-        if (type == com.google.android.exoplayer2.C.TYPE_HLS) {
-            mediaSource = new HlsMediaSource.Factory(dataSourceFactory).createMediaSource(item);
+        if (meta != null && meta.isActive()) {
+            mediaSource = VisionPlusPlayback.buildLegacyMediaSource(this, uri, meta);
         } else {
-            // Many IPTV endpoints are TS/MP4 streams even when URL doesn't end with .m3u8.
-            mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(item);
+            String userAgent = Util.getUserAgent(this, "MQLTV");
+            DefaultHttpDataSource.Factory httpFactory = new DefaultHttpDataSource.Factory()
+                .setUserAgent(userAgent)
+                .setAllowCrossProtocolRedirects(true);
+            DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(this, httpFactory);
+
+            int type = Util.inferContentType(uri);
+            MediaItem item = MediaItem.fromUri(uri);
+            if (type == com.google.android.exoplayer2.C.TYPE_HLS) {
+                mediaSource = new HlsMediaSource.Factory(dataSourceFactory).createMediaSource(item);
+            } else {
+                mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(item);
+            }
         }
 
         player.setMediaSource(mediaSource);

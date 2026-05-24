@@ -25,6 +25,7 @@ import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.ExoPlaybackException;
+import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.video.MediaCodecVideoDecoderException;
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
 import androidx.media3.ui.PlayerView;
@@ -74,11 +75,11 @@ public class PlayerActivity extends FragmentActivity {
             if (!SubscriptionGuard.ensureNotExpired(PlayerActivity.this)) return;
             RecentChannelsStore.record(PlayerActivity.this, channel);
             PresenceReporter.reportOnlineLaunch(PlayerActivity.this, channel.getTitle(), channel.getUrl());
-            Intent i = PlayerIntents.createPreferredPlayIntent(PlayerActivity.this, channel.getTitle(), channel.getUrl());
+            Intent i = PlayerIntents.createPreferredPlayIntent(PlayerActivity.this, channel);
             try {
                 startActivity(i);
             } catch (Exception e) {
-                startActivity(PlayerIntents.createPlayIntent(PlayerActivity.this, channel.getTitle(), channel.getUrl()));
+                startActivity(PlayerIntents.createPlayIntent(PlayerActivity.this, channel));
             }
             finish();
         });
@@ -149,6 +150,15 @@ public class PlayerActivity extends FragmentActivity {
                 if (loadingView != null) loadingView.setVisibility(View.GONE);
                 String msg = "Playback error: " + error.getErrorCodeName();
                 Throwable cause = error.getCause();
+                while (cause != null) {
+                    String cn = cause.getClass().getSimpleName();
+                    if (cn.contains("Drm") || cn.contains("MediaDrm")) {
+                        msg = "DRM gagal — periksa url_license / header di playlist JSON";
+                        break;
+                    }
+                    cause = cause.getCause();
+                }
+                cause = error.getCause();
                 boolean codecNotSupported = false;
                 if (cause instanceof MediaCodecVideoDecoderException) {
                     msg = "Video codec not supported on this device";
@@ -195,8 +205,14 @@ public class PlayerActivity extends FragmentActivity {
             }
         });
 
-        MediaItem mediaItem = MediaItem.fromUri(Uri.parse(url));
-        player.setMediaItem(mediaItem);
+        ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromIntent(getIntent());
+        Uri uri = Uri.parse(url);
+        if (meta != null && meta.isActive()) {
+            MediaSource mediaSource = VisionPlusPlayback.buildMedia3Source(this, uri, meta);
+            player.setMediaSource(mediaSource);
+        } else {
+            player.setMediaItem(MediaItem.fromUri(uri));
+        }
         player.prepare();
         player.play();
     }

@@ -85,11 +85,11 @@ public final class LiveTvChannelGridAdapter extends RecyclerView.Adapter<LiveTvC
             if (!SubscriptionGuard.ensureNotExpired(v.getContext())) return;
             RecentChannelsStore.record(v.getContext(), c);
             PresenceReporter.reportOnlineLaunch(v.getContext(), c.getTitle(), c.getUrl());
-            Intent intent = PlayerIntents.createPreferredPlayIntent(v.getContext(), c.getTitle(), c.getUrl());
+            Intent intent = PlayerIntents.createPreferredPlayIntent(v.getContext(), c);
             try {
                 v.getContext().startActivity(intent);
             } catch (Exception e) {
-                v.getContext().startActivity(PlayerIntents.createPlayIntent(v.getContext(), c.getTitle(), c.getUrl()));
+                v.getContext().startActivity(PlayerIntents.createPlayIntent(v.getContext(), c));
             }
         });
 

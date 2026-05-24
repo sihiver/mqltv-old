@@ -132,12 +132,12 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
 
             RecentChannelsStore.record(v.getContext(), fresh);
             PresenceReporter.reportOnlineLaunch(v.getContext(), fresh.getTitle(), fresh.getUrl());
-            Intent intent = PlayerIntents.createPreferredPlayIntent(v.getContext(), fresh.getTitle(), fresh.getUrl());
+            Intent intent = PlayerIntents.createPreferredPlayIntent(v.getContext(), fresh);
             try {
                 v.getContext().startActivity(intent);
             } catch (Exception e) {
                 // Fallback to internal player if external launch fails for any reason.
-                v.getContext().startActivity(PlayerIntents.createPlayIntent(v.getContext(), fresh.getTitle(), fresh.getUrl()));
+                v.getContext().startActivity(PlayerIntents.createPlayIntent(v.getContext(), fresh));
             }
         });
 

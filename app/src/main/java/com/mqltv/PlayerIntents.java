@@ -16,12 +16,34 @@ public final class PlayerIntents {
     public static final int PLAYER_MODE_EXO_LEGACY = PlaybackPrefs.PLAYER_MODE_EXO_LEGACY;
     public static final int PLAYER_MODE_NATIVE = PlaybackPrefs.PLAYER_MODE_NATIVE;
 
+    public static Intent createPlayIntent(Context context, Channel channel) {
+        if (channel == null) {
+            return createPlayIntent(context, "", "");
+        }
+        return createPlayIntent(context, channel.getTitle(), channel.getUrl(), channel.getPlaybackMeta());
+    }
+
     public static Intent createPlayIntent(Context context, String title, String url) {
-        Class<?> target = getTargetPlayerActivity(context);
+        return createPlayIntent(context, title, url, null);
+    }
+
+    public static Intent createPlayIntent(Context context, String title, String url,
+                                          ChannelPlaybackMeta meta) {
+        Class<?> target = getTargetPlayerActivity(context, meta);
         Intent intent = new Intent(context, target);
         intent.putExtra(Constants.EXTRA_TITLE, title);
         intent.putExtra(Constants.EXTRA_URL, url);
+        if (meta != null) {
+            meta.putInIntent(intent);
+        }
         return intent;
+    }
+
+    public static Intent createPreferredPlayIntent(Context context, Channel channel) {
+        if (channel == null) {
+            return createPreferredPlayIntent(context, "", "");
+        }
+        return createPreferredPlayIntent(context, channel.getTitle(), channel.getUrl(), channel.getPlaybackMeta());
     }
 
     /**
@@ -29,11 +51,18 @@ public final class PlayerIntents {
      * Falls back to the internal player if MX Player isn't installed.
      */
     public static Intent createPreferredPlayIntent(Context context, String title, String url) {
-        if (PlaybackPrefs.isUseMxPlayer(context)) {
-            Intent mx = createMxPlayIntent(context, title, url);
-            if (mx != null) return mx;
+        return createPreferredPlayIntent(context, title, url, null);
+    }
+
+    public static Intent createPreferredPlayIntent(Context context, String title, String url,
+                                                   ChannelPlaybackMeta meta) {
+        if (meta == null || !meta.requiresExoDrm()) {
+            if (PlaybackPrefs.isUseMxPlayer(context)) {
+                Intent mx = createMxPlayIntent(context, title, url);
+                if (mx != null) return mx;
+            }
         }
-        return createPlayIntent(context, title, url);
+        return createPlayIntent(context, title, url, meta);
     }
 
     @SuppressLint("QueryPermissionsNeeded")
@@ -55,7 +84,6 @@ public final class PlayerIntents {
         }
 
         PackageManager pm = context.getPackageManager();
-        // Common MX Player package names (Free/Pro/TV variants)
         String[] packages = new String[] {
                 "com.mxtech.videoplayer.ad",
                 "com.mxtech.videoplayer.pro",
@@ -73,15 +101,25 @@ public final class PlayerIntents {
     }
 
     public static Class<?> getTargetPlayerActivity(Context context) {
+        return getTargetPlayerActivity(context, null);
+    }
+
+    public static Class<?> getTargetPlayerActivity(Context context, ChannelPlaybackMeta meta) {
+        if (meta != null && meta.requiresExoDrm()) {
+            // DRM / DASH-ClearKey needs ExoPlayer, not native MediaPlayer or VLC.
+            if (android.os.Build.VERSION.SDK_INT <= 19) {
+                return LegacyExoPlayerActivity.class;
+            }
+            return PlayerActivity.class;
+        }
+
         int mode = PlaybackPrefs.getPlayerMode(context);
         if (mode == PlaybackPrefs.PLAYER_MODE_VLC) return VlcPlayerActivity.class;
         if (mode == PlaybackPrefs.PLAYER_MODE_EXO_LEGACY) return LegacyExoPlayerActivity.class;
         if (mode == PlaybackPrefs.PLAYER_MODE_EXO) return PlayerActivity.class;
         if (mode == PlaybackPrefs.PLAYER_MODE_NATIVE) return NativePlayerActivity.class;
 
-        // AUTO: prefer legacy Exo on older Android (matches STB troubleshooting)
         if (android.os.Build.VERSION.SDK_INT <= 19) {
-            // ZTE B760H has better results with the platform pipeline (Stagefright/OMX)
             if (DeviceQuirks.isZteB760H()) return NativePlayerActivity.class;
             return LegacyExoPlayerActivity.class;
         }

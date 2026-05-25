@@ -40,6 +40,14 @@ public final class PlaybackPrefs {
     public static final String PREF_VLC_HW_IMPL = "pref_vlc_hw_impl"; // 0=auto, 1=mediacodec, 2=mediacodec_ndk
     public static final String PREF_VLC_HW_FORCE_ONLY = "pref_vlc_hw_force_only";
 
+    /** Video scale on TV (Fit / Fill / Zoom / forced aspect). */
+    public static final String PREF_VIDEO_DISPLAY = "pref_video_display";
+    public static final int VIDEO_DISPLAY_FIT = 0;
+    public static final int VIDEO_DISPLAY_FILL = 1;
+    public static final int VIDEO_DISPLAY_ZOOM = 2;
+    public static final int VIDEO_DISPLAY_16_9 = 3;
+    public static final int VIDEO_DISPLAY_4_3 = 4;
+
     private static SharedPreferences sp(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context.getApplicationContext());
     }
@@ -134,5 +142,13 @@ public final class PlaybackPrefs {
 
     public static void setVlcHwForceOnly(Context context, boolean forceOnly) {
         sp(context).edit().putBoolean(PREF_VLC_HW_FORCE_ONLY, forceOnly).apply();
+    }
+
+    public static int getVideoDisplayMode(Context context) {
+        return sp(context).getInt(PREF_VIDEO_DISPLAY, VIDEO_DISPLAY_FIT);
+    }
+
+    public static void setVideoDisplayMode(Context context, int mode) {
+        sp(context).edit().putInt(PREF_VIDEO_DISPLAY, mode).apply();
     }
 }

@@ -6,4 +6,12 @@
 
     <string name="launcher_apps_title">Aplikasi</string>
     <string name="launcher_recent_live_title">Terakhir Ditonton</string>
+
+    <string name="settings_video_display_title">Skala Video</string>
+    <string name="settings_video_display_hint">Fit: proporsi asli. Channel SD otomatis mengisi layar (tanpa bilah hitam atas-bawah).</string>
+    <string name="settings_video_display_fit">Fit (proporsi asli)</string>
+    <string name="settings_video_display_fill">Fill (isi layar)</string>
+    <string name="settings_video_display_zoom">Zoom (crop)</string>
+    <string name="settings_video_display_16_9">16:9</string>
+    <string name="settings_video_display_4_3">4:3</string>
 </resources>

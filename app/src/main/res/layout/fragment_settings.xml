@@ -161,6 +161,101 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
+        android:text="@string/settings_video_display_title"
+        android:textColor="@color/mql_text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/settings_video_display_hint"
+        android:textColor="@color/mql_text_secondary"
+        android:textSize="14sp" />
+
+    <RadioGroup
+        android:id="@+id/video_display_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/video_display_fit"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:background="@drawable/settings_option_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="@string/settings_video_display_fit"
+            android:textColor="@color/mql_text_primary"
+            android:buttonTint="#D9E2F2"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/video_display_fill"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/settings_option_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="@string/settings_video_display_fill"
+            android:textColor="@color/mql_text_primary"
+            android:buttonTint="#D9E2F2"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/video_display_zoom"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/settings_option_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="@string/settings_video_display_zoom"
+            android:textColor="@color/mql_text_primary"
+            android:buttonTint="#D9E2F2"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/video_display_16_9"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/settings_option_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="@string/settings_video_display_16_9"
+            android:textColor="@color/mql_text_primary"
+            android:buttonTint="#D9E2F2"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/video_display_4_3"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/settings_option_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="@string/settings_video_display_4_3"
+            android:textColor="@color/mql_text_primary"
+            android:buttonTint="#D9E2F2"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+    </RadioGroup>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
         android:text="Debug Options"
         android:textColor="@color/mql_text_primary"
         android:textSize="18sp"

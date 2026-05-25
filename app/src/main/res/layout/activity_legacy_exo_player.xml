@@ -3,11 +3,18 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <SurfaceView
-        android:id="@+id/legacy_surface"
+    <FrameLayout
+        android:id="@+id/legacy_video_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:keepScreenOn="true" />
+        android:layout_height="match_parent">
+
+        <SurfaceView
+            android:id="@+id/legacy_surface"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:keepScreenOn="true" />
+
+    </FrameLayout>
 
     <include layout="@layout/view_player_live_badge_number" />
 

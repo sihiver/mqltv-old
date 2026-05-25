@@ -20,6 +20,7 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.common.VideoSize;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
@@ -143,8 +144,14 @@ public class PlayerActivity extends FragmentActivity {
         player.setAudioAttributes(AudioAttributes.DEFAULT, true);
         player.setHandleAudioBecomingNoisy(true);
         playerView.setPlayer(player);
+        applyMedia3VideoDisplay();
 
         player.addListener(new Player.Listener() {
+            @Override
+            public void onVideoSizeChanged(@NonNull VideoSize videoSize) {
+                applyMedia3VideoDisplay(videoSize);
+            }
+
             @Override
             public void onPlayerError(@NonNull PlaybackException error) {
                 if (loadingView != null) loadingView.setVisibility(View.GONE);
@@ -195,6 +202,10 @@ public class PlayerActivity extends FragmentActivity {
                     loadingView.setVisibility(View.VISIBLE);
                 } else if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
                     loadingView.setVisibility(View.GONE);
+                    if (state == Player.STATE_READY) {
+                        applyMedia3VideoDisplay();
+                        scheduleMedia3VideoDisplayRetry();
+                    }
                 }
             }
 
@@ -229,6 +240,29 @@ public class PlayerActivity extends FragmentActivity {
     protected void onPause() {
         accessHandler.removeCallbacks(accessTick);
         super.onPause();
+    }
+
+    private void applyMedia3VideoDisplay() {
+        if (playerView == null) return;
+        VideoSize vs = player != null ? player.getVideoSize() : VideoSize.UNKNOWN;
+        applyMedia3VideoDisplay(vs);
+    }
+
+    private void applyMedia3VideoDisplay(@NonNull VideoSize videoSize) {
+        if (playerView == null) return;
+        VideoDisplayHelper.applyToMedia3PlayerView(
+                playerView,
+                this,
+                videoSize.width,
+                videoSize.height,
+                videoSize.pixelWidthHeightRatio);
+    }
+
+    private void scheduleMedia3VideoDisplayRetry() {
+        if (playerView == null) return;
+        playerView.post(() -> applyMedia3VideoDisplay());
+        playerView.postDelayed(this::applyMedia3VideoDisplay, 150);
+        playerView.postDelayed(this::applyMedia3VideoDisplay, 500);
     }
 
     private static boolean isProbablyEmulator() {

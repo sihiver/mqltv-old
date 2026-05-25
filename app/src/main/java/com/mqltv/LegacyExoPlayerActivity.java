@@ -8,6 +8,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.SurfaceView;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -23,6 +24,7 @@ import com.google.android.exoplayer2.DefaultRenderersFactory;
 import com.google.android.exoplayer2.RenderersFactory;
 import com.google.android.exoplayer2.mediacodec.MediaCodecRenderer;
 import com.google.android.exoplayer2.video.MediaCodecVideoDecoderException;
+import com.google.android.exoplayer2.video.VideoListener;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
@@ -40,6 +42,7 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
     private static final String TAG = "LegacyExo";
 
     private SimpleExoPlayer player;
+    private FrameLayout videoContainer;
     private SurfaceView surfaceView;
 
     private PlayerChannelOverlayController channelOverlay;
@@ -67,6 +70,7 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_legacy_exo_player);
 
+        videoContainer = findViewById(R.id.legacy_video_container);
         surfaceView = findViewById(R.id.legacy_surface);
 
         String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
@@ -148,6 +152,24 @@ public class LegacyExoPlayerActivity extends FragmentActivity {
         if (surfaceView != null) {
             player.setVideoSurfaceView(surfaceView);
         }
+
+        player.addVideoListener(new VideoListener() {
+            @Override
+            public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees,
+                                           float pixelWidthHeightRatio) {
+                if (videoContainer == null || surfaceView == null) return;
+                int w = width;
+                int h = height;
+                if (pixelWidthHeightRatio > 0f && h > 0) {
+                    w = Math.round(width * pixelWidthHeightRatio);
+                }
+                final int fw = w;
+                final int fh = h;
+                runOnUiThread(() -> VideoDisplayHelper.applySurfaceLayout(
+                        videoContainer, surfaceView, LegacyExoPlayerActivity.this,
+                        fw, fh, 1, 1));
+            }
+        });
 
         player.addListener(new Player.EventListener() {
             @Override

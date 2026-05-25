@@ -65,39 +65,27 @@ public class VlcPlayerActivity extends FragmentActivity {
         @Override
         public void onNewVideoLayout(IVLCVout vout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
             if (width * height == 0 || videoContainer == null) return;
-            if (sarNum == 0 || sarDen == 0) {
-                sarNum = 1;
-                sarDen = 1;
+            int sn = sarNum;
+            int sd = sarDen;
+            if (sn == 0 || sd == 0) {
+                sn = 1;
+                sd = 1;
             }
 
             final int containerW = videoContainer.getWidth();
             final int containerH = videoContainer.getHeight();
             if (containerW == 0 || containerH == 0) return;
 
-            final int visibleW = visibleWidth * sarNum / sarDen;
-            final float videoAR = (float) visibleW / (float) visibleHeight;
-            final float containerAR = (float) containerW / (float) containerH;
-
-            int displayW = containerW;
-            int displayH = containerH;
-            if (containerAR < videoAR) {
-                displayH = (int) (containerW / videoAR);
-            } else {
-                displayW = (int) (containerH * videoAR);
-            }
-
-            final int finalW = displayW;
-            final int finalH = displayH;
+            final int fVisibleW = visibleWidth;
+            final int fVisibleH = visibleHeight;
+            final int fSarNum = sn;
+            final int fSarDen = sd;
             runOnUiThread(() -> {
-                FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(finalW, finalH);
-                lp.leftMargin = (containerW - finalW) / 2;
-                lp.topMargin = (containerH - finalH) / 2;
-                if (surfaceView != null && surfaceView.getVisibility() == View.VISIBLE) {
-                    surfaceView.setLayoutParams(lp);
-                }
-                if (textureView != null && textureView.getVisibility() == View.VISIBLE) {
-                    textureView.setLayoutParams(lp);
-                }
+                View videoView = textureView != null && textureView.getVisibility() == View.VISIBLE
+                        ? textureView : surfaceView;
+                VideoDisplayHelper.applySurfaceLayout(
+                        videoContainer, videoView, VlcPlayerActivity.this,
+                        fVisibleW, fVisibleH, fSarNum, fSarDen);
             });
         }
     };

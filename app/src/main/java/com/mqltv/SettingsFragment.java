@@ -113,6 +113,8 @@ public class SettingsFragment extends Fragment {
             Toast.makeText(v.getContext(), "Player: " + label, Toast.LENGTH_SHORT).show();
         });
 
+        bindVideoDisplayGroup(v);
+
         Switch exoLimit = v.findViewById(R.id.setting_exo_limit_480p);
         exoLimit.setChecked(PlaybackPrefs.isExoLimit480p(v.getContext()));
         exoLimit.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -317,6 +319,44 @@ public class SettingsFragment extends Fragment {
         // Make sure something is focusable for TV (post so fragment is committed & laid out).
         v.post(auto::requestFocus);
         return v;
+    }
+
+    private void bindVideoDisplayGroup(View v) {
+        RadioGroup group = v.findViewById(R.id.video_display_group);
+        if (group == null) return;
+
+        int mode = PlaybackPrefs.getVideoDisplayMode(v.getContext());
+        int checkedId = R.id.video_display_fit;
+        if (mode == PlaybackPrefs.VIDEO_DISPLAY_FILL) {
+            checkedId = R.id.video_display_fill;
+        } else if (mode == PlaybackPrefs.VIDEO_DISPLAY_ZOOM) {
+            checkedId = R.id.video_display_zoom;
+        } else if (mode == PlaybackPrefs.VIDEO_DISPLAY_16_9) {
+            checkedId = R.id.video_display_16_9;
+        } else if (mode == PlaybackPrefs.VIDEO_DISPLAY_4_3) {
+            checkedId = R.id.video_display_4_3;
+        }
+        group.check(checkedId);
+
+        group.setOnCheckedChangeListener((g, id) -> {
+            int newMode = PlaybackPrefs.VIDEO_DISPLAY_FIT;
+            String label = "Fit";
+            if (id == R.id.video_display_fill) {
+                newMode = PlaybackPrefs.VIDEO_DISPLAY_FILL;
+                label = "Fill";
+            } else if (id == R.id.video_display_zoom) {
+                newMode = PlaybackPrefs.VIDEO_DISPLAY_ZOOM;
+                label = "Zoom";
+            } else if (id == R.id.video_display_16_9) {
+                newMode = PlaybackPrefs.VIDEO_DISPLAY_16_9;
+                label = "16:9";
+            } else if (id == R.id.video_display_4_3) {
+                newMode = PlaybackPrefs.VIDEO_DISPLAY_4_3;
+                label = "4:3";
+            }
+            PlaybackPrefs.setVideoDisplayMode(v.getContext(), newMode);
+            Toast.makeText(v.getContext(), "Skala video: " + label, Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void updateWallpaperStatus(Context appContext) {

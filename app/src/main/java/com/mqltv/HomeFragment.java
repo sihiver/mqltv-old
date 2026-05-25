@@ -56,13 +56,8 @@ public class HomeFragment extends Fragment {
     private void load(Context appContext) {
         setLoading(true);
         executor.execute(() -> {
-            PlaylistRepository repo = new PlaylistRepository();
-            List<Channel> channels = repo.loadFromUrls(appContext, AuthPrefs.getPlaylistUrls(appContext));
-            AuthPrefs.getPlaylistUrl(appContext);
-            boolean hasServerPlaylist = !AuthPrefs.getPlaylistUrl(appContext).trim().isEmpty();
-            if ((channels == null || channels.isEmpty()) && !hasServerPlaylist) {
-                channels = repo.loadDefault(appContext);
-            }
+            List<Channel> channels = new PlaylistRepository().loadForUser(appContext);
+            RecentChannelsStore.pruneAgainstPlaylist(appContext, channels);
 
             lastChannels = channels;
             List<HomeSection> sections = buildSections(appContext, channels);
@@ -92,7 +87,8 @@ public class HomeFragment extends Fragment {
         List<HomeSection> result = new ArrayList<>();
         if (channels == null || channels.isEmpty()) return result;
 
-        List<Channel> recent = RecentChannelsStore.load(appContext);
+        List<Channel> recent = RecentChannelsStore.filterByPlaylist(
+                RecentChannelsStore.load(appContext), channels);
         if (recent != null && !recent.isEmpty()) {
             result.add(new HomeSection("Recent", recent));
         } else {

@@ -445,14 +445,9 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
     private void loadCounts(Context appContext) {
         executor.execute(() -> {
-            PlaylistRepository repo = new PlaylistRepository();
-            List<Channel> channels = repo.loadFromUrls(appContext, AuthPrefs.getPlaylistUrls(appContext));
-            AuthPrefs.getPlaylistUrl(appContext);
-            boolean hasServerPlaylist = !AuthPrefs.getPlaylistUrl(appContext).trim().isEmpty();
-            if ((channels == null || channels.isEmpty()) && !hasServerPlaylist) {
-                channels = repo.loadDefault(appContext);
-            }
-            final int liveCount = channels != null ? channels.size() : 0;
+            List<Channel> channels = new PlaylistRepository().loadForUser(appContext);
+            RecentChannelsStore.pruneAgainstPlaylist(appContext, channels);
+            final int liveCount = channels.size();
 
             mainHandler.post(() -> {
                 if (adapter == null) return;
@@ -651,7 +646,9 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (recentAdapter == null) return;
 
         executor.execute(() -> {
-            List<Channel> recent = RecentChannelsStore.load(appContext);
+            PlaylistRepository repo = new PlaylistRepository();
+            List<Channel> playlist = repo.loadForUser(appContext);
+            List<Channel> recent = RecentChannelsStore.loadSyncedWithPlaylist(appContext, playlist);
             mainHandler.post(() -> {
                 boolean has = recent != null && !recent.isEmpty();
                 if (recentTitle != null) recentTitle.setVisibility(has ? View.VISIBLE : View.GONE);

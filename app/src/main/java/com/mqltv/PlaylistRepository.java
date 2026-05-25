@@ -20,6 +20,16 @@ import okhttp3.ResponseBody;
 public final class PlaylistRepository {
     private static final String DEFAULT_ASSET = "channels.m3u";
 
+    /** Loads merged playlist URLs for the logged-in user, or bundled default when none configured. */
+    public List<Channel> loadForUser(Context context) {
+        List<Channel> channels = loadFromUrls(context, AuthPrefs.getPlaylistUrls(context));
+        boolean hasServerPlaylist = !AuthPrefs.getPlaylistUrl(context).trim().isEmpty();
+        if ((channels == null || channels.isEmpty()) && !hasServerPlaylist) {
+            channels = loadDefault(context);
+        }
+        return channels != null ? channels : Collections.emptyList();
+    }
+
     public List<Channel> loadDefault(Context context) {
         try (InputStream inputStream = context.getAssets().open(DEFAULT_ASSET)) {
             List<Channel> channels = PlaylistParser.parse(inputStream);

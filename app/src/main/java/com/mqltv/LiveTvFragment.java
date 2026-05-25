@@ -196,13 +196,8 @@ public class LiveTvFragment extends Fragment {
 
     private void load(Context context) {
         executor.execute(() -> {
-            PlaylistRepository repo = new PlaylistRepository();
-            List<Channel> channels = repo.loadFromUrls(context, AuthPrefs.getPlaylistUrls(context));
-            AuthPrefs.getPlaylistUrl(context);
-            boolean hasServerPlaylist = !AuthPrefs.getPlaylistUrl(context).trim().isEmpty();
-            if ((channels == null || channels.isEmpty()) && !hasServerPlaylist) {
-                channels = repo.loadDefault(context);
-            }
+            List<Channel> channels = new PlaylistRepository().loadForUser(context);
+            RecentChannelsStore.pruneAgainstPlaylist(context, channels);
             allChannels = channels;
 
             final CategoryData cats = buildCategories(channels);

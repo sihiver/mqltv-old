@@ -4,11 +4,16 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.text.TextUtils;
 
+import androidx.annotation.Nullable;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 public final class RecentChannelsStore {
     private static final String PREFS = "mqltv_recent";
@@ -52,6 +57,50 @@ public final class RecentChannelsStore {
     }
 
     public static List<Channel> load(Context context) {
+        return loadRaw(context);
+    }
+
+    /**
+     * Returns recent channels that still exist in the current playlist.
+     * Also removes stale entries from persistent storage.
+     */
+    public static List<Channel> loadSyncedWithPlaylist(Context context, @Nullable List<Channel> playlist) {
+        List<Channel> recent = loadRaw(context);
+        if (playlist == null || playlist.isEmpty()) {
+            if (!recent.isEmpty()) {
+                saveAll(context, new ArrayList<>());
+            }
+            return new ArrayList<>();
+        }
+        List<Channel> filtered = filterByPlaylist(recent, playlist);
+        if (filtered.size() != recent.size()) {
+            saveAll(context, filtered);
+        }
+        return filtered;
+    }
+
+    /** Drops recent entries that are no longer in the playlist and persists the result. */
+    public static void pruneAgainstPlaylist(Context context, @Nullable List<Channel> playlist) {
+        loadSyncedWithPlaylist(context, playlist);
+    }
+
+    public static List<Channel> filterByPlaylist(List<Channel> recent, List<Channel> playlist) {
+        List<Channel> out = new ArrayList<>();
+        if (recent == null || recent.isEmpty()) return out;
+        if (playlist == null || playlist.isEmpty()) return out;
+
+        Set<String> playlistKeys = buildPlaylistKeys(playlist);
+        for (Channel c : recent) {
+            if (c == null) continue;
+            String key = channelIdentityKey(c);
+            if (key != null && playlistKeys.contains(key)) {
+                out.add(c);
+            }
+        }
+        return out;
+    }
+
+    private static List<Channel> loadRaw(Context context) {
         List<Channel> list = new ArrayList<>();
         if (context == null) return list;
 
@@ -72,6 +121,48 @@ public final class RecentChannelsStore {
             }
         }
         return list;
+    }
+
+    private static void saveAll(Context context, List<Channel> channels) {
+        if (context == null) return;
+        SharedPreferences sp = context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        JSONArray out = new JSONArray();
+        if (channels != null) {
+            for (Channel c : channels) {
+                if (c == null) continue;
+                out.put(toJson(c));
+            }
+        }
+        sp.edit().putString(KEY, out.toString()).apply();
+    }
+
+    /** Same identity rules as {@link PlaylistRepository} dedup keys. */
+    @Nullable
+    private static String channelIdentityKey(Channel c) {
+        if (c == null) return null;
+        String sourceId = c.getSourceId();
+        String url = c.getUrl();
+        String title = c.getTitle();
+        String titleKey = title != null ? title.trim().toLowerCase(Locale.US) : "";
+        if (sourceId != null && !sourceId.trim().isEmpty()) {
+            return "id:" + sourceId.trim();
+        }
+        if (url != null && !url.trim().isEmpty()) {
+            return "u:" + url.trim() + "|t:" + titleKey;
+        }
+        if (!titleKey.isEmpty()) {
+            return "t:" + titleKey;
+        }
+        return null;
+    }
+
+    private static Set<String> buildPlaylistKeys(List<Channel> playlist) {
+        Set<String> keys = new HashSet<>();
+        for (Channel c : playlist) {
+            String key = channelIdentityKey(c);
+            if (key != null) keys.add(key);
+        }
+        return keys;
     }
 
     private static JSONObject toJson(Channel c) {

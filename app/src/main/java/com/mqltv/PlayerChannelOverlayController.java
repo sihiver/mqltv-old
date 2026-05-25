@@ -173,9 +173,7 @@ public final class PlayerChannelOverlayController {
 
             @Override
             public void onChannelClicked(Channel c) {
-                if (c == null) return;
-                hide();
-                launcher.play(c);
+                playChannelIfChanged(c);
             }
         });
 
@@ -189,6 +187,39 @@ public final class PlayerChannelOverlayController {
         if (isVisible()) {
             focusCurrentChannel();
         }
+    }
+
+    /** True when {@code channel} is the stream currently playing in this player session. */
+    private boolean isCurrentChannel(@Nullable Channel channel) {
+        if (channel == null || TextUtils.isEmpty(currentUrl)) return false;
+        String url = channel.getUrl();
+        if (url != null && currentUrl.trim().equals(url.trim())) return true;
+
+        String sourceId = channel.getSourceId();
+        if (!TextUtils.isEmpty(sourceId)) {
+            for (Channel c : allChannels) {
+                if (c == null) continue;
+                if (!sourceId.equals(c.getSourceId())) continue;
+                String u = c.getUrl();
+                if (u != null && currentUrl.trim().equals(u.trim())) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Switches playback only when the target differs from the active channel.
+     * Re-selecting the same channel only dismisses the overlay (no reload / no loading).
+     */
+    private void playChannelIfChanged(@Nullable Channel channel) {
+        if (channel == null) return;
+        if (isCurrentChannel(channel)) {
+            clearTypedNumber();
+            hide();
+            return;
+        }
+        hide();
+        launcher.play(channel);
     }
 
     public boolean isVisible() {
@@ -291,11 +322,7 @@ public final class PlayerChannelOverlayController {
                 View f = activity.getCurrentFocus();
                 int pos = getAdapterPositionForView(f);
                 if (pos != RecyclerView.NO_POSITION) {
-                    Channel c = adapter.getItem(pos);
-                    if (c != null) {
-                        hide();
-                        launcher.play(c);
-                    }
+                    playChannelIfChanged(adapter.getItem(pos));
                 }
             }
             return true;
@@ -410,10 +437,7 @@ public final class PlayerChannelOverlayController {
 
         if (activeList == null || idx < 0 || idx >= activeList.size()) return;
         Channel c = activeList.get(idx);
-        if (c == null) return;
-
-        hide();
-        launcher.play(c);
+        playChannelIfChanged(c);
     }
 
     /** Returns the channel list for the currently selected category. */

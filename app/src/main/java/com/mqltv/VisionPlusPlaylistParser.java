@@ -56,6 +56,12 @@ public final class VisionPlusPlaylistParser {
 
         JSONArray info = root.optJSONArray("info");
         if (info == null || info.length() == 0) {
+            info = root.optJSONArray("channels");
+        }
+        if (info == null || info.length() == 0) {
+            info = root.optJSONArray("data");
+        }
+        if (info == null || info.length() == 0) {
             throw new IOException("no channels in json playlist");
         }
         return parseInfoArray(info);
@@ -83,11 +89,15 @@ public final class VisionPlusPlaylistParser {
         if (name.isEmpty()) name = ch.optString("namespace", "").trim();
         if (name.isEmpty()) name = "Channel";
 
-        String group = ch.optString("country_name", "").trim();
+        String group = ch.optString("group", "").trim();
+        if (group.isEmpty()) group = ch.optString("group_title", "").trim();
+        if (group.isEmpty()) group = ch.optString("country_name", "").trim();
         if (group.isEmpty()) group = ch.optString("namespace", "").trim();
         if (group.isEmpty()) group = ch.optString("alpha_2_code", "").trim();
 
-        String logo = ch.optString("logo", "").trim();
+        String logo = ch.optString("logo_url", "").trim();
+        if (logo.isEmpty()) logo = ch.optString("logo", "").trim();
+        if (logo.isEmpty()) logo = ch.optString("tvg_logo", "").trim();
         if ("-".equals(logo)) logo = "";
 
         String sourceId = ch.optString("id", "").trim();

@@ -200,7 +200,7 @@ public class PlayerActivity extends FragmentActivity {
                         if (DrmCapabilities.isDashClearKeyUnsupportedOnThisDevice(drmMeta, playUrl)) {
                             msg = DrmCapabilities.getDashClearKeyUnsupportedMessage();
                         } else {
-                            msg = "DRM gagal — periksa url_license / header di playlist JSON";
+                            msg = "DRM gagal — periksa drm_key / url_license / header di playlist JSON";
                         }
                         break;
                     }

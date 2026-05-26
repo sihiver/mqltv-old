@@ -18,7 +18,10 @@ public final class DrmCapabilities {
                                                @Nullable String streamUrl) {
         if (meta == null || !meta.preferDashSource(streamUrl)) return false;
         String j = meta.getJenis().toLowerCase(Locale.US);
-        return j.contains("clearkey");
+        if (j.contains("clearkey")) return true;
+        String lic = meta.getUrlLicense();
+        return !android.text.TextUtils.isEmpty(lic)
+                && !VisionPlusDrmHelper.isHttpLicenseUrl(lic);
     }
 
     /** ClearKey DASH needs API 21+; API 19 STBs only get DummyExoMediaDrm. */

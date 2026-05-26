@@ -30,12 +30,89 @@ public final class ChannelPlaybackMeta {
 
     public static ChannelPlaybackMeta fromVisionPlusObject(JSONObject o) {
         if (o == null) return null;
-        String jenis = o.optString("jenis", "");
-        String urlLicense = o.optString("url_license", "");
+
+        String jenis = o.optString("jenis", "").trim();
+        String urlLicense = o.optString("url_license", "").trim();
+        String drmKey = o.optString("drm_key", "").trim();
+        if (urlLicense.isEmpty() && !drmKey.isEmpty()) {
+            urlLicense = drmKey;
+        }
+
+        String drmType = o.optString("drm_type", "").trim().toLowerCase(Locale.US);
+        if (jenis.isEmpty() && drmType.contains("clearkey")) {
+            jenis = "dash-clearkey";
+        } else if (jenis.isEmpty()
+                && !urlLicense.isEmpty()
+                && !VisionPlusDrmHelper.isHttpLicenseUrl(urlLicense)
+                && looksLikeInlineClearKey(urlLicense)) {
+            jenis = "dash-clearkey";
+        }
+
         String headerIptv = o.optString("header_iptv", "");
+        String userAgent = o.optString("user_agent", "").trim();
+        if (!userAgent.isEmpty()) {
+            headerIptv = mergeHeaderField(headerIptv, "User-Agent", userAgent);
+        }
+        String referer = o.optString("referer", "").trim();
+        if (referer.isEmpty()) referer = o.optString("Referer", "").trim();
+        if (!referer.isEmpty()) {
+            headerIptv = mergeHeaderField(headerIptv, "Referer", referer);
+        }
+        String origin = o.optString("origin", "").trim();
+        if (origin.isEmpty()) origin = o.optString("Origin", "").trim();
+        if (!origin.isEmpty()) {
+            headerIptv = mergeHeaderField(headerIptv, "Origin", origin);
+        }
+
         String headerLicense = o.optString("header_license", "");
         ChannelPlaybackMeta meta = new ChannelPlaybackMeta(jenis, urlLicense, headerIptv, headerLicense, o.toString());
         return meta.isActive() ? meta : null;
+    }
+
+    private static boolean looksLikeInlineClearKey(String license) {
+        if (license == null) return false;
+        int colon = license.indexOf(':');
+        if (colon <= 0 || colon >= license.length() - 1) return false;
+        String kid = license.substring(0, colon).trim();
+        String key = license.substring(colon + 1).trim();
+        return isHexKeyMaterial(kid) && isHexKeyMaterial(key);
+    }
+
+    private static boolean isHexKeyMaterial(String s) {
+        if (s == null || s.length() < 8 || s.length() > 64) return false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            boolean ok = (c >= '0' && c <= '9')
+                    || (c >= 'a' && c <= 'f')
+                    || (c >= 'A' && c <= 'F');
+            if (!ok) return false;
+        }
+        return true;
+    }
+
+    private static String mergeHeaderField(String headerJson, String field, String value) {
+        try {
+            JSONObject o;
+            if (TextUtils.isEmpty(headerJson) || "{}".equals(headerJson.trim())) {
+                o = new JSONObject();
+            } else {
+                String body = headerJson.trim();
+                if (body.startsWith("\"")) {
+                    body = new JSONObject("{\"v\":" + body + "}").optString("v", body);
+                }
+                o = new JSONObject(body);
+            }
+            o.put(field, value);
+            return o.toString();
+        } catch (Exception e) {
+            JSONObject o = new JSONObject();
+            try {
+                o.put(field, value);
+                return o.toString();
+            } catch (Exception ignored) {
+                return headerJson;
+            }
+        }
     }
 
     public static ChannelPlaybackMeta fromIntent(Intent intent) {
@@ -86,7 +163,7 @@ public final class ChannelPlaybackMeta {
     public boolean requiresExoDrm() {
         if (!TextUtils.isEmpty(urlLicense)) return true;
         String j = jenis.toLowerCase(Locale.US);
-        return j.contains("clearkey") || j.contains("dash");
+        return j.contains("clearkey") || j.contains("widevine");
     }
 
     public boolean preferDashSource(String streamUrl) {

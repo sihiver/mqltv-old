@@ -33,6 +33,8 @@ public final class PlaybackPrefs {
     public static final int VLC_VOUT_GLES2 = 3;
 
     public static final String PREF_EXO_LIMIT_480P = "pref_exo_limit_480p";
+    /** Vision+ adaptive video cap (see {@link PlayerQualityHelper}). */
+    public static final String PREF_VISION_VIDEO_QUALITY = "pref_vision_video_quality";
     public static final String PREF_VLC_NETWORK_CACHING = "pref_vlc_network_caching"; // in ms: 1500/3000/5000/10000
     public static final String PREF_VLC_DEINTERLACE = "pref_vlc_deinterlace";
     public static final String PREF_VLC_HW_IMPL = "pref_vlc_hw_impl"; // 0=auto, 1=mediacodec, 2=mediacodec_ndk
@@ -103,6 +105,17 @@ public final class PlaybackPrefs {
 
     public static void setExoLimit480p(Context context, boolean enabled) {
         sp(context).edit().putBoolean(PREF_EXO_LIMIT_480P, enabled).apply();
+    }
+
+    public static int getVisionVideoQuality(Context context) {
+        int def = android.os.Build.VERSION.SDK_INT <= 19
+                ? PlayerQualityHelper.QUALITY_480
+                : PlayerQualityHelper.QUALITY_AUTO;
+        return sp(context).getInt(PREF_VISION_VIDEO_QUALITY, def);
+    }
+
+    public static void setVisionVideoQuality(Context context, int quality) {
+        sp(context).edit().putInt(PREF_VISION_VIDEO_QUALITY, quality).apply();
     }
 
     public static int getVlcNetworkCaching(Context context) {

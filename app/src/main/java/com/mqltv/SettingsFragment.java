@@ -108,6 +108,7 @@ public class SettingsFragment extends Fragment {
         });
 
         bindVideoDisplayGroup(v);
+        bindVisionQualityGroup(v);
 
         Switch exoLimit = v.findViewById(R.id.setting_exo_limit_480p);
         exoLimit.setChecked(PlaybackPrefs.isExoLimit480p(v.getContext()));
@@ -313,6 +314,46 @@ public class SettingsFragment extends Fragment {
         // Make sure something is focusable for TV (post so fragment is committed & laid out).
         v.post(auto::requestFocus);
         return v;
+    }
+
+    private void bindVisionQualityGroup(View v) {
+        RadioGroup group = v.findViewById(R.id.vision_quality_group);
+        if (group == null) return;
+
+        int quality = PlaybackPrefs.getVisionVideoQuality(v.getContext());
+        int checkedId = R.id.vision_quality_auto;
+        if (quality == PlayerQualityHelper.QUALITY_1080) {
+            checkedId = R.id.vision_quality_1080;
+        } else if (quality == PlayerQualityHelper.QUALITY_720) {
+            checkedId = R.id.vision_quality_720;
+        } else if (quality == PlayerQualityHelper.QUALITY_480) {
+            checkedId = R.id.vision_quality_480;
+        } else if (quality == PlayerQualityHelper.QUALITY_360) {
+            checkedId = R.id.vision_quality_360;
+        } else if (quality == PlayerQualityHelper.QUALITY_LOWEST) {
+            checkedId = R.id.vision_quality_lowest;
+        }
+        group.check(checkedId);
+
+        group.setOnCheckedChangeListener((g, id) -> {
+            int newQuality = PlayerQualityHelper.QUALITY_AUTO;
+            if (id == R.id.vision_quality_1080) {
+                newQuality = PlayerQualityHelper.QUALITY_1080;
+            } else if (id == R.id.vision_quality_720) {
+                newQuality = PlayerQualityHelper.QUALITY_720;
+            } else if (id == R.id.vision_quality_480) {
+                newQuality = PlayerQualityHelper.QUALITY_480;
+            } else if (id == R.id.vision_quality_360) {
+                newQuality = PlayerQualityHelper.QUALITY_360;
+            } else if (id == R.id.vision_quality_lowest) {
+                newQuality = PlayerQualityHelper.QUALITY_LOWEST;
+            }
+            PlaybackPrefs.setVisionVideoQuality(v.getContext(), newQuality);
+            String label = PlayerQualityHelper.getLabel(v.getContext(), newQuality);
+            Toast.makeText(v.getContext(),
+                    v.getContext().getString(R.string.player_quality_applied, label),
+                    Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void bindVideoDisplayGroup(View v) {

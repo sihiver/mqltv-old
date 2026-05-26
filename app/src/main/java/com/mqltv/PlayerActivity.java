@@ -6,7 +6,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -38,9 +37,12 @@ public class PlayerActivity extends FragmentActivity {
     private ProgressBar loadingView;
 
     private PlayerChannelOverlayController channelOverlay;
+    @Nullable private DefaultTrackSelector trackSelector;
+    private boolean visionPlusPlayback;
 
     private final Handler accessHandler = new Handler(Looper.getMainLooper());
     private boolean accessCheckInFlight = false;
+
     private final Runnable accessTick = new Runnable() {
         @Override
         public void run() {
@@ -88,9 +90,18 @@ public class PlayerActivity extends FragmentActivity {
 
     @SuppressLint("RestrictedApi")
     @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
         if (channelOverlay != null && channelOverlay.handleKeyEvent(event)) return true;
         return super.dispatchKeyEvent(event);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (channelOverlay != null && channelOverlay.isVisible()) {
+            channelOverlay.hide();
+            return;
+        }
+        super.onBackPressed();
     }
 
     @OptIn(markerClass = UnstableApi.class) @Override
@@ -118,14 +129,19 @@ public class PlayerActivity extends FragmentActivity {
 
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
 
-        DefaultTrackSelector trackSelector = new DefaultTrackSelector(this);
-        boolean limit480p = PlaybackPrefs.isExoLimit480p(this);
-        if (isProbablyEmulator() || android.os.Build.VERSION.SDK_INT <= 19 || limit480p) {
-            trackSelector.setParameters(
-                trackSelector.buildUponParameters()
-                    .setForceLowestBitrate(true)
-                    .setMaxVideoSize(854, 480)
-            );
+        trackSelector = new DefaultTrackSelector(this);
+        visionPlusPlayback = meta != null && meta.isActive();
+        if (visionPlusPlayback) {
+            PlayerQualityHelper.apply(trackSelector, PlaybackPrefs.getVisionVideoQuality(this));
+        } else {
+            boolean limit480p = PlaybackPrefs.isExoLimit480p(this);
+            if (isProbablyEmulator() || android.os.Build.VERSION.SDK_INT <= 19 || limit480p) {
+                trackSelector.setParameters(
+                        trackSelector.buildUponParameters()
+                                .setForceLowestBitrate(true)
+                                .setMaxVideoSize(854, 480)
+                );
+            }
         }
 
         DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
@@ -158,6 +174,14 @@ public class PlayerActivity extends FragmentActivity {
         applyMedia3VideoDisplay();
 
         player.addListener(new Player.Listener() {
+            @Override
+            public void onTracksChanged(@NonNull androidx.media3.common.Tracks tracks) {
+                if (visionPlusPlayback && trackSelector != null) {
+                    PlayerQualityHelper.apply(trackSelector,
+                            PlaybackPrefs.getVisionVideoQuality(PlayerActivity.this));
+                }
+            }
+
             @Override
             public void onVideoSizeChanged(@NonNull VideoSize videoSize) {
                 applyMedia3VideoDisplay(videoSize);
@@ -329,6 +353,7 @@ public class PlayerActivity extends FragmentActivity {
             channelOverlay.destroy();
             channelOverlay = null;
         }
+        trackSelector = null;
         super.onDestroy();
     }
 }

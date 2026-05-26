@@ -242,6 +242,115 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
+        android:text="@string/settings_vision_quality_title"
+        android:textColor="@color/mql_text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/settings_vision_quality_hint"
+        android:textColor="@color/mql_text_secondary"
+        android:textSize="14sp" />
+
+    <RadioGroup
+        android:id="@+id/vision_quality_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/vision_quality_auto"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:background="@drawable/settings_option_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="@string/player_quality_auto"
+            android:textColor="@color/mql_text_primary"
+            android:buttonTint="#D9E2F2"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vision_quality_1080"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/settings_option_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="@string/player_quality_1080"
+            android:textColor="@color/mql_text_primary"
+            android:buttonTint="#D9E2F2"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vision_quality_720"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/settings_option_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="@string/player_quality_720"
+            android:textColor="@color/mql_text_primary"
+            android:buttonTint="#D9E2F2"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vision_quality_480"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/settings_option_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="@string/player_quality_480"
+            android:textColor="@color/mql_text_primary"
+            android:buttonTint="#D9E2F2"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vision_quality_360"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/settings_option_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="@string/player_quality_360"
+            android:textColor="@color/mql_text_primary"
+            android:buttonTint="#D9E2F2"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <RadioButton
+            android:id="@+id/vision_quality_lowest"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/settings_option_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="@string/player_quality_lowest"
+            android:textColor="@color/mql_text_primary"
+            android:buttonTint="#D9E2F2"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+    </RadioGroup>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
         android:text="Debug Options"
         android:textColor="@color/mql_text_primary"
         android:textSize="18sp"

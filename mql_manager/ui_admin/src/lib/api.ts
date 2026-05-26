@@ -141,6 +141,22 @@ export const api = {
   reimportPlaylist(id: number) {
     return request<{ ok: boolean; imported: number }>(`/api/playlists/${id}/reimport`, { method: 'POST' })
   },
+  getPlaylist(id: number) {
+    return request<Playlist>(`/api/playlists/${id}`)
+  },
+  getPlaylistContent(id: number) {
+    return request<{
+      playlist: Playlist
+      content: string
+      fetchedFromUrl?: boolean
+    }>(`/api/playlists/${id}/content`)
+  },
+  savePlaylistContent(id: number, payload: { name?: string; content: string }) {
+    return request<{ ok: boolean; imported: number; playlist: Playlist }>(`/api/playlists/${id}/content`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  },
   setUserPlaylist(userId: number, playlistId: number | null) {
     return request<User>(`/api/users/${userId}/playlist`, {
       method: 'PUT',

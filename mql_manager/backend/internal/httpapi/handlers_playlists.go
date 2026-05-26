@@ -178,18 +178,97 @@ func (a API) handlePlaylistByID(w http.ResponseWriter, r *http.Request) {
 		a.handlePlaylistReimport(w, r, id)
 		return
 	}
+	if len(parts) == 2 && parts[1] == "content" {
+		a.handlePlaylistContent(w, r, id)
+		return
+	}
 	if len(parts) != 1 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	switch r.Method {
+	case http.MethodGet:
+		p, _, err := a.Playlists.Get(r.Context(), id)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, playlistPublicResponse(p))
 	case http.MethodDelete:
 		if err := a.Playlists.Delete(r.Context(), id); err != nil {
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (a API) handlePlaylistContent(w http.ResponseWriter, r *http.Request, playlistID int64) {
+	switch r.Method {
+	case http.MethodGet:
+		p, content, err := a.Playlists.Get(r.Context(), playlistID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		fetchedFromURL := false
+		if strings.TrimSpace(content) == "" && p.SourceType == "url" && strings.TrimSpace(p.SourceURL) != "" {
+			content, err = fetchText(r, p.SourceURL)
+			if err != nil {
+				writeError(w, http.StatusBadGateway, err)
+				return
+			}
+			fetchedFromURL = true
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"playlist":       playlistPublicResponse(p),
+			"content":        content,
+			"fetchedFromUrl": fetchedFromURL,
+		})
+	case http.MethodPut:
+		var req struct {
+			Name    string `json:"name"`
+			Content string `json:"content"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		req.Content = strings.TrimSpace(req.Content)
+		if req.Content == "" {
+			writeError(w, http.StatusBadRequest, errors.New("content is required"))
+			return
+		}
+		p, err := a.Playlists.UpdateContent(r.Context(), playlistID, strings.TrimSpace(req.Name), req.Content)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		n, err := a.Channels.ImportM3U(r.Context(), playlistID, req.Content)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":       true,
+			"imported": n,
+			"playlist": playlistPublicResponse(p),
+		})
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}

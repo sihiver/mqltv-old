@@ -41,8 +41,9 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="Actions" width="260">
+        <el-table-column label="Actions" width="330">
           <template #default="scope">
+            <el-button size="small" type="primary" @click="edit(scope.row.id)">Edit</el-button>
             <el-button
               size="small"
               type="primary"
@@ -100,11 +101,13 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AdminShell from '@/components/AdminShell.vue'
 import { api, type Playlist } from '@/lib/api'
 import { formatDateTimeID } from '@/lib/datetime'
 
+const router = useRouter()
 const items = ref<Playlist[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -196,6 +199,10 @@ async function remove(id: number) {
   } finally {
     deletingId.value = null
   }
+}
+
+function edit(id: number) {
+  router.push(`/playlists/${id}/edit`)
 }
 
 async function reimport(id: number) {

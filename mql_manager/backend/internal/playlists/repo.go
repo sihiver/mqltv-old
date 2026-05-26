@@ -122,3 +122,39 @@ func (r Repo) Delete(ctx context.Context, id int64) error {
 	_, err := r.DB.ExecContext(ctx, `DELETE FROM playlists WHERE id = ?`, id)
 	return err
 }
+
+// UpdateContent stores raw M3U/JSON and converts the playlist to inline source.
+func (r Repo) UpdateContent(ctx context.Context, id int64, name, content string) (Playlist, error) {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return Playlist{}, errors.New("content is required")
+	}
+	name = strings.TrimSpace(name)
+	format := DetectContentFormat(content)
+
+	if name != "" {
+		res, err := r.DB.ExecContext(ctx,
+			`UPDATE playlists SET name = ?, source_type = 'inline', content = ?, content_format = ? WHERE id = ?`,
+			name, content, format, id,
+		)
+		if err != nil {
+			return Playlist{}, err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return Playlist{}, sql.ErrNoRows
+		}
+	} else {
+		res, err := r.DB.ExecContext(ctx,
+			`UPDATE playlists SET source_type = 'inline', content = ?, content_format = ? WHERE id = ?`,
+			content, format, id,
+		)
+		if err != nil {
+			return Playlist{}, err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return Playlist{}, sql.ErrNoRows
+		}
+	}
+	p, _, err := r.Get(ctx, id)
+	return p, err
+}

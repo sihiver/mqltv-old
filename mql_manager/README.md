@@ -117,10 +117,15 @@ Endpoints:
 - `DELETE /api/subscriptions/{id}`
 
 - `GET /api/playlists`
+- `GET /api/playlists/{id}`
+- `GET /api/playlists/{id}/content` — raw M3U/JSON untuk editor admin
+- `PUT /api/playlists/{id}/content` — simpan isi + re-import channel (body: `{ "name": "...", "content": "..." }`)
 - `POST /api/playlists` (JSON import URL: `{ "name": "Demo", "url": "https://..." }`)
 - `POST /api/playlists` (multipart upload: fields `name`, `file`)
 - `DELETE /api/playlists/{id}`
 - `POST /api/playlists/{id}/reimport`
+
+Admin UI: menu **Playlists** → tombol **Edit** membuka editor teks (M3U / JSON Vision+) di `/playlists/{id}/edit`.
 
 - `GET /api/channels`
 - `GET /api/users/{id}/channels`

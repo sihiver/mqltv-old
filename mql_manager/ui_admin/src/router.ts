@@ -4,6 +4,7 @@ import DashboardWorkplacePage from './pages/dashboard/DashboardWorkplacePage.vue
 import UsersPage from './pages/UsersPage.vue'
 import UserDetailPage from './pages/UserDetailPage.vue'
 import PlaylistsPage from './pages/PlaylistsPage.vue'
+import PlaylistEditorPage from './pages/PlaylistEditorPage.vue'
 import PackagesPage from './pages/PackagesPage.vue'
 import PackageDetailPage from './pages/PackageDetailPage.vue'
 import { auth } from './lib/auth'
@@ -34,6 +35,11 @@ export const router = createRouter({
       path: '/playlists',
       component: PlaylistsPage,
       meta: { requiresAuth: true, title: 'Playlists', breadcrumb: ['Playlists'] }
+    },
+    {
+      path: '/playlists/:id/edit',
+      component: PlaylistEditorPage,
+      meta: { requiresAuth: true, title: 'Playlist Editor', breadcrumb: ['Playlists', 'Editor'] }
     },
     {
       path: '/packages',

@@ -95,11 +95,6 @@ dependencies {
     // Local FFmpeg audio decoder extension (adds support for MP2/etc on devices where platform decoders are missing)
     implementation files('libs/lib-decoder-ffmpeg-release.aar')
 
-    // Oldest ExoPlayer still available on Google's Maven (2.13.3)
-    // (2.4.2 / r2.4.2 is no longer published there)
-    implementation 'com.google.android.exoplayer:exoplayer:2.13.3'
-    implementation 'com.google.android.exoplayer:extension-okhttp:2.13.3'
-
     // VLC engine (local AAR)
     implementation files('libs/libvlc-release.aar')
 }

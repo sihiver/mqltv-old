@@ -16,37 +16,28 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.OptIn;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
+import androidx.media3.common.C;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
+import androidx.media3.common.VideoSize;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.common.util.Util;
+import androidx.media3.datasource.DefaultDataSource;
+import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.hls.HlsMediaSource;
+import androidx.media3.exoplayer.source.MediaSource;
+import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.exoplayer2.ExoPlaybackException;
-import com.google.android.exoplayer2.MediaItem;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.source.hls.HlsMediaSource;
-import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSourceFactory;
-import com.google.android.exoplayer2.source.MediaSource;
-import com.google.android.exoplayer2.source.ProgressiveMediaSource;
-import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
-import com.google.android.exoplayer2.upstream.RawResourceDataSource;
-import com.google.android.exoplayer2.util.Util;
-import com.google.android.exoplayer2.video.VideoListener;
-
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-
-import okhttp3.OkHttpClient;
-
+@OptIn(markerClass = UnstableApi.class)
 public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapter.VH> {
 
     private static final String TAG = "LauncherCardVideo";
@@ -67,10 +58,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
     private static final Object PAYLOAD_CONTENT = new Object();
     private static final Object PAYLOAD_LIVETV_BG_STATE = new Object();
 
-    // Cached SSL-tolerant client — pre-warmed in background so first bind is fast.
-    private static volatile OkHttpClient cachedBgVideoClient;
-
-    private SimpleExoPlayer liveTvBgPlayer;
+    private ExoPlayer liveTvBgPlayer;
     private boolean liveTvBgPlayerInitializing;
     private boolean liveTvBgFailed;
     private boolean liveTvBgFallbackToLocal;
@@ -90,18 +78,10 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
      * appears immediately without waiting for network/codec initialization.
      */
     public void preWarm(Context context) {
-        // Build SSL client on a background thread (SSLContext.init can be slow).
-        Executors.newSingleThreadExecutor().execute(() -> {
-            if (cachedBgVideoClient == null) {
-                cachedBgVideoClient = buildBgVideoClient();
+        new Handler(Looper.getMainLooper()).post(() -> {
+            if (liveTvBgPlayer == null && !liveTvBgFailed && !liveTvBgPlayerInitializing) {
+                ensureLiveTvPlayer(context.getApplicationContext());
             }
-            // After client is ready, init the ExoPlayer on the main thread
-            // (SimpleExoPlayer.Builder must run on main thread).
-            new Handler(Looper.getMainLooper()).post(() -> {
-                if (liveTvBgPlayer == null && !liveTvBgFailed && !liveTvBgPlayerInitializing) {
-                    ensureLiveTvPlayer(context.getApplicationContext());
-                }
-            });
         });
     }
 
@@ -345,17 +325,24 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         holder.video.post(() -> attachPlayerToSurface(holder));
     }
 
-    private static MediaSource buildMediaSource(Context context, Uri uri, DataSource.Factory dataSourceFactory) {
-        int type = Util.inferContentType(uri);
-        MediaItem item = MediaItem.fromUri(uri);
-        if (type == com.google.android.exoplayer2.C.TYPE_HLS) {
-            return new HlsMediaSource.Factory(dataSourceFactory).createMediaSource(item);
+    private static MediaSource buildMediaSource(Context context, Uri uri, boolean local) {
+        String userAgent = Util.getUserAgent(context, "MQLTV");
+        if (local) {
+            DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory().setUserAgent(userAgent);
+            DefaultDataSource.Factory ds = new DefaultDataSource.Factory(context, http);
+            return new ProgressiveMediaSource.Factory(ds).createMediaSource(MediaItem.fromUri(uri));
         }
-        return new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(item);
+        DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory().setUserAgent(userAgent);
+        MediaItem item = MediaItem.fromUri(uri);
+        int type = Util.inferContentType(uri);
+        if (type == C.CONTENT_TYPE_HLS) {
+            return new HlsMediaSource.Factory(http).createMediaSource(item);
+        }
+        return new ProgressiveMediaSource.Factory(http).createMediaSource(item);
     }
 
-    private static Uri getLocalFallbackUri() {
-        return RawResourceDataSource.buildRawResourceUri(R.raw.launcher_card_bg);
+    private static Uri getLocalFallbackUri(Context app) {
+        return Uri.parse("android.resource://" + app.getPackageName() + "/" + R.raw.launcher_card_bg);
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -369,7 +356,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             return;
         }
 
-        SimpleExoPlayer p = liveTvBgPlayer;
+        ExoPlayer p = liveTvBgPlayer;
 
         if (p == null) {
             // Player not ready yet (still initializing); retry after a short delay.
@@ -401,16 +388,16 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         }
     }
 
-    private void switchToLocalFallback(Context app, SimpleExoPlayer p, DataSource.Factory localFactory) {
+    private void switchToLocalFallback(Context app, ExoPlayer p) {
         if (liveTvBgFallbackToLocal) return;
         liveTvBgFallbackToLocal = true;
         liveTvBgRenderedFirstFrame = false;
         try {
-            Uri fallbackUri = getLocalFallbackUri();
+            Uri fallbackUri = getLocalFallbackUri(app);
             Log.w(TAG, "switching to local fallback uri=" + fallbackUri);
-            MediaSource fallbackSource = buildMediaSource(app, fallbackUri, localFactory);
+            MediaSource fallbackSource = buildMediaSource(app, fallbackUri, true);
             p.setPlayWhenReady(false);
-            p.stop(true);
+            p.stop();
             p.setMediaSource(fallbackSource);
             // Prepare will be called after surface attach if not prepared yet.
             if (liveTvBgPrepared) {
@@ -429,7 +416,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         }
     }
 
-    private SimpleExoPlayer ensureLiveTvPlayer(Context context) {
+    private ExoPlayer ensureLiveTvPlayer(Context context) {
         if (liveTvBgPlayer != null) return liveTvBgPlayer;
         if (context == null) return null;
         if (liveTvBgPlayerInitializing) return null;
@@ -437,50 +424,25 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
 
         try {
             Context app = context.getApplicationContext();
-
             String url = Constants.LAUNCHER_LIVETV_CARD_VIDEO_URL;
-            boolean hasRemote = true;
-
-            // Use cached SSL-tolerant client (pre-warmed by preWarm() in background).
-            OkHttpClient bgClient = cachedBgVideoClient != null ? cachedBgVideoClient : buildBgVideoClient();
-            if (cachedBgVideoClient == null) cachedBgVideoClient = bgClient;
-            DataSource.Factory remoteFactory = new OkHttpDataSourceFactory(bgClient, "MQLTV/1.0");
-            String userAgent = Util.getUserAgent(app, "MQLTV");
-            DataSource.Factory localFactory = new DefaultDataSourceFactory(app, userAgent);
 
             Uri initialUri = Uri.parse(url);
-            MediaSource mediaSource = buildMediaSource(app, initialUri, remoteFactory);
-            Log.d(TAG, "init player uri=" + initialUri + " (remote=" + hasRemote + ")");
+            MediaSource mediaSource = buildMediaSource(app, initialUri, false);
+            Log.d(TAG, "init player uri=" + initialUri);
 
-            SimpleExoPlayer p = new SimpleExoPlayer.Builder(app).build();
+            ExoPlayer p = new ExoPlayer.Builder(app).build();
             p.setPlayWhenReady(false);
             p.setVolume(0f);
             p.setRepeatMode(Player.REPEAT_MODE_ALL);
             p.setMediaSource(mediaSource);
-            // NOTE: Don't prepare until we have attached a TextureView surface.
             liveTvBgPrepared = false;
 
-            p.addVideoListener(new VideoListener() {
-                @Override
-                public void onRenderedFirstFrame() {
-                    liveTvBgRenderedFirstFrame = true;
-                    Log.d(TAG, "rendered first frame");
-                }
-
-                @Override
-                public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees, float pixelWidthHeightRatio) {
-                    Log.d(TAG, "video size " + width + "x" + height + " rot=" + unappliedRotationDegrees);
-                }
-            });
-
-            p.addListener(new Player.EventListener() {
+            p.addListener(new Player.Listener() {
                 @SuppressLint("NotifyDataSetChanged")
                 @Override
-                public void onPlayerError(@NonNull ExoPlaybackException error) {
+                public void onPlayerError(@NonNull PlaybackException error) {
                     Log.e(TAG, "bg video player error", error);
 
-                    // If HTTPS failed due to SSL (trust anchor), retry with HTTP before
-                    // giving up and switching to local fallback.
                     if (!liveTvBgFallbackToLocal && !liveTvBgHttpRetried
                             && isSslError(error) && url.startsWith("https://")) {
                         liveTvBgHttpRetried = true;
@@ -488,28 +450,28 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
                         Log.w(TAG, "SSL error; retrying over HTTP: " + httpUrl);
                         try {
                             Uri httpUri = Uri.parse(httpUrl);
-                            MediaSource httpSource = buildMediaSource(app, httpUri, remoteFactory);
+                            MediaSource httpSource = buildMediaSource(app, httpUri, false);
                             p.setPlayWhenReady(false);
-                            p.stop(true);
+                            p.stop();
                             p.setMediaSource(httpSource);
                             if (liveTvBgPrepared) p.prepare();
                             p.setPlayWhenReady(hostActive);
                         } catch (Exception e2) {
                             Log.e(TAG, "HTTP retry failed", e2);
-                            switchToLocalFallback(app, p, localFactory);
+                            switchToLocalFallback(app, p);
                         }
                         return;
                     }
 
                     if (!liveTvBgFallbackToLocal) {
-                        switchToLocalFallback(app, p, localFactory);
+                        switchToLocalFallback(app, p);
                         return;
                     }
 
                     liveTvBgFailed = true;
                     try {
                         p.setPlayWhenReady(false);
-                        p.stop(true);
+                        p.stop();
                     } catch (Exception ignored) {
                     }
                     int livePos = findLiveTvCardPosition();
@@ -524,15 +486,22 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
                 public void onPlaybackStateChanged(int state) {
                     Log.d(TAG, "state=" + state + " playWhenReady=" + p.getPlayWhenReady());
                 }
+
+                @Override
+                public void onVideoSizeChanged(@NonNull VideoSize videoSize) {
+                    if (videoSize.width > 0) {
+                        liveTvBgRenderedFirstFrame = true;
+                        Log.d(TAG, "video size " + videoSize.width + "x" + videoSize.height);
+                    }
+                }
             });
 
-            // If remote is configured but never produces frames (codec unsupported, etc), fall back quickly.
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 if (liveTvBgPlayer != p) return;
                 if (liveTvBgFailed || liveTvBgFallbackToLocal) return;
                 if (!liveTvBgRenderedFirstFrame) {
                     Log.w(TAG, "no first frame after timeout; fallback to local");
-                    switchToLocalFallback(app, p, localFactory);
+                    switchToLocalFallback(app, p);
                 }
             }, 6000);
 
@@ -547,35 +516,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         }
     }
 
-    /**
-     * OkHttpClient for background decorative video that bypasses SSL certificate validation.
-     * Old Android (API 21-22) lacks trust anchors for modern CAs; since this is non-sensitive
-     * decorative content, strict validation is not required.
-     */
-    @SuppressLint("TrustAllX509TrustManager")
-    private static OkHttpClient buildBgVideoClient() {
-        try {
-            X509TrustManager trustAll = new X509TrustManager() {
-                @Override public void checkClientTrusted(X509Certificate[] chain, String authType) {}
-                @Override public void checkServerTrusted(X509Certificate[] chain, String authType) {}
-                @Override public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
-            };
-            SSLContext sc = SSLContext.getInstance("TLS");
-            sc.init(null, new TrustManager[]{trustAll}, new SecureRandom());
-            return new OkHttpClient.Builder()
-                    .sslSocketFactory(sc.getSocketFactory(), trustAll)
-                    .hostnameVerifier((hostname, session) -> true)
-                    .connectTimeout(12, TimeUnit.SECONDS)
-                    .readTimeout(20, TimeUnit.SECONDS)
-                    .build();
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to build SSL-tolerant client, using default", e);
-            return NetworkClient.getClient();
-        }
-    }
-
-    /** Returns true if the ExoPlaybackException was caused by an SSL handshake failure. */
-    private static boolean isSslError(ExoPlaybackException error) {
+    private static boolean isSslError(PlaybackException error) {
         Throwable t = error.getCause();
         while (t != null) {
             if (t instanceof javax.net.ssl.SSLHandshakeException

@@ -10,6 +10,7 @@ import androidx.annotation.OptIn;
 import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.common.util.Util;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.dash.DashMediaSource;
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManager;
@@ -21,10 +22,6 @@ import androidx.media3.exoplayer.drm.MediaDrmCallback;
 import androidx.media3.exoplayer.hls.HlsMediaSource;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
-
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
-import com.google.android.exoplayer2.upstream.HttpDataSource;
-import com.google.android.exoplayer2.util.Util;
 
 import org.json.JSONObject;
 
@@ -133,92 +130,6 @@ public final class VisionPlusPlayback {
             return factory.createMediaSource(item);
         }
         return new ProgressiveMediaSource.Factory(http).createMediaSource(item);
-    }
-
-    /** ExoPlayer 2.x media source with optional DRM + stream headers. */
-    public static com.google.android.exoplayer2.source.MediaSource buildLegacyMediaSource(
-            Context context, Uri uri, @Nullable ChannelPlaybackMeta meta) {
-        String userAgent = Util.getUserAgent(context, "MQLTV");
-        Map<String, String> streamHeaders = parseHeaderJson(meta != null ? meta.getHeaderIptvJson() : null);
-
-        DefaultHttpDataSourceFactory httpFactory = new DefaultHttpDataSourceFactory(userAgent);
-        if (!streamHeaders.isEmpty()) {
-            for (Map.Entry<String, String> e : streamHeaders.entrySet()) {
-                httpFactory.getDefaultRequestProperties().set(e.getKey(), e.getValue());
-            }
-        }
-
-        com.google.android.exoplayer2.upstream.DataSource.Factory dataSourceFactory =
-                new com.google.android.exoplayer2.upstream.DefaultDataSourceFactory(context, httpFactory);
-
-        com.google.android.exoplayer2.MediaItem item = com.google.android.exoplayer2.MediaItem.fromUri(uri);
-        com.google.android.exoplayer2.drm.DrmSessionManager drmSessionManager =
-                buildLegacyDrmSessionManager(meta);
-
-        if (meta != null && meta.preferDashSource(uri.toString())) {
-            com.google.android.exoplayer2.source.dash.DashMediaSource.Factory factory =
-                    new com.google.android.exoplayer2.source.dash.DashMediaSource.Factory(dataSourceFactory);
-            if (drmSessionManager != null) {
-                factory.setDrmSessionManager(drmSessionManager);
-            }
-            return factory.createMediaSource(item);
-        }
-
-        int type = Util.inferContentType(uri);
-        if (type == com.google.android.exoplayer2.C.TYPE_HLS) {
-            return new com.google.android.exoplayer2.source.hls.HlsMediaSource.Factory(dataSourceFactory)
-                    .createMediaSource(item);
-        }
-        if (type == com.google.android.exoplayer2.C.TYPE_DASH) {
-            com.google.android.exoplayer2.source.dash.DashMediaSource.Factory factory =
-                    new com.google.android.exoplayer2.source.dash.DashMediaSource.Factory(dataSourceFactory);
-            if (drmSessionManager != null) {
-                factory.setDrmSessionManager(drmSessionManager);
-            }
-            return factory.createMediaSource(item);
-        }
-        return new com.google.android.exoplayer2.source.ProgressiveMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(item);
-    }
-
-    @Nullable
-    private static com.google.android.exoplayer2.drm.DrmSessionManager buildLegacyDrmSessionManager(
-            @Nullable ChannelPlaybackMeta meta) {
-        if (meta == null || !meta.requiresExoDrm() || TextUtils.isEmpty(meta.getUrlLicense())) {
-            return null;
-        }
-        try {
-            byte[] local = VisionPlusDrmHelper.buildLocalClearKeyLicense(meta);
-            com.google.android.exoplayer2.drm.MediaDrmCallback callback;
-            if (local != null) {
-                callback = new com.google.android.exoplayer2.drm.LocalMediaDrmCallback(local);
-            } else {
-                callback = new com.google.android.exoplayer2.drm.MediaDrmCallback() {
-                    @Override
-                    public byte[] executeProvisionRequest(UUID uuid,
-                            com.google.android.exoplayer2.drm.ExoMediaDrm.ProvisionRequest request) {
-                        throw new RuntimeException("Provision not supported");
-                    }
-
-                    @Override
-                    public byte[] executeKeyRequest(UUID uuid,
-                            com.google.android.exoplayer2.drm.ExoMediaDrm.KeyRequest request) {
-                        try {
-                            return VisionPlusDrmHelper.executeKeyRequest(meta, request.getData());
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                };
-            }
-            return new com.google.android.exoplayer2.drm.DefaultDrmSessionManager.Builder()
-                    .setUuidAndExoMediaDrmProvider(com.google.android.exoplayer2.C.CLEARKEY_UUID,
-                            com.google.android.exoplayer2.drm.FrameworkMediaDrm.DEFAULT_PROVIDER)
-                    .build(callback);
-        } catch (Exception e) {
-            Log.e(TAG, "Legacy DRM session setup failed", e);
-            return null;
-        }
     }
 
     static Map<String, String> parseHeaderJson(@Nullable String json) {

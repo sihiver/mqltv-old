@@ -13,7 +13,6 @@ public final class PlayerIntents {
     public static final int PLAYER_MODE_AUTO = PlaybackPrefs.PLAYER_MODE_AUTO;
     public static final int PLAYER_MODE_EXO = PlaybackPrefs.PLAYER_MODE_EXO;
     public static final int PLAYER_MODE_VLC = PlaybackPrefs.PLAYER_MODE_VLC;
-    public static final int PLAYER_MODE_EXO_LEGACY = PlaybackPrefs.PLAYER_MODE_EXO_LEGACY;
     public static final int PLAYER_MODE_NATIVE = PlaybackPrefs.PLAYER_MODE_NATIVE;
 
     public static Intent createPlayIntent(Context context, Channel channel) {
@@ -106,22 +105,18 @@ public final class PlayerIntents {
 
     public static Class<?> getTargetPlayerActivity(Context context, ChannelPlaybackMeta meta) {
         if (meta != null && meta.requiresExoDrm()) {
-            // DRM / DASH-ClearKey needs ExoPlayer, not native MediaPlayer or VLC.
-            if (android.os.Build.VERSION.SDK_INT <= 19) {
-                return LegacyExoPlayerActivity.class;
-            }
+            // DRM / DASH-ClearKey needs Media3 ExoPlayer, not native MediaPlayer or VLC.
             return PlayerActivity.class;
         }
 
         int mode = PlaybackPrefs.getPlayerMode(context);
         if (mode == PlaybackPrefs.PLAYER_MODE_VLC) return VlcPlayerActivity.class;
-        if (mode == PlaybackPrefs.PLAYER_MODE_EXO_LEGACY) return LegacyExoPlayerActivity.class;
         if (mode == PlaybackPrefs.PLAYER_MODE_EXO) return PlayerActivity.class;
         if (mode == PlaybackPrefs.PLAYER_MODE_NATIVE) return NativePlayerActivity.class;
 
         if (android.os.Build.VERSION.SDK_INT <= 19) {
             if (DeviceQuirks.isZteB760H()) return NativePlayerActivity.class;
-            return LegacyExoPlayerActivity.class;
+            return VlcPlayerActivity.class;
         }
         return PlayerActivity.class;
     }

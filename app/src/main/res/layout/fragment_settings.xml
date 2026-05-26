@@ -93,20 +93,6 @@
             android:focusableInTouchMode="true" />
 
         <RadioButton
-            android:id="@+id/player_mode_exo_legacy"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="ExoPlayer 2.13.3 (legacy)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
-
-        <RadioButton
             android:id="@+id/player_mode_native"
             android:layout_width="match_parent"
             android:layout_height="44dp"

@@ -16,8 +16,6 @@ public final class PlaybackPrefs {
     // Media3 ExoPlayer
     public static final int PLAYER_MODE_EXO = 1;
     public static final int PLAYER_MODE_VLC = 2;
-    // ExoPlayer v2.4.2 (legacy)
-    public static final int PLAYER_MODE_EXO_LEGACY = 3;
     // Native Android MediaPlayer (Stagefright/OMX on older devices)
     public static final int PLAYER_MODE_NATIVE = 4;
 
@@ -65,7 +63,10 @@ public final class PlaybackPrefs {
     }
 
     public static int getPlayerMode(Context context) {
-        return sp(context).getInt(PREF_PLAYER_MODE, PLAYER_MODE_AUTO);
+        int mode = sp(context).getInt(PREF_PLAYER_MODE, PLAYER_MODE_AUTO);
+        // Former "Exo legacy" mode (3) — removed; treat as Auto.
+        if (mode == 3) return PLAYER_MODE_AUTO;
+        return mode;
     }
 
     public static void setPlayerMode(Context context, int mode) {

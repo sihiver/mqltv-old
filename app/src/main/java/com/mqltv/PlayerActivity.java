@@ -181,15 +181,13 @@ public class PlayerActivity extends FragmentActivity {
 
                 Toast.makeText(PlayerActivity.this, msg, Toast.LENGTH_LONG).show();
 
-                // If ExoPlayer can't decode, try the legacy ExoPlayer engine first (and only then VLC).
+                // If Media3 can't decode, fall back to VLC when not already in VLC mode.
                 if (codecNotSupported) {
                     int mode = PlaybackPrefs.getPlayerMode(PlayerActivity.this);
                     if (mode != PlaybackPrefs.PLAYER_MODE_VLC) {
-                        String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
-                        String playUrl = getIntent().getStringExtra(Constants.EXTRA_URL);
-                        startActivity(new Intent(PlayerActivity.this, LegacyExoPlayerActivity.class)
-                                .putExtra(Constants.EXTRA_TITLE, title)
-                                .putExtra(Constants.EXTRA_URL, playUrl));
+                        Intent vlcIntent = new Intent(PlayerActivity.this, VlcPlayerActivity.class);
+                        vlcIntent.putExtras(getIntent());
+                        startActivity(vlcIntent);
                         finish();
                     }
                 }

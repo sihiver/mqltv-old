@@ -75,7 +75,6 @@ public class SettingsFragment extends Fragment {
         RadioGroup group = v.findViewById(R.id.player_mode_group);
         RadioButton auto = v.findViewById(R.id.player_mode_auto);
         RadioButton exo = v.findViewById(R.id.player_mode_exo);
-        RadioButton exoLegacy = v.findViewById(R.id.player_mode_exo_legacy);
         RadioButton nativePlayer = v.findViewById(R.id.player_mode_native);
         RadioButton vlc = v.findViewById(R.id.player_mode_vlc);
 
@@ -84,8 +83,6 @@ public class SettingsFragment extends Fragment {
             vlc.setChecked(true);
         } else if (mode == PlayerIntents.PLAYER_MODE_NATIVE) {
             nativePlayer.setChecked(true);
-        } else if (mode == PlayerIntents.PLAYER_MODE_EXO_LEGACY) {
-            exoLegacy.setChecked(true);
         } else if (mode == PlayerIntents.PLAYER_MODE_EXO) {
             exo.setChecked(true);
         } else {
@@ -98,9 +95,6 @@ public class SettingsFragment extends Fragment {
             if (checkedId == R.id.player_mode_exo) {
                 newMode = PlayerIntents.PLAYER_MODE_EXO;
                 label = "ExoPlayer (Media3)";
-            } else if (checkedId == R.id.player_mode_exo_legacy) {
-                newMode = PlayerIntents.PLAYER_MODE_EXO_LEGACY;
-                label = "ExoPlayer 2.13.3";
             } else if (checkedId == R.id.player_mode_native) {
                 newMode = PlayerIntents.PLAYER_MODE_NATIVE;
                 label = "Native (MediaPlayer)";

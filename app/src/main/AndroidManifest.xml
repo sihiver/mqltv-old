@@ -27,10 +27,6 @@
             android:exported="false" />
 
         <activity
-            android:name=".LegacyExoPlayerActivity"
-            android:exported="false" />
-
-        <activity
             android:name=".VlcPlayerActivity"
             android:hardwareAccelerated="true"
             android:exported="false" />

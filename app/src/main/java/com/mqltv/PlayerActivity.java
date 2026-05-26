@@ -103,6 +103,17 @@ public class PlayerActivity extends FragmentActivity {
         String url = getIntent().getStringExtra(Constants.EXTRA_URL);
         if (url == null || url.trim().isEmpty()) return;
 
+        ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromIntent(getIntent());
+        if (DrmCapabilities.isDashClearKeyUnsupportedOnThisDevice(meta, url)) {
+            android.util.Log.w("PlayerActivity", "dash-clearkey blocked on API "
+                    + android.os.Build.VERSION.SDK_INT + " jenis="
+                    + (meta != null ? meta.getJenis() : ""));
+            Toast.makeText(this, DrmCapabilities.getDashClearKeyUnsupportedMessage(),
+                    Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+
         if (channelOverlay != null) channelOverlay.setCurrentChannel(url);
 
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
@@ -157,10 +168,16 @@ public class PlayerActivity extends FragmentActivity {
                 if (loadingView != null) loadingView.setVisibility(View.GONE);
                 String msg = "Playback error: " + error.getErrorCodeName();
                 Throwable cause = error.getCause();
+                ChannelPlaybackMeta drmMeta = ChannelPlaybackMeta.fromIntent(getIntent());
+                String playUrl = getIntent().getStringExtra(Constants.EXTRA_URL);
                 while (cause != null) {
                     String cn = cause.getClass().getSimpleName();
                     if (cn.contains("Drm") || cn.contains("MediaDrm")) {
-                        msg = "DRM gagal — periksa url_license / header di playlist JSON";
+                        if (DrmCapabilities.isDashClearKeyUnsupportedOnThisDevice(drmMeta, playUrl)) {
+                            msg = DrmCapabilities.getDashClearKeyUnsupportedMessage();
+                        } else {
+                            msg = "DRM gagal — periksa url_license / header di playlist JSON";
+                        }
                         break;
                     }
                     cause = cause.getCause();
@@ -225,7 +242,6 @@ public class PlayerActivity extends FragmentActivity {
             }
         });
 
-        ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromIntent(getIntent());
         Uri uri = Uri.parse(url);
         if (meta != null && meta.isActive()) {
             android.util.Log.d("PlayerActivity", "Vision+ playback jenis=" + meta.getJenis()

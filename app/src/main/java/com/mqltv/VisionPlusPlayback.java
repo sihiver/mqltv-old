@@ -9,9 +9,12 @@ import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
 import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.MimeTypes;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.common.util.Util;
-import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.datasource.HttpDataSource;
+
+import com.mqltv.media3.OkHttpHttpDataSource;
 import androidx.media3.exoplayer.dash.DashMediaSource;
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManager;
 import androidx.media3.exoplayer.drm.DrmSessionManager;
@@ -40,15 +43,41 @@ public final class VisionPlusPlayback {
     private VisionPlusPlayback() {}
 
     @OptIn(markerClass = UnstableApi.class)
-    public static DefaultHttpDataSource.Factory media3HttpFactory(Context context, @Nullable ChannelPlaybackMeta meta) {
-        DefaultHttpDataSource.Factory factory = new DefaultHttpDataSource.Factory()
-                .setUserAgent(Util.getUserAgent(context, "MQLTV"))
-                .setAllowCrossProtocolRedirects(true);
-        Map<String, String> headers = parseHeaderJson(meta != null ? meta.getHeaderIptvJson() : null);
+    public static HttpDataSource.Factory media3HttpFactory(Context context, @Nullable ChannelPlaybackMeta meta) {
+        // OkHttp + Conscrypt (API 19) — HttpURLConnection often drops custom Referer/Origin on HLS.
+        OkHttpHttpDataSource.Factory factory = new OkHttpHttpDataSource.Factory(
+                NetworkClient.getClient(),
+                Util.getUserAgent(context, "MQLTV"));
+        Map<String, String> headers = mergedStreamHeaders(meta);
         if (!headers.isEmpty()) {
             factory.setDefaultRequestProperties(headers);
+            Log.d(TAG, "Stream headers: " + headers.keySet());
         }
         return factory;
+    }
+
+    /** Headers for manifest + HLS/DASH segments. */
+    public static Map<String, String> mergedStreamHeaders(@Nullable ChannelPlaybackMeta meta) {
+        return parseHeaderJson(meta != null ? meta.getHeaderIptvJson() : null);
+    }
+
+    /** Apply {@code header_iptv} to LibVLC when user forces VLC mode. */
+    public static void applyVlcMediaHeaders(@Nullable org.videolan.libvlc.Media media,
+                                            @Nullable ChannelPlaybackMeta meta) {
+        if (media == null || meta == null) return;
+        Map<String, String> headers = parseHeaderJson(meta.getHeaderIptvJson());
+        for (Map.Entry<String, String> e : headers.entrySet()) {
+            String key = e.getKey();
+            String value = e.getValue();
+            if (TextUtils.isEmpty(key) || TextUtils.isEmpty(value)) continue;
+            if ("User-Agent".equalsIgnoreCase(key)) {
+                media.addOption(":http-user-agent=" + value);
+            } else if ("Referer".equalsIgnoreCase(key)) {
+                media.addOption(":http-referrer=" + value);
+            } else if ("Origin".equalsIgnoreCase(key)) {
+                media.addOption(":http-origin=" + value);
+            }
+        }
     }
 
     /** DRM config: UUID only — license is supplied via custom {@link DrmSessionManager}. */
@@ -57,6 +86,11 @@ public final class VisionPlusPlayback {
         if (meta != null && meta.requiresExoDrm()) {
             builder.setDrmConfiguration(
                     new MediaItem.DrmConfiguration.Builder(C.CLEARKEY_UUID).build());
+        }
+        if (meta != null && meta.preferHlsSource(uri.toString())) {
+            builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+        } else if (meta != null && meta.preferDashSource(uri.toString())) {
+            builder.setMimeType(MimeTypes.APPLICATION_MPD);
         }
         return builder.build();
     }
@@ -103,7 +137,7 @@ public final class VisionPlusPlayback {
 
     @OptIn(markerClass = UnstableApi.class)
     public static MediaSource buildMedia3Source(Context context, Uri uri, @Nullable ChannelPlaybackMeta meta) {
-        DefaultHttpDataSource.Factory http = media3HttpFactory(context, meta);
+        HttpDataSource.Factory http = media3HttpFactory(context, meta);
         MediaItem item = buildMedia3Item(uri, meta);
         DrmSessionManager drm = buildMedia3DrmSessionManager(meta);
 
@@ -135,18 +169,28 @@ public final class VisionPlusPlayback {
     static Map<String, String> parseHeaderJson(@Nullable String json) {
         Map<String, String> out = new java.util.HashMap<>();
         if (TextUtils.isEmpty(json) || "{}".equals(json.trim())) return out;
+        String body = json.trim();
+        if (body.startsWith("\uFEFF")) {
+            body = body.substring(1).trim();
+        }
         try {
-            JSONObject o = new JSONObject(json);
+            // Sometimes stored/exported as a JSON-encoded string.
+            if (body.startsWith("\"")) {
+                body = new JSONObject("{\"v\":" + body + "}").optString("v", body);
+            }
+            JSONObject o = new JSONObject(body);
             Iterator<String> keys = o.keys();
             while (keys.hasNext()) {
                 String k = keys.next();
                 String v = o.optString(k, "");
                 if (!TextUtils.isEmpty(k) && v != null) {
-                    out.put(k, v);
+                    String trimmed = v.trim();
+                    if (trimmed.isEmpty() || "none".equalsIgnoreCase(trimmed)) continue;
+                    out.put(k, trimmed);
                 }
             }
         } catch (Exception e) {
-            Log.w(TAG, "Failed to parse header json", e);
+            Log.w(TAG, "Failed to parse header json: " + body, e);
         }
         return out;
     }

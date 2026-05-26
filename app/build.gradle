@@ -87,6 +87,7 @@ dependencies {
     implementation 'org.conscrypt:conscrypt-android:2.5.2'
 
     def media3Version = '1.2.1'
+    implementation "androidx.media3:media3-datasource:${media3Version}"
     implementation "androidx.media3:media3-exoplayer:${media3Version}"
     implementation "androidx.media3:media3-ui:${media3Version}"
     implementation "androidx.media3:media3-exoplayer-hls:${media3Version}"

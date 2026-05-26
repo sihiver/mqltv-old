@@ -5,6 +5,8 @@ import android.content.Context;
 import android.os.Build;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
 import java.io.InputStream;
 import java.security.SecureRandom;
 import java.security.KeyStore;
@@ -16,6 +18,7 @@ import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
+import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
@@ -44,7 +47,48 @@ public final class NetworkClient {
             APP_CONTEXT = context.getApplicationContext();
         }
         Log.d(TAG, "init: context=" + (APP_CONTEXT != null));
+        installLegacyHttpTlsDefaults(APP_CONTEXT);
         CLIENT = buildClient();
+    }
+
+    /** Media3 DefaultHttpDataSource uses HttpURLConnection; enable TLS 1.2 + modern CAs on API 19. */
+    private static void installLegacyHttpTlsDefaults(Context context) {
+        if (Build.VERSION.SDK_INT > 19) return;
+        try {
+            SSLContext sslContext = createLegacySslContext(context);
+            if (sslContext != null) {
+                HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
+                Log.d(TAG, "HttpsURLConnection TLS defaults installed (Conscrypt)");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "HttpsURLConnection TLS setup failed", e);
+        }
+    }
+
+    @Nullable
+    private static SSLContext createLegacySslContext(Context context) {
+        try {
+            java.security.Provider provider = Conscrypt.newProvider();
+            X509TrustManager trustManager = getTrustManager(provider, context);
+            if (trustManager != null) {
+                SSLContext sslContext = SSLContext.getInstance("TLS", provider);
+                sslContext.init(null, new TrustManager[] { trustManager }, null);
+                return sslContext;
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            X509TrustManager trustManager = getTrustManager(null, context);
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            if (trustManager != null) {
+                sslContext.init(null, new TrustManager[] { trustManager }, null);
+            } else {
+                sslContext.init(null, null, null);
+            }
+            return sslContext;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public static OkHttpClient getClient() {
@@ -96,34 +140,12 @@ public final class NetworkClient {
 
     private static void enableTls12(OkHttpClient.Builder builder, Context context) {
         try {
-            SSLContext sslContext;
-            X509TrustManager trustManager;
-
-            try {
-                // Prefer Conscrypt trust store on old Android (bundled modern CAs).
-                java.security.Provider provider = Conscrypt.newProvider();
-                trustManager = getTrustManager(provider, context);
-                if (trustManager == null) {
-                    // Some builds/devices don't expose TrustManagerFactory through Conscrypt.
-                    // Fall back to platform TMF instead of silently proceeding with null.
-                    throw new IllegalStateException("Conscrypt TrustManager unavailable");
-                }
-
-                sslContext = SSLContext.getInstance("TLS", provider);
-                sslContext.init(null, new TrustManager[] { trustManager }, null);
-            } catch (Throwable ignored) {
-                // Fallback to platform SSLContext.
+            SSLContext sslContext = createLegacySslContext(context);
+            X509TrustManager trustManager = getTrustManager(Conscrypt.newProvider(), context);
+            if (trustManager == null) {
                 trustManager = getTrustManager(null, context);
-                sslContext = SSLContext.getInstance("TLS");
-                if (trustManager != null) {
-                    sslContext.init(null, new TrustManager[] { trustManager }, null);
-                } else {
-                    sslContext.init(null, null, null);
-                    Log.w(TAG, "TLS12: TrustManager unavailable (sdk=" + Build.VERSION.SDK_INT + ")");
-                }
             }
-
-            if (trustManager != null) {
+            if (sslContext != null && trustManager != null) {
                 builder.sslSocketFactory(new Tls12SocketFactory(sslContext.getSocketFactory()), trustManager);
             }
 

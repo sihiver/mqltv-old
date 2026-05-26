@@ -179,6 +179,17 @@ public class PlayerActivity extends FragmentActivity {
                     }
                 }
 
+                Throwable root = error.getCause();
+                while (root != null && root.getCause() != null) root = root.getCause();
+                if (root != null && root.getMessage() != null
+                        && root.getMessage().toLowerCase().contains("connection")) {
+                    ChannelPlaybackMeta m = ChannelPlaybackMeta.fromIntent(getIntent());
+                    if (m == null || !m.isActive()) {
+                        msg = "Koneksi gagal — playlist tanpa header Vision+. Logout lalu login ulang.";
+                    } else {
+                        msg = "Koneksi gagal — periksa jaringan / header_iptv channel";
+                    }
+                }
                 Toast.makeText(PlayerActivity.this, msg, Toast.LENGTH_LONG).show();
 
                 // If Media3 can't decode, fall back to VLC when not already in VLC mode.
@@ -217,9 +228,13 @@ public class PlayerActivity extends FragmentActivity {
         ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromIntent(getIntent());
         Uri uri = Uri.parse(url);
         if (meta != null && meta.isActive()) {
+            android.util.Log.d("PlayerActivity", "Vision+ playback jenis=" + meta.getJenis()
+                    + " headers=" + VisionPlusPlayback.mergedStreamHeaders(meta).keySet());
             MediaSource mediaSource = VisionPlusPlayback.buildMedia3Source(this, uri, meta);
             player.setMediaSource(mediaSource);
         } else {
+            android.util.Log.w("PlayerActivity", "No Vision+ meta for url=" + url
+                    + " — playlist JSON/header_iptv may be missing; re-login if needed.");
             player.setMediaItem(MediaItem.fromUri(uri));
         }
         player.prepare();

@@ -55,7 +55,8 @@ public final class PlayerIntents {
 
     public static Intent createPreferredPlayIntent(Context context, String title, String url,
                                                    ChannelPlaybackMeta meta) {
-        if (meta == null || !meta.requiresExoDrm()) {
+        // Vision+ JSON (headers / DRM) must stay in-app — MX Player cannot apply header_iptv.
+        if (meta == null || !meta.isActive()) {
             if (PlaybackPrefs.isUseMxPlayer(context)) {
                 Intent mx = createMxPlayIntent(context, title, url);
                 if (mx != null) return mx;
@@ -104,8 +105,8 @@ public final class PlayerIntents {
     }
 
     public static Class<?> getTargetPlayerActivity(Context context, ChannelPlaybackMeta meta) {
-        if (meta != null && meta.requiresExoDrm()) {
-            // DRM / DASH-ClearKey needs Media3 ExoPlayer, not native MediaPlayer or VLC.
+        // Vision+ JSON: headers and/or DRM — Media3 on all API levels (incl. API 19).
+        if (meta != null && meta.isActive()) {
             return PlayerActivity.class;
         }
 
@@ -116,7 +117,7 @@ public final class PlayerIntents {
 
         if (android.os.Build.VERSION.SDK_INT <= 19) {
             if (DeviceQuirks.isZteB760H()) return NativePlayerActivity.class;
-            return VlcPlayerActivity.class;
+            return PlayerActivity.class;
         }
         return PlayerActivity.class;
     }

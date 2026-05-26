@@ -332,6 +332,8 @@ public class VlcPlayerActivity extends FragmentActivity {
             vlcVout.attachViews(voutLayoutListener);
 
             Media media = new Media(libVLC, Uri.parse(url));
+            ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromIntent(getIntent());
+            VisionPlusPlayback.applyVlcMediaHeaders(media, meta);
             media.addOption(":network-caching=" + cachingMsFinal);
             media.addOption(":live-caching=" + cachingMsFinal);
             media.addOption(":file-caching=" + cachingMsFinal);

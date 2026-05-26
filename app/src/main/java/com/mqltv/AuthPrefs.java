@@ -80,9 +80,25 @@ public final class AuthPrefs {
         String url = getPlaylistUrl(context);
         url = url.trim();
         if (!url.isEmpty()) {
+            // Prefer Vision+ JSON export when login still points at playlist.m3u.
+            String jsonUrl = toJsonPlaylistUrl(url);
+            if (jsonUrl != null && !jsonUrl.equals(url)) {
+                return new String[] { jsonUrl, url };
+            }
             return new String[] { url };
         }
         return Constants.HOME_PLAYLIST_URLS;
+    }
+
+    /** e.g. .../playlist.m3u → .../playlist.json */
+    @androidx.annotation.Nullable
+    private static String toJsonPlaylistUrl(String url) {
+        if (url == null) return null;
+        String u = url.trim();
+        if (u.contains("playlist.m3u") && !u.contains("playlist.json")) {
+            return u.replace("playlist.m3u", "playlist.json");
+        }
+        return null;
     }
 
     public static void setLogin(Context context, String username, String displayName, String appKey, String fullPlaylistUrl, String plan, String packagesRaw, String expiresAt) {

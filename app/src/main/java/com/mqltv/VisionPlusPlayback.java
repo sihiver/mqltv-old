@@ -35,7 +35,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Builds ExoPlayer media items/sources for Vision+ JSON channels (headers + ClearKey DRM).
+ * Builds ExoPlayer media items/sources for Vision+ JSON channels (headers + ClearKey / Widevine DRM).
  */
 public final class VisionPlusPlayback {
     private static final String TAG = "VisionPlusPlayback";
@@ -80,12 +80,18 @@ public final class VisionPlusPlayback {
         }
     }
 
+    @Nullable
+    private static UUID drmUuid(@Nullable ChannelPlaybackMeta meta) {
+        if (meta == null || !meta.requiresExoDrm()) return null;
+        return meta.isWidevine() ? C.WIDEVINE_UUID : C.CLEARKEY_UUID;
+    }
+
     /** DRM config: UUID only — license is supplied via custom {@link DrmSessionManager}. */
     public static MediaItem buildMedia3Item(Uri uri, @Nullable ChannelPlaybackMeta meta) {
         MediaItem.Builder builder = new MediaItem.Builder().setUri(uri);
-        if (meta != null && meta.requiresExoDrm()) {
-            builder.setDrmConfiguration(
-                    new MediaItem.DrmConfiguration.Builder(C.CLEARKEY_UUID).build());
+        UUID drmUuid = drmUuid(meta);
+        if (drmUuid != null) {
+            builder.setDrmConfiguration(new MediaItem.DrmConfiguration.Builder(drmUuid).build());
         }
         if (meta != null && meta.preferHlsSource(uri.toString())) {
             builder.setMimeType(MimeTypes.APPLICATION_M3U8);
@@ -101,8 +107,11 @@ public final class VisionPlusPlayback {
         if (meta == null || !meta.requiresExoDrm() || TextUtils.isEmpty(meta.getUrlLicense())) {
             return null;
         }
+        UUID drmUuid = drmUuid(meta);
+        if (drmUuid == null) return null;
         try {
-            byte[] local = VisionPlusDrmHelper.buildLocalClearKeyLicense(meta);
+            final boolean widevine = meta.isWidevine();
+            byte[] local = widevine ? null : VisionPlusDrmHelper.buildLocalClearKeyLicense(meta);
             MediaDrmCallback callback;
             if (local != null) {
                 callback = new LocalMediaDrmCallback(local);
@@ -111,7 +120,12 @@ public final class VisionPlusPlayback {
                 callback = new MediaDrmCallback() {
                     @Override
                     public byte[] executeProvisionRequest(UUID uuid, ExoMediaDrm.ProvisionRequest request) {
-                        throw new RuntimeException("Provision not supported");
+                        try {
+                            return VisionPlusDrmHelper.executeProvisionRequest(uuid, request);
+                        } catch (IOException e) {
+                            Log.e(TAG, "Provision request failed", e);
+                            throw new RuntimeException(e);
+                        }
                     }
 
                     @Override
@@ -119,15 +133,15 @@ public final class VisionPlusPlayback {
                         try {
                             return VisionPlusDrmHelper.executeKeyRequest(meta, request.getData());
                         } catch (IOException e) {
-                            Log.e(TAG, "Key request failed", e);
+                            Log.e(TAG, "Key request failed (" + (widevine ? "widevine" : "clearkey") + ")", e);
                             throw new RuntimeException(e);
                         }
                     }
                 };
-                Log.d(TAG, "Using HTTP/custom ClearKey license");
+                Log.d(TAG, "Using HTTP " + (widevine ? "Widevine" : "ClearKey") + " license");
             }
             return new DefaultDrmSessionManager.Builder()
-                    .setUuidAndExoMediaDrmProvider(C.CLEARKEY_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
+                    .setUuidAndExoMediaDrmProvider(drmUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
                     .build(callback);
         } catch (Exception e) {
             Log.e(TAG, "Media3 DRM session setup failed", e);

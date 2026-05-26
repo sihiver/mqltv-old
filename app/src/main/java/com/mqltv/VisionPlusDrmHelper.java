@@ -17,18 +17,28 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import com.mqltv.media3.OkHttpHttpDataSource;
+
+import androidx.annotation.OptIn;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.exoplayer.drm.ExoMediaDrm;
+import androidx.media3.exoplayer.drm.HttpMediaDrmCallback;
+import androidx.media3.exoplayer.drm.MediaDrmCallbackException;
+
+import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
 /**
- * Resolves Vision+ ClearKey licenses. {@code url_license} is often {@code kid:key} (hex),
- * not an HTTP endpoint — using {@code HttpMediaDrmCallback} alone causes "DRM acquisition failed".
+ * Vision+ DRM: ClearKey (inline / JSON) dan Widevine (POST ke {@code url_license}).
  */
 public final class VisionPlusDrmHelper {
     private static final String TAG = "VisionPlusDrm";
 
-  private static final Pattern HEX_KEY_PAIR = Pattern.compile(
+    private static final MediaType OCTET_STREAM = MediaType.parse("application/octet-stream");
+
+    private static final Pattern HEX_KEY_PAIR = Pattern.compile(
             "^[0-9a-fA-F]{8,64}:[0-9a-fA-F]{8,64}$");
 
     private VisionPlusDrmHelper() {}
@@ -59,17 +69,78 @@ public final class VisionPlusDrmHelper {
             throw new IOException("missing url_license");
         }
         String lic = meta.getUrlLicense().trim();
+        if (meta.isWidevine()) {
+            if (!isHttpLicenseUrl(lic)) {
+                throw new IOException("Widevine butuh url_license HTTP");
+            }
+            return fetchWidevineLicense(meta, challenge);
+        }
         if (isHttpLicenseUrl(lic)) {
             return fetchHttpLicense(meta, challenge);
         }
         return normalizeClearKeyLicense(lic, challenge);
     }
 
-    public static Map<String, String> mergedLicenseHeaders(ChannelPlaybackMeta meta) {
+    @OptIn(markerClass = UnstableApi.class)
+    public static byte[] executeProvisionRequest(UUID uuid, ExoMediaDrm.ProvisionRequest request)
+            throws IOException {
+        HttpMediaDrmCallback callback = new HttpMediaDrmCallback(
+                request.getDefaultUrl(),
+                /* forceDefaultLicenseUrl= */ true,
+                new OkHttpHttpDataSource.Factory(NetworkClient.getClient(), "MQLTV"));
+        try {
+            return callback.executeProvisionRequest(uuid, request);
+        } catch (MediaDrmCallbackException e) {
+            throw new IOException("provision failed: " + e.getMessage(), e);
+        }
+    }
+
+    /** Headers lisensi dari {@code header_license} saja (sesuai playlist JSON). */
+    public static Map<String, String> licenseHeaders(ChannelPlaybackMeta meta) {
         Map<String, String> headers = new HashMap<>();
-        headers.putAll(VisionPlusPlayback.parseHeaderJson(meta.getHeaderLicenseJson()));
-        headers.putAll(VisionPlusPlayback.parseHeaderJson(meta.getHeaderIptvJson()));
+        if (meta != null) {
+            headers.putAll(VisionPlusPlayback.parseHeaderJson(meta.getHeaderLicenseJson()));
+        }
         return headers;
+    }
+
+    public static Map<String, String> mergedLicenseHeaders(ChannelPlaybackMeta meta) {
+        Map<String, String> headers = licenseHeaders(meta);
+        if (meta != null && !meta.isWidevine()) {
+            headers.putAll(VisionPlusPlayback.parseHeaderJson(meta.getHeaderIptvJson()));
+        }
+        return headers;
+    }
+
+    private static byte[] fetchWidevineLicense(ChannelPlaybackMeta meta, @Nullable byte[] challenge)
+            throws IOException {
+        if (challenge == null || challenge.length == 0) {
+            throw new IOException("empty Widevine challenge");
+        }
+        String url = meta.getUrlLicense().trim();
+        Map<String, String> headers = licenseHeaders(meta);
+        Log.d(TAG, "Widevine license POST " + url + " headers=" + headers.keySet());
+        return httpBinaryPost(url, headers, challenge);
+    }
+
+    private static byte[] httpBinaryPost(String url, Map<String, String> headers, byte[] body)
+            throws IOException {
+        Request.Builder builder = new Request.Builder().url(url);
+        for (Map.Entry<String, String> e : headers.entrySet()) {
+            builder.header(e.getKey(), e.getValue());
+        }
+        builder.post(RequestBody.create(OCTET_STREAM, body));
+        try (Response response = NetworkClient.getClient().newCall(builder.build()).execute()) {
+            if (!response.isSuccessful()) {
+                throw new IOException("license HTTP " + response.code());
+            }
+            if (response.body() == null) {
+                throw new IOException("empty license body");
+            }
+            byte[] raw = response.body().bytes();
+            Log.d(TAG, "Widevine license bytes=" + raw.length);
+            return raw;
+        }
     }
 
     private static byte[] fetchHttpLicense(ChannelPlaybackMeta meta, @Nullable byte[] challenge)

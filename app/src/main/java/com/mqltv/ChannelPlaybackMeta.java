@@ -41,6 +41,8 @@ public final class ChannelPlaybackMeta {
         String drmType = o.optString("drm_type", "").trim().toLowerCase(Locale.US);
         if (jenis.isEmpty() && drmType.contains("clearkey")) {
             jenis = "dash-clearkey";
+        } else if (jenis.isEmpty() && drmType.contains("widevine")) {
+            jenis = "dash-widevine";
         } else if (jenis.isEmpty()
                 && !urlLicense.isEmpty()
                 && !VisionPlusDrmHelper.isHttpLicenseUrl(urlLicense)
@@ -164,6 +166,17 @@ public final class ChannelPlaybackMeta {
         if (!TextUtils.isEmpty(urlLicense)) return true;
         String j = jenis.toLowerCase(Locale.US);
         return j.contains("clearkey") || j.contains("widevine");
+    }
+
+    public boolean isWidevine() {
+        return jenis.toLowerCase(Locale.US).contains("widevine");
+    }
+
+    public boolean isClearKey() {
+        String j = jenis.toLowerCase(Locale.US);
+        return j.contains("clearkey")
+                || (!isWidevine() && !TextUtils.isEmpty(urlLicense)
+                && !VisionPlusDrmHelper.isHttpLicenseUrl(urlLicense));
     }
 
     public boolean preferDashSource(String streamUrl) {

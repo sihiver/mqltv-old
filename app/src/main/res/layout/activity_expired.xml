@@ -24,6 +24,20 @@
         android:gravity="center"
         android:padding="24dp">
 
+        <!-- Jam digital -->
+        <TextView
+            android:id="@+id/expired_clock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:layout_marginTop="40dp"
+            android:text="00:00:00"
+            android:textColor="#FF4444"
+            android:fontFamily="monospace"
+            android:textStyle="bold"
+            android:letterSpacing="0.2"
+            android:textSize="36sp" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -82,13 +96,6 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Perpanjang sekarang — WhatsApp / Telegram"
-                android:textColor="#888888"
-                android:textSize="18sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:text="Hubungi Admin"
                 android:textColor="#FFFF8888"
@@ -114,30 +121,48 @@
             android:focusableInTouchMode="true" />
     </LinearLayout>
 
+    <!-- Running text (marquee) di bagian bawah -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="40dp"
+        android:layout_height="44dp"
         android:layout_gravity="bottom"
-        android:background="#14FF2222"
+        android:background="#CC000000"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="⚠ LANGGANAN ANDA TELAH BERAKHIR — HUBUNGI ADMIN UNTUK PERPANJANGAN"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="8dp"
+            android:text="⚠"
             android:textColor="#FFFF4444"
             android:fontFamily="monospace"
-            android:layout_marginStart="20dp"
-            android:maxLines="1"
-            android:textSize="14sp" />
+            android:textSize="16sp" />
+
+        <!-- Marquee / running text -->
+        <TextView
+            android:id="@+id/expired_marquee"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="  LANGGANAN ANDA TELAH BERAKHIR — HUBUNGI ADMIN UNTUK PERPANJANGAN MELALUI WHATSAPP / TELEGRAM — TERIMA KASIH TELAH MENGGUNAKAN LAYANAN KAMI  "
+            android:textColor="#FFFF4444"
+            android:fontFamily="monospace"
+            android:textSize="14sp"
+            android:singleLine="true"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:scrollHorizontally="true" />
     </LinearLayout>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="50dp"
+        android:layout_marginBottom="54dp"
         android:text="ERR_SUBSCRIPTION_EXPIRED  |  CODE: 0x4E4F5355  |  SESSION TERMINATED"
         android:textColor="#333333"
         android:fontFamily="monospace"

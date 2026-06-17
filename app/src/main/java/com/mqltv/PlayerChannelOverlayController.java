@@ -557,11 +557,33 @@ public final class PlayerChannelOverlayController {
         worker.execute(() -> {
             List<Channel> loaded = loadChannels(appContext);
             final List<Channel> loadedFinal = (loaded != null) ? loaded : Collections.emptyList();
-            final CategoryState state = buildCategories(loadedFinal);
+            
+            boolean isRadioMode = false;
+            for (Channel c : loadedFinal) {
+                if (c != null && c.getId() == currentId) {
+                    String g = c.getGroupTitle();
+                    if (g != null && g.toLowerCase().contains("radio")) {
+                        isRadioMode = true;
+                    }
+                    break;
+                }
+            }
+
+            List<Channel> filtered = new ArrayList<>();
+            for (Channel c : loadedFinal) {
+                if (c == null) continue;
+                String g = c.getGroupTitle();
+                boolean isRadio = g != null && g.toLowerCase().contains("radio");
+                if (isRadio == isRadioMode) {
+                    filtered.add(c);
+                }
+            }
+
+            final CategoryState state = buildCategories(filtered);
 
             MAIN.post(() -> {
                 isLoading.set(false);
-                allChannels = loadedFinal;
+                allChannels = filtered;
                 categories.clear();
                 categories.addAll(state.labels);
                 byCategory.clear();

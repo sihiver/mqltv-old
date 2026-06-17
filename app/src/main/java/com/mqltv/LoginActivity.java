@@ -116,7 +116,8 @@ public class LoginActivity extends FragmentActivity {
             out += ":" + port;
         } else {
             // Our backend default is 8088; without a port Android will hit :80 and often return Apache 404.
-            if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
+            // Only auto-append for HTTP. For HTTPS, we assume standard 443 (no port suffix).
+            if ("http".equalsIgnoreCase(scheme)) {
                 out += ":8088";
             }
         }

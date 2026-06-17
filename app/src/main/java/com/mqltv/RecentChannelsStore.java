@@ -168,15 +168,12 @@ public final class RecentChannelsStore {
     private static JSONObject toJson(Channel c) {
         JSONObject o = new JSONObject();
         try {
+            o.put("id", c.getId());
             o.put("title", nullToEmpty(c.getTitle()));
-            o.put("url", nullToEmpty(c.getUrl()));
             o.put("logo", nullToEmpty(c.getLogoUrl()));
             o.put("group", nullToEmpty(c.getGroupTitle()));
-            o.put("sourceId", nullToEmpty(c.getSourceId()));
-            ChannelPlaybackMeta meta = c.getPlaybackMeta();
-            if (meta != null && !TextUtils.isEmpty(meta.getRawJson())) {
-                o.put("playbackMeta", meta.getRawJson());
-            }
+            o.put("isLive", c.isLive());
+            o.put("viewerCount", c.getViewerCount());
             o.put("ts", System.currentTimeMillis());
         } catch (Exception ignored) {
         }
@@ -186,26 +183,18 @@ public final class RecentChannelsStore {
     private static Channel fromJson(JSONObject o) {
         if (o == null) return null;
         String title = o.optString("title", "");
+        if (TextUtils.isEmpty(title)) return null;
+
+        int id = o.optInt("id", 0);
         String url = o.optString("url", "");
         String logo = o.optString("logo", "");
         String group = o.optString("group", "");
-        String sourceId = o.optString("sourceId", "");
-        if (TextUtils.isEmpty(url)) return null;
+        boolean isLive = o.optBoolean("isLive", false);
+        int viewerCount = o.optInt("viewerCount", 0);
 
-        ChannelPlaybackMeta meta = null;
-        String metaRaw = o.optString("playbackMeta", "");
-        if (!TextUtils.isEmpty(metaRaw)) {
-            try {
-                meta = ChannelPlaybackMeta.fromVisionPlusObject(new JSONObject(metaRaw));
-            } catch (Exception ignored) {
-            }
-        }
-
-        return new Channel(title, url,
-                TextUtils.isEmpty(group) ? null : group,
-                TextUtils.isEmpty(logo) ? null : logo,
-                TextUtils.isEmpty(sourceId) ? null : sourceId,
-                meta);
+        Channel c = new Channel(id, title, group, logo, isLive, viewerCount);
+        c.setUrl(url);
+        return c;
     }
 
     private static String nullToEmpty(String s) {

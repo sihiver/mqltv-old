@@ -1,130 +1,79 @@
 package com.mqltv;
 
 import android.content.Context;
+import android.util.Log;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 public final class PlaylistRepository {
-    private static final String DEFAULT_ASSET = "channels.m3u";
+    private static final String TAG = "PlaylistRepo";
 
-    /** Loads merged playlist URLs for the logged-in user, or bundled default when none configured. */
     public List<Channel> loadForUser(Context context) {
-        List<Channel> channels = loadFromUrls(context, AuthPrefs.getPlaylistUrls(context));
-        boolean hasServerPlaylist = !AuthPrefs.getPlaylistUrl(context).trim().isEmpty();
-        if ((channels == null || channels.isEmpty()) && !hasServerPlaylist) {
-            channels = loadDefault(context);
-        }
-        return channels != null ? channels : Collections.emptyList();
-    }
-
-    public List<Channel> loadDefault(Context context) {
-        try (InputStream inputStream = context.getAssets().open(DEFAULT_ASSET)) {
-            List<Channel> channels = PlaylistParser.parse(inputStream);
-            return dedup(channels);
-        } catch (IOException e) {
+        String baseUrl = AuthPrefs.getBaseUrl(context);
+        if (baseUrl == null || baseUrl.isEmpty()) {
             return Collections.emptyList();
         }
-    }
 
-    @SuppressWarnings("unused")
-    public List<Channel> loadFromUrl(Context context, String playlistUrl) {
-        if (playlistUrl == null || playlistUrl.trim().isEmpty()) {
-            return Collections.emptyList();
-        }
+        // Ambil channel dari REST API (limit 500)
+        String url = baseUrl + "/api/channels?limit=500";
 
         try {
             Request request = new Request.Builder()
-                    .url(playlistUrl)
+                    .url(url)
                     .header("User-Agent", "MQLTV/1.0")
-                    .header("Accept", "application/json, application/vnd.apple.mpegurl, */*")
+                    .header("Accept", "application/json")
                     .build();
+
             try (Response response = NetworkClient.getClient().newCall(request).execute()) {
                 if (!response.isSuccessful()) {
+                    Log.e(TAG, "Failed to load channels: " + response.code());
                     return Collections.emptyList();
                 }
+
                 ResponseBody body = response.body();
-                if (body == null) {
-                    return Collections.emptyList();
+                if (body == null) return Collections.emptyList();
+
+                String jsonStr = body.string();
+                JSONObject json = new JSONObject(jsonStr);
+                JSONArray data = json.optJSONArray("data");
+                if (data == null) return Collections.emptyList();
+
+                List<Channel> channels = new ArrayList<>();
+                for (int i = 0; i < data.length(); i++) {
+                    JSONObject obj = data.optJSONObject(i);
+                    if (obj == null) continue;
+
+                    int id = obj.optInt("id", 0);
+                    String name = obj.optString("name", "Unknown");
+                    String category = obj.optString("category", "");
+                    String logoUrl = obj.optString("logo_url", "");
+                    boolean isLive = obj.optBoolean("is_live", false);
+                    int viewerCount = obj.optInt("viewer_count", 0);
+
+                    if (id > 0) {
+                        channels.add(new Channel(id, name, category, logoUrl, isLive, viewerCount));
+                    }
                 }
-                byte[] raw = body.bytes();
-                if (raw.length == 0) {
-                    return Collections.emptyList();
-                }
-                List<Channel> channels = parsePlaylistBytes(raw);
-                return dedup(channels);
+                return channels;
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
+            Log.e(TAG, "Error fetching channels", e);
             return Collections.emptyList();
         }
     }
 
-    private static List<Channel> parsePlaylistBytes(byte[] raw) throws IOException {
-        String head = new String(raw, 0, Math.min(raw.length, 512), StandardCharsets.UTF_8).trim();
-        if (VisionPlusPlaylistParser.looksLikeJson(head)) {
-            String content = new String(raw, StandardCharsets.UTF_8);
-            return VisionPlusPlaylistParser.parseContent(content);
-        }
-        try (InputStream in = new ByteArrayInputStream(raw)) {
-            return M3UParser.parse(in);
-        }
-    }
-
-    public List<Channel> loadFromUrls(Context context, String[] playlistUrls) {
-        if (playlistUrls == null || playlistUrls.length == 0) {
-            return Collections.emptyList();
-        }
-
-        List<Channel> merged = new ArrayList<>();
-        for (String u : playlistUrls) {
-            List<Channel> part = loadFromUrl(context, u);
-            if (part != null && !part.isEmpty()) {
-                merged.addAll(part);
-            }
-        }
-
-        return dedup(merged);
-    }
-
-    private static List<Channel> dedup(List<Channel> channels) {
-        if (channels == null || channels.isEmpty()) return Collections.emptyList();
-
-        Map<String, Channel> out = new LinkedHashMap<>();
-        for (Channel c : channels) {
-            if (c == null) continue;
-            String url = c.getUrl();
-            String title = c.getTitle();
-
-            String key;
-            String sourceId = c.getSourceId();
-            String titleKey = title != null ? title.trim().toLowerCase(Locale.US) : "";
-            if (sourceId != null && !sourceId.trim().isEmpty()) {
-                key = "id:" + sourceId.trim();
-            } else if (url != null && !url.trim().isEmpty()) {
-                // Many JSON events share the same manifest URL — include title in the key.
-                key = "u:" + url.trim() + "|t:" + titleKey;
-            } else if (!titleKey.isEmpty()) {
-                key = "t:" + titleKey;
-            } else {
-                continue;
-            }
-
-            if (!out.containsKey(key)) {
-                out.put(key, c);
-            }
-        }
-        return new ArrayList<>(out.values());
+    public List<Channel> loadDefault(Context context) {
+        // Fallback untuk old code yang masih memanggil loadDefault.
+        // Di MQLTV2 tidak ada offline default, jadi kita return loadForUser.
+        return loadForUser(context);
     }
 }

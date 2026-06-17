@@ -157,11 +157,7 @@ public class NativePlayerActivity extends Activity {
             if (!SubscriptionGuard.ensureNotExpired(NativePlayerActivity.this)) return;
             RecentChannelsStore.record(NativePlayerActivity.this, channel);
             PresenceReporter.reportOnlineLaunch(NativePlayerActivity.this, channel.getTitle(), channel.getUrl());
-            try {
-                startActivity(PlayerIntents.createPreferredPlayIntent(NativePlayerActivity.this, channel));
-            } catch (Exception e) {
-                startActivity(PlayerIntents.createPlayIntent(NativePlayerActivity.this, channel));
-            }
+            PlayerIntents.launchPlayer(NativePlayerActivity.this, channel);
             finish();
         });
         channelOverlay.setCurrentChannel(url);

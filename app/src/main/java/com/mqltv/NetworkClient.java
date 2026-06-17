@@ -131,6 +131,23 @@ public final class NetworkClient {
                 .writeTimeout(15, TimeUnit.SECONDS)
                 .retryOnConnectionFailure(true);
 
+        builder.addInterceptor(chain -> {
+            okhttp3.Request original = chain.request();
+            if (APP_CONTEXT != null) {
+                String token = AuthPrefs.getAccessToken(APP_CONTEXT);
+                if (token != null && !token.trim().isEmpty()) {
+                    // Jangan timpa header Authorization jika request sudah memilikinya (misalnya saat request stream info dengan token tersendiri)
+                    if (original.header("Authorization") == null) {
+                        okhttp3.Request request = original.newBuilder()
+                                .header("Authorization", "Bearer " + token)
+                                .build();
+                        return chain.proceed(request);
+                    }
+                }
+            }
+            return chain.proceed(original);
+        });
+
         if (Build.VERSION.SDK_INT <= 19) {
             enableTls12(builder, APP_CONTEXT);
         }

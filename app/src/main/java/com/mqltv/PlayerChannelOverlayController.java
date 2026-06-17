@@ -600,21 +600,7 @@ public final class PlayerChannelOverlayController {
     }
 
     private static List<Channel> loadChannels(Context context) {
-        PlaylistRepository repo = new PlaylistRepository();
-        String[] urls = AuthPrefs.getPlaylistUrls(context);
-        List<Channel> channels = repo.loadFromUrls(context, urls);
-
-        boolean hasServerPlaylist = false;
-        try {
-            hasServerPlaylist = !AuthPrefs.getPlaylistUrl(context).trim().isEmpty();
-        } catch (Throwable ignored) {
-        }
-
-        if ((channels == null || channels.isEmpty()) && !hasServerPlaylist) {
-            channels = repo.loadDefault(context);
-        }
-
-        return channels != null ? channels : Collections.emptyList();
+        return new PlaylistRepository().loadForUser(context);
     }
 
     private void applyCategory(int index) {

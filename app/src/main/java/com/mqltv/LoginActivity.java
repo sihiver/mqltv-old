@@ -188,10 +188,10 @@ public class LoginActivity extends FragmentActivity {
         executor.execute(() -> {
             try {
                 JSONObject payload = new JSONObject();
-                payload.put("username", username);
+                payload.put("email", username);
                 payload.put("password", password);
 
-                String url = joinUrl(baseUrl, "/public/login");
+                String url = joinUrl(baseUrl, "/api/auth/login");
                 Request req = new Request.Builder()
                         .url(url)
                     .post(RequestBody.create(JSON, payload.toString()))
@@ -210,41 +210,20 @@ public class LoginActivity extends FragmentActivity {
                     }
 
                     JSONObject json = new JSONObject(body);
-                    String publicPlaylistPath = json.optString("publicPlaylistUrl", "");
-                    String publicPlaylistJsonPath = json.optString("publicPlaylistJsonUrl", "");
+                    String token = json.optString("token", "");
+                    String refreshToken = json.optString("refreshToken", "");
+
                     JSONObject userObj = json.optJSONObject("user");
-                    String appKey = userObj != null ? userObj.optString("appKey", "") : "";
-                    String expiresAt = userObj != null ? userObj.optString("expiresAt", "") : "";
-                    String displayName = userObj != null ? userObj.optString("displayName", "") : "";
+                    String displayName = userObj != null ? userObj.optString("name", "") : "";
                     String plan = userObj != null ? userObj.optString("plan", "") : "";
-
+                    String expiresAt = "";
                     String packagesRaw = "";
-                    if (userObj != null) {
-                        org.json.JSONArray pkgs = userObj.optJSONArray("packages");
-                        if (pkgs != null && pkgs.length() > 0) {
-                            StringBuilder sb = new StringBuilder();
-                            for (int i = 0; i < pkgs.length(); i++) {
-                                String p = pkgs.optString(i, "");
-                                if (p == null) p = "";
-                                p = p.trim();
-                                if (p.isEmpty()) continue;
-                                if (sb.length() > 0) sb.append("||");
-                                sb.append(p);
-                            }
-                            packagesRaw = sb.toString();
-                        }
+
+                    if (token.trim().isEmpty()) {
+                        throw new RuntimeException("Response login tidak valid (token kosong)");
                     }
 
-                    if (publicPlaylistPath.trim().isEmpty() && publicPlaylistJsonPath.trim().isEmpty()) {
-                        throw new RuntimeException("Response login tidak valid");
-                    }
-
-                    // Prefer JSON playlist (Vision+ metadata: url_license, header_iptv, jenis).
-                    String playlistPath = !publicPlaylistJsonPath.trim().isEmpty()
-                            ? publicPlaylistJsonPath.trim()
-                            : publicPlaylistPath.trim();
-                    String fullPlaylistUrl = joinUrl(baseUrl, playlistPath);
-                    AuthPrefs.setLogin(getApplicationContext(), username, displayName, appKey, fullPlaylistUrl, plan, packagesRaw, expiresAt);
+                    AuthPrefs.setLogin(getApplicationContext(), username, displayName, token, refreshToken, plan, packagesRaw, expiresAt);
                 }
 
                 mainHandler.post(() -> {

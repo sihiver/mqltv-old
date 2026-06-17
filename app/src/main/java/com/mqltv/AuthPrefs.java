@@ -10,8 +10,8 @@ public final class AuthPrefs {
     private static final String KEY_BASE_URL = "auth_base_url";
     private static final String KEY_USERNAME = "auth_username";
     private static final String KEY_DISPLAY_NAME = "auth_display_name";
-    private static final String KEY_APP_KEY = "auth_app_key";
-    private static final String KEY_PLAYLIST_URL = "auth_playlist_url";
+    private static final String KEY_ACCESS_TOKEN = "auth_access_token";
+    private static final String KEY_REFRESH_TOKEN = "auth_refresh_token";
     private static final String KEY_PLAN = "auth_plan";
     private static final String KEY_PACKAGES = "auth_packages";
     private static final String KEY_EXPIRES_AT = "auth_expires_at";
@@ -25,8 +25,8 @@ public final class AuthPrefs {
     }
 
     public static boolean isLoggedIn(Context context) {
-        String appKey = getAppKey(context);
-        return !appKey.trim().isEmpty();
+        String token = getAccessToken(context);
+        return !token.trim().isEmpty();
     }
 
     public static String getBaseUrl(Context context) {
@@ -64,56 +64,31 @@ public final class AuthPrefs {
         return raw.replace("||", ", ");
     }
 
-    public static String getAppKey(Context context) {
-        return sp(context).getString(KEY_APP_KEY, "");
+    public static String getAccessToken(Context context) {
+        return sp(context).getString(KEY_ACCESS_TOKEN, "");
     }
 
-    public static String getPlaylistUrl(Context context) {
-        return sp(context).getString(KEY_PLAYLIST_URL, "");
+    public static String getRefreshToken(Context context) {
+        return sp(context).getString(KEY_REFRESH_TOKEN, "");
     }
 
     public static String getExpiresAt(Context context) {
         return sp(context).getString(KEY_EXPIRES_AT, "");
     }
 
-    public static String[] getPlaylistUrls(Context context) {
-        String url = getPlaylistUrl(context);
-        url = url.trim();
-        if (!url.isEmpty()) {
-            // Prefer Vision+ JSON export when login still points at playlist.m3u.
-            String jsonUrl = toJsonPlaylistUrl(url);
-            if (jsonUrl != null && !jsonUrl.equals(url)) {
-                return new String[] { jsonUrl, url };
-            }
-            return new String[] { url };
-        }
-        return Constants.HOME_PLAYLIST_URLS;
-    }
-
-    /** e.g. .../playlist.m3u → .../playlist.json */
-    @androidx.annotation.Nullable
-    private static String toJsonPlaylistUrl(String url) {
-        if (url == null) return null;
-        String u = url.trim();
-        if (u.contains("playlist.m3u") && !u.contains("playlist.json")) {
-            return u.replace("playlist.m3u", "playlist.json");
-        }
-        return null;
-    }
-
-    public static void setLogin(Context context, String username, String displayName, String appKey, String fullPlaylistUrl, String plan, String packagesRaw, String expiresAt) {
+    public static void setLogin(Context context, String username, String displayName, String token, String refreshToken, String plan, String packagesRaw, String expiresAt) {
         if (username == null) username = "";
         if (displayName == null) displayName = "";
-        if (appKey == null) appKey = "";
-        if (fullPlaylistUrl == null) fullPlaylistUrl = "";
+        if (token == null) token = "";
+        if (refreshToken == null) refreshToken = "";
         if (plan == null) plan = "";
         if (packagesRaw == null) packagesRaw = "";
         if (expiresAt == null) expiresAt = "";
         sp(context).edit()
                 .putString(KEY_USERNAME, username.trim())
                 .putString(KEY_DISPLAY_NAME, displayName.trim())
-                .putString(KEY_APP_KEY, appKey.trim())
-                .putString(KEY_PLAYLIST_URL, fullPlaylistUrl.trim())
+                .putString(KEY_ACCESS_TOKEN, token.trim())
+                .putString(KEY_REFRESH_TOKEN, refreshToken.trim())
                 .putString(KEY_PLAN, plan.trim())
                 .putString(KEY_PACKAGES, packagesRaw.trim())
                 .putString(KEY_EXPIRES_AT, expiresAt.trim())
@@ -148,8 +123,8 @@ public final class AuthPrefs {
         sp(context).edit()
                 .remove(KEY_USERNAME)
                 .remove(KEY_DISPLAY_NAME)
-                .remove(KEY_APP_KEY)
-                .remove(KEY_PLAYLIST_URL)
+                .remove(KEY_ACCESS_TOKEN)
+                .remove(KEY_REFRESH_TOKEN)
                 .remove(KEY_PLAN)
                 .remove(KEY_PACKAGES)
                 .remove(KEY_EXPIRES_AT)

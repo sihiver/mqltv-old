@@ -7,7 +7,23 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.Toast;
+
+import org.json.JSONObject;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
+
 public final class PlayerIntents {
+    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
+    private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
+
     private PlayerIntents() {}
 
     public static final int PLAYER_MODE_AUTO = PlaybackPrefs.PLAYER_MODE_AUTO;
@@ -15,11 +31,55 @@ public final class PlayerIntents {
     public static final int PLAYER_MODE_VLC = PlaybackPrefs.PLAYER_MODE_VLC;
     public static final int PLAYER_MODE_NATIVE = PlaybackPrefs.PLAYER_MODE_NATIVE;
 
-    public static Intent createPlayIntent(Context context, Channel channel) {
-        if (channel == null) {
-            return createPlayIntent(context, "", "");
-        }
-        return createPlayIntent(context, channel.getTitle(), channel.getUrl(), channel.getPlaybackMeta());
+    public static void launchPlayer(Context context, Channel channel) {
+        if (channel == null || context == null) return;
+        Toast.makeText(context, "Memuat " + channel.getTitle() + "...", Toast.LENGTH_SHORT).show();
+
+        EXECUTOR.execute(() -> {
+            try {
+                String baseUrl = AuthPrefs.getBaseUrl(context);
+                String url = baseUrl + "/api/channels/" + channel.getId() + "/stream";
+                Request req = new Request.Builder()
+                        .url(url)
+                        .header("User-Agent", "MQLTV/1.0")
+                        .build();
+
+                try (Response resp = NetworkClient.getClient().newCall(req).execute()) {
+                    if (!resp.isSuccessful()) {
+                        MAIN_HANDLER.post(() -> Toast.makeText(context, "Gagal memuat stream (HTTP " + resp.code() + ")", Toast.LENGTH_LONG).show());
+                        return;
+                    }
+                    ResponseBody body = resp.body();
+                    if (body == null) return;
+                    
+                    JSONObject json = new JSONObject(body.string());
+                    String streamUrl = json.optString("streamUrl", "");
+                    if (streamUrl.isEmpty()) {
+                        MAIN_HANDLER.post(() -> Toast.makeText(context, "Stream tidak tersedia", Toast.LENGTH_SHORT).show());
+                        return;
+                    }
+
+                    // Map MQLTV2 response to old ChannelPlaybackMeta format
+                    JSONObject fakeMeta = new JSONObject();
+                    fakeMeta.put("drm_type", json.optString("drmType", ""));
+                    fakeMeta.put("drm_key", json.optString("drmKey", ""));
+                    fakeMeta.put("user_agent", json.optString("userAgent", ""));
+                    fakeMeta.put("referer", json.optString("referer", ""));
+                    
+                    ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromVisionPlusObject(fakeMeta);
+
+                    MAIN_HANDLER.post(() -> {
+                        Intent intent = createPreferredPlayIntent(context, channel.getTitle(), streamUrl, meta);
+                        if (!(context instanceof Activity)) {
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        }
+                        context.startActivity(intent);
+                    });
+                }
+            } catch (Exception e) {
+                MAIN_HANDLER.post(() -> Toast.makeText(context, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show());
+            }
+        });
     }
 
     public static Intent createPlayIntent(Context context, String title, String url) {
@@ -38,12 +98,7 @@ public final class PlayerIntents {
         return intent;
     }
 
-    public static Intent createPreferredPlayIntent(Context context, Channel channel) {
-        if (channel == null) {
-            return createPreferredPlayIntent(context, "", "");
-        }
-        return createPreferredPlayIntent(context, channel.getTitle(), channel.getUrl(), channel.getPlaybackMeta());
-    }
+    // Removed createPreferredPlayIntent(Context, Channel) to force usage of launchPlayer
 
     /**
      * Creates a play intent that respects the "Putar di MX Player" setting.

@@ -121,7 +121,7 @@ public final class PresenceReporter {
     private static void send(Context context, String status, String channelTitle, String channelUrl) {
         if (context == null) return;
 
-        String appKey = AuthPrefs.getAppKey(context);
+        String appKey = AuthPrefs.getAccessToken(context);
         if (appKey == null || appKey.trim().isEmpty()) return;
 
         String baseUrl = AuthPrefs.getBaseUrl(context);

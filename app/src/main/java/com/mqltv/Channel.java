@@ -3,32 +3,23 @@ package com.mqltv;
 import androidx.annotation.Nullable;
 
 public final class Channel {
+    private final int id;
     private final String title;
-    private final String url;
+    private String url;
 
     private final String groupTitle;
     private final String logoUrl;
-    private final String sourceId;
+    private final boolean isLive;
+    private final int viewerCount;
 
-    @Nullable
-    private final ChannelPlaybackMeta playbackMeta;
-
-    public Channel(String title, String url) {
-        this(title, url, null, null, null, null);
-    }
-
-    public Channel(String title, String url, String groupTitle, String logoUrl) {
-        this(title, url, groupTitle, logoUrl, null, null);
-    }
-
-    public Channel(String title, String url, String groupTitle, String logoUrl,
-                   @Nullable String sourceId, @Nullable ChannelPlaybackMeta playbackMeta) {
+    public Channel(int id, String title, String groupTitle, String logoUrl, boolean isLive, int viewerCount) {
+        this.id = id;
         this.title = title;
-        this.url = url;
         this.groupTitle = groupTitle;
         this.logoUrl = logoUrl;
-        this.sourceId = sourceId;
-        this.playbackMeta = playbackMeta;
+        this.isLive = isLive;
+        this.viewerCount = viewerCount;
+        this.url = "";
     }
 
     public String getTitle() {
@@ -47,17 +38,23 @@ public final class Channel {
         return logoUrl;
     }
 
-    @Nullable
+    public int getId() {
+        return id;
+    }
+
     public String getSourceId() {
-        return sourceId;
+        return String.valueOf(id);
     }
 
-    @Nullable
-    public ChannelPlaybackMeta getPlaybackMeta() {
-        return playbackMeta;
+    public boolean isLive() {
+        return isLive;
     }
 
-    public boolean hasVisionPlusPlayback() {
-        return playbackMeta != null && playbackMeta.isActive();
+    public int getViewerCount() {
+        return viewerCount;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
     }
 }

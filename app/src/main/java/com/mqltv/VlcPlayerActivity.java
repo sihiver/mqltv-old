@@ -197,7 +197,8 @@ public class VlcPlayerActivity extends FragmentActivity {
 
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
 
-        if (channelOverlay != null) channelOverlay.setCurrentChannel(url);
+        int currentId = getIntent().getIntExtra(Constants.EXTRA_CHANNEL_ID, 0);
+        if (channelOverlay != null) channelOverlay.setCurrentChannelId(currentId);
 
         ArrayList<String> options = new ArrayList<>();
         // Keep logging lightweight on legacy STBs.

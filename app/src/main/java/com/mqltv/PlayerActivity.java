@@ -119,7 +119,8 @@ public class PlayerActivity extends FragmentActivity {
             return;
         }
 
-        if (channelOverlay != null) channelOverlay.setCurrentChannel(url);
+        int currentId = getIntent().getIntExtra(Constants.EXTRA_CHANNEL_ID, 0);
+        if (channelOverlay != null) channelOverlay.setCurrentChannelId(currentId);
 
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
 

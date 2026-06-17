@@ -11,6 +11,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
+
 import org.json.JSONObject;
 
 import java.util.concurrent.ExecutorService;
@@ -72,7 +74,7 @@ public final class PlayerIntents {
                     ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromVisionPlusObject(fakeMeta);
 
                     MAIN_HANDLER.post(() -> {
-                        Intent intent = createPreferredPlayIntent(context, channel.getTitle(), streamUrl, meta);
+                        Intent intent = createPreferredPlayIntent(context, channel.getId(), channel.getTitle(), streamUrl, meta);
                         if (!(context instanceof Activity)) {
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         }
@@ -86,14 +88,15 @@ public final class PlayerIntents {
         });
     }
 
-    public static Intent createPlayIntent(Context context, String title, String url) {
-        return createPlayIntent(context, title, url, null);
+    public static Intent createPlayIntent(Context context, int id, String title, String url) {
+        return createPlayIntent(context, id, title, url, null);
     }
 
-    public static Intent createPlayIntent(Context context, String title, String url,
+    public static Intent createPlayIntent(Context context, int id, String title, String url,
                                           ChannelPlaybackMeta meta) {
         Class<?> target = getTargetPlayerActivity(context, meta);
         Intent intent = new Intent(context, target);
+        intent.putExtra(Constants.EXTRA_CHANNEL_ID, id);
         intent.putExtra(Constants.EXTRA_TITLE, title);
         intent.putExtra(Constants.EXTRA_URL, url);
         if (meta != null) {
@@ -108,12 +111,8 @@ public final class PlayerIntents {
      * Creates a play intent that respects the "Putar di MX Player" setting.
      * Falls back to the internal player if MX Player isn't installed.
      */
-    public static Intent createPreferredPlayIntent(Context context, String title, String url) {
-        return createPreferredPlayIntent(context, title, url, null);
-    }
-
-    public static Intent createPreferredPlayIntent(Context context, String title, String url,
-                                                   ChannelPlaybackMeta meta) {
+    public static Intent createPreferredPlayIntent(Context context, int id, String title, String url,
+                                                   @Nullable ChannelPlaybackMeta meta) {
         // Vision+ JSON (headers / DRM) must stay in-app — MX Player cannot apply header_iptv.
         if (meta == null || !meta.isActive()) {
             if (PlaybackPrefs.isUseMxPlayer(context)) {
@@ -121,7 +120,7 @@ public final class PlayerIntents {
                 if (mx != null) return mx;
             }
         }
-        return createPlayIntent(context, title, url, meta);
+        return createPlayIntent(context, id, title, url, meta);
     }
 
     @SuppressLint("QueryPermissionsNeeded")

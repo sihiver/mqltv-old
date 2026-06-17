@@ -88,7 +88,7 @@ public final class PlayerChannelOverlayController {
     private final Map<String, List<Channel>> byCategory = new LinkedHashMap<>();
     private int categoryIndex = 0;
 
-    private String currentUrl;
+    private int currentId = 0;
 
     private static final long NUMBER_COMMIT_DELAY_MS = 1200L;
     private static final long NUMBER_HIDE_DELAY_MS = 1800L;
@@ -181,9 +181,9 @@ public final class PlayerChannelOverlayController {
         startLoad(null);
     }
 
-    public void setCurrentChannel(String url) {
-        currentUrl = url;
-        adapter.setCurrentUrl(url);
+    public void setCurrentChannelId(int id) {
+        currentId = id;
+        adapter.setCurrentId(id);
         if (isVisible()) {
             focusCurrentChannel();
         }
@@ -191,20 +191,8 @@ public final class PlayerChannelOverlayController {
 
     /** True when {@code channel} is the stream currently playing in this player session. */
     private boolean isCurrentChannel(@Nullable Channel channel) {
-        if (channel == null || TextUtils.isEmpty(currentUrl)) return false;
-        String url = channel.getUrl();
-        if (url != null && currentUrl.trim().equals(url.trim())) return true;
-
-        String sourceId = channel.getSourceId();
-        if (!TextUtils.isEmpty(sourceId)) {
-            for (Channel c : allChannels) {
-                if (c == null) continue;
-                if (!sourceId.equals(c.getSourceId())) continue;
-                String u = c.getUrl();
-                if (u != null && currentUrl.trim().equals(u.trim())) return true;
-            }
-        }
-        return false;
+        if (channel == null || currentId == 0) return false;
+        return channel.getId() == currentId;
     }
 
     /**
@@ -581,7 +569,7 @@ public final class PlayerChannelOverlayController {
 
                 // Always pick the initial category so categoryIndex is ready
                 // when show() is called later, even if overlay is not yet open.
-                int idx = pickInitialCategoryIndex(state, currentUrl);
+                int idx = pickInitialCategoryIndex(state, currentId);
                 categoryIndex = (idx >= 0) ? idx : 0;
 
                 if (isVisible()) {
@@ -627,10 +615,10 @@ public final class PlayerChannelOverlayController {
         adapter.submit(listForCat);
 
         // Update activated states.
-        adapter.setCurrentUrl(currentUrl);
+        adapter.setCurrentId(currentId);
 
         // Default info binding.
-        Channel c = pickChannelToBind(listForCat, currentUrl);
+        Channel c = pickChannelToBind(listForCat, currentId);
         if (c != null) {
             int abs = findAbsoluteIndex(allChannels, c);
             bindInfo(c, abs);
@@ -656,7 +644,7 @@ public final class PlayerChannelOverlayController {
     private void focusCurrentChannel() {
         if (list == null) return;
 
-        int target = adapter.findPositionByUrl(currentUrl);
+        int target = adapter.findPositionById(currentId);
         if (target < 0) target = 0;
 
         focusAdapterPosition(target);
@@ -673,7 +661,7 @@ public final class PlayerChannelOverlayController {
         // If the RecyclerView itself is focused, try to focus the current/first row first.
         if (focused == list) {
             int startPos = focusedAdapterPosition;
-            if (startPos == RecyclerView.NO_POSITION) startPos = adapter.findPositionByUrl(currentUrl);
+            if (startPos == RecyclerView.NO_POSITION) startPos = adapter.findPositionById(currentId);
             if (startPos == RecyclerView.NO_POSITION) startPos = 0;
             focusAdapterPosition(startPos);
             return;
@@ -698,7 +686,7 @@ public final class PlayerChannelOverlayController {
             current = focusedAdapterPosition;
         }
         if (current == RecyclerView.NO_POSITION) {
-            current = adapter.findPositionByUrl(currentUrl);
+            current = adapter.findPositionById(currentId);
         }
         if (current == RecyclerView.NO_POSITION) {
             current = 0;
@@ -894,7 +882,7 @@ public final class PlayerChannelOverlayController {
         return new CategoryState(labels, map);
     }
 
-    private int pickInitialCategoryIndex(CategoryState state, String currentUrl) {
+    private int pickInitialCategoryIndex(CategoryState state, int currentId) {
         if (state == null || state.labels == null || state.labels.isEmpty()) return 0;
 
         // 1. Check the tab that was last active in LiveTvFragment (synced via SharedPreferences).
@@ -912,13 +900,13 @@ public final class PlayerChannelOverlayController {
 
         // 2. Fall back: find the category of the currently playing channel,
         //    skipping "ALL CHANNELS" so the URL is not matched against the catch-all bucket first.
-        if (currentUrl != null && !currentUrl.trim().isEmpty()) {
+        if (currentId != 0) {
             for (Map.Entry<String, List<Channel>> e : state.map.entrySet()) {
                 if ("ALL CHANNELS".equalsIgnoreCase(e.getKey())) continue;
                 List<Channel> list = e.getValue();
                 if (list == null) continue;
                 for (Channel c : list) {
-                    if (c != null && currentUrl.equals(c.getUrl())) {
+                    if (c != null && currentId == c.getId()) {
                         int idx = state.labels.indexOf(e.getKey());
                         return idx >= 0 ? idx : 0;
                     }
@@ -929,11 +917,11 @@ public final class PlayerChannelOverlayController {
         return 0;
     }
 
-    private static Channel pickChannelToBind(List<Channel> list, String currentUrl) {
+    private static Channel pickChannelToBind(List<Channel> list, int currentId) {
         if (list == null || list.isEmpty()) return null;
-        if (currentUrl != null) {
+        if (currentId != 0) {
             for (Channel c : list) {
-                if (c != null && currentUrl.equals(c.getUrl())) return c;
+                if (c != null && currentId == c.getId()) return c;
             }
         }
         return list.get(0);
@@ -1038,7 +1026,7 @@ public final class PlayerChannelOverlayController {
         private final PlayerChannelOverlayController controller;
         private Listener listener;
         private final List<Channel> items = new ArrayList<>();
-        private String currentUrl;
+        private int currentId;
 
         ChannelAdapter(PlayerChannelOverlayController controller) {
             this.controller = controller;
@@ -1048,17 +1036,17 @@ public final class PlayerChannelOverlayController {
             listener = l;
         }
 
-        void setCurrentUrl(String url) {
+        void setCurrentId(int id) {
             // Only refresh the rows that changed (previous/current) to avoid full
             // adapter refresh which can cause focus loss during rapid navigation.
-            String prev = currentUrl;
-            if (prev == null ? url == null : prev.equals(url)) {
-                currentUrl = url;
+            int prev = currentId;
+            if (prev == id) {
+                currentId = id;
                 return;
             }
-            int prevPos = findPositionByUrl(prev);
-            currentUrl = url;
-            int newPos = findPositionByUrl(url);
+            int prevPos = findPositionById(prev);
+            currentId = id;
+            int newPos = findPositionById(id);
             if (prevPos >= 0) notifyItemChanged(prevPos);
             if (newPos >= 0 && newPos != prevPos) notifyItemChanged(newPos);
         }
@@ -1068,11 +1056,11 @@ public final class PlayerChannelOverlayController {
             return items.get(position);
         }
 
-        int findPositionByUrl(String url) {
-            if (url == null) return -1;
+        int findPositionById(int id) {
+            if (id == 0) return -1;
             for (int i = 0; i < items.size(); i++) {
                 Channel c = items.get(i);
-                if (c != null && url.equals(c.getUrl())) return i;
+                if (c != null && id == c.getId()) return i;
             }
             return -1;
         }
@@ -1102,7 +1090,7 @@ public final class PlayerChannelOverlayController {
             if (group.isEmpty()) group = "LIVE TV";
             holder.subtitle.setText("Program info " + group);
 
-            boolean isCurrent = c != null && currentUrl != null && currentUrl.equals(c.getUrl());
+            boolean isCurrent = c != null && currentId != 0 && currentId == c.getId();
             holder.itemView.setActivated(isCurrent);
 
             long now = System.currentTimeMillis();

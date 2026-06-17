@@ -159,7 +159,8 @@ public class NativePlayerActivity extends Activity {
             PresenceReporter.reportOnlineLaunch(NativePlayerActivity.this, channel.getTitle(), channel.getUrl());
             PlayerIntents.launchPlayer(NativePlayerActivity.this, channel, this::finish);
         });
-        channelOverlay.setCurrentChannel(url);
+        int currentId = getIntent().getIntExtra(Constants.EXTRA_CHANNEL_ID, 0);
+        channelOverlay.setCurrentChannelId(currentId);
 
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
 

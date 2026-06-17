@@ -18,7 +18,7 @@ public final class AuthPrefs {
     private static final String KEY_LAST_STATUS_REFRESH = "auth_last_status_refresh";
 
     // Default backend endpoint; user can override in login screen.
-    private static final String DEFAULT_BASE_URL = "http://iptv.mqlspot.my.id:8088";
+    private static final String DEFAULT_BASE_URL = "https://tv.mqlspot.my.id/";
 
     private static SharedPreferences sp(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context.getApplicationContext());

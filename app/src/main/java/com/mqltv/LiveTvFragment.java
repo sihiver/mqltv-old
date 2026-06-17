@@ -36,6 +36,15 @@ public class LiveTvFragment extends Fragment {
     /** SharedPreferences used to sync the active tab label to PlayerChannelOverlayController. */
     static final String PREFS_LIVETV_SYNC  = "mqltv_livetv_sync";
     static final String KEY_LAST_TAB_LABEL = "last_tab_label";
+    private static final String ARG_IS_RADIO_MODE = "is_radio_mode";
+
+    public static LiveTvFragment newInstance(boolean isRadioMode) {
+        LiveTvFragment fragment = new LiveTvFragment();
+        Bundle args = new Bundle();
+        args.putBoolean(ARG_IS_RADIO_MODE, isRadioMode);
+        fragment.setArguments(args);
+        return fragment;
+    }
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -196,11 +205,22 @@ public class LiveTvFragment extends Fragment {
 
     private void load(Context context) {
         executor.execute(() -> {
-            List<Channel> channels = new PlaylistRepository().loadForUser(context);
-            RecentChannelsStore.pruneAgainstPlaylist(context, channels);
-            allChannels = channels;
+            boolean isRadioMode = getArguments() != null && getArguments().getBoolean(ARG_IS_RADIO_MODE, false);
+            List<Channel> all = new PlaylistRepository().loadForUser(context);
+            List<Channel> filtered = new ArrayList<>();
+            for (Channel c : all) {
+                if (c == null) continue;
+                String g = c.getGroupTitle();
+                boolean isRadio = g != null && g.toLowerCase().contains("radio");
+                if (isRadioMode == isRadio) {
+                    filtered.add(c);
+                }
+            }
 
-            final CategoryData cats = buildCategories(channels);
+            RecentChannelsStore.pruneAgainstPlaylist(context, filtered);
+            allChannels = filtered;
+
+            final CategoryData cats = buildCategories(filtered);
             mainHandler.post(() -> {
                 categoryKeys.clear();
                 categoryKeys.addAll(cats.keys);

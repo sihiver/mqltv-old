@@ -447,13 +447,28 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         executor.execute(() -> {
             List<Channel> channels = new PlaylistRepository().loadForUser(appContext);
             RecentChannelsStore.pruneAgainstPlaylist(appContext, channels);
-            final int liveCount = channels.size();
+            
+            int liveCount = 0;
+            int radioCount = 0;
+            
+            for (Channel c : channels) {
+                if (c == null) continue;
+                String g = c.getGroupTitle();
+                if (g != null && g.toLowerCase().contains("radio")) {
+                    radioCount++;
+                } else {
+                    liveCount++;
+                }
+            }
+            
+            final int finalLiveCount = liveCount;
+            final int finalRadioCount = radioCount;
 
             mainHandler.post(() -> {
                 if (adapter == null) return;
                 List<LauncherCard> cards = new ArrayList<>();
-                cards.add(new LauncherCard("Live TV's", "+" + liveCount + " Channels", R.drawable.tv_play_icon, NavDestination.LIVE_TV));
-                cards.add(new LauncherCard("Radios", "+0 Stations", R.drawable.internet_radio_icon, NavDestination.SHOWS));
+                cards.add(new LauncherCard("Live TV's", "+" + finalLiveCount + " Channels", R.drawable.tv_play_icon, NavDestination.LIVE_TV));
+                cards.add(new LauncherCard("Radios", "+" + finalRadioCount + " Stations", R.drawable.internet_radio_icon, NavDestination.SHOWS));
                 adapter.submit(cards);
 
                 // After async card refresh, restore card focus to prevent fallback to header buttons.

@@ -127,14 +127,22 @@ public class MainActivity extends FragmentActivity {
                     return;
                 }
                 getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.content_container, new LiveTvFragment())
+                        .replace(R.id.content_container, LiveTvFragment.newInstance(false))
                         .commit();
                 break;
             case MOVIES:
                 showPlaceholder("Movies");
                 break;
             case SHOWS:
-                showPlaceholder("Shows");
+                if (!LoginGuard.ensureLoggedIn(this, LoginActivity.DEST_LIVE_TV)) {
+                    return;
+                }
+                if (!SubscriptionGuard.ensureNotExpired(this)) {
+                    return;
+                }
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.content_container, LiveTvFragment.newInstance(true))
+                        .commit();
                 break;
             case LIBRARY:
                 showPlaceholder("Library");

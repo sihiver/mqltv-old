@@ -116,7 +116,8 @@ public class MainActivity extends FragmentActivity {
         switch (destination) {
             case HOME:
                 getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.content_container, LauncherFragment.newInstance(homeFocusPosition, homeAppsIndex, homeRecentUrl, homeRecentIndex))
+                        .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
+                        .replace(R.id.content_container, LauncherFragment.newInstance(homeFocusPosition, homeAppsIndex, homeRecentUrl, homeRecentIndex))
                         .commit();
                 break;
             case LIVE_TV:
@@ -125,6 +126,7 @@ public class MainActivity extends FragmentActivity {
                 }
                 // Tidak cek expired saat masuk grid — pengecekan dilakukan saat klik channel.
                 getSupportFragmentManager().beginTransaction()
+                        .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
                         .replace(R.id.content_container, LiveTvFragment.newInstance(false))
                         .commit();
                 break;
@@ -137,6 +139,7 @@ public class MainActivity extends FragmentActivity {
                 }
                 // Tidak cek expired saat masuk grid — pengecekan dilakukan saat klik channel.
                 getSupportFragmentManager().beginTransaction()
+                        .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
                         .replace(R.id.content_container, LiveTvFragment.newInstance(true))
                         .commit();
                 break;

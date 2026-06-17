@@ -46,7 +46,10 @@ public final class SubscriptionGuard {
         final Context app = context.getApplicationContext();
         new Handler(Looper.getMainLooper()).post(() -> {
             Intent i = new Intent(app, ExpiredActivity.class);
-            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            // Hanya NEW_TASK (diperlukan karena launch dari Application context).
+            // Jangan pakai CLEAR_TASK — itu menghapus back stack sehingga
+            // finish() tidak bisa kembali ke grid dan app langsung tutup.
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             app.startActivity(i);
         });
     }

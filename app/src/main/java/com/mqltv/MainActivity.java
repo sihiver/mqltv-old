@@ -123,9 +123,7 @@ public class MainActivity extends FragmentActivity {
                 if (!LoginGuard.ensureLoggedIn(this, LoginActivity.DEST_LIVE_TV)) {
                     return;
                 }
-                if (!SubscriptionGuard.ensureNotExpired(this)) {
-                    return;
-                }
+                // Tidak cek expired saat masuk grid — pengecekan dilakukan saat klik channel.
                 getSupportFragmentManager().beginTransaction()
                         .replace(R.id.content_container, LiveTvFragment.newInstance(false))
                         .commit();
@@ -137,9 +135,7 @@ public class MainActivity extends FragmentActivity {
                 if (!LoginGuard.ensureLoggedIn(this, LoginActivity.DEST_LIVE_TV)) {
                     return;
                 }
-                if (!SubscriptionGuard.ensureNotExpired(this)) {
-                    return;
-                }
+                // Tidak cek expired saat masuk grid — pengecekan dilakukan saat klik channel.
                 getSupportFragmentManager().beginTransaction()
                         .replace(R.id.content_container, LiveTvFragment.newInstance(true))
                         .commit();

@@ -43,10 +43,12 @@ public final class PlayerIntents {
         EXECUTOR.execute(() -> {
             try {
                 String baseUrl = AuthPrefs.getBaseUrl(context);
+                String token = AuthPrefs.getAccessToken(context);
                 String url = baseUrl + "/api/channels/" + channel.getId() + "/stream";
                 Request req = new Request.Builder()
                         .url(url)
                         .header("User-Agent", "MQLTV/1.0")
+                        .header("Authorization", "Bearer " + token)
                         .build();
 
                 try (Response resp = NetworkClient.getClient().newCall(req).execute()) {

@@ -49,11 +49,15 @@ public final class AccountStatusRefresher {
             return;
         }
 
-        final String url = normalizeBaseUrl(baseUrl) + "/public/users/" + appKey.trim() + "/status";
+        final String url = normalizeBaseUrl(baseUrl) + "/api/auth/me";
 
         new Thread(() -> {
             try {
-                Request req = new Request.Builder().url(url).get().build();
+                Request req = new Request.Builder()
+                        .url(url)
+                        .addHeader("Authorization", "Bearer " + appKey)
+                        .get()
+                        .build();
                 try (Response resp = NetworkClient.getClient().newCall(req).execute()) {
                     if (resp.body() == null) return;
                     String body = resp.body().string();
@@ -61,11 +65,13 @@ public final class AccountStatusRefresher {
 
                     JSONObject json = new JSONObject(body);
                     JSONObject user = json.optJSONObject("user");
-                    if (user == null) return;
+                    if (user == null) {
+                        user = json; // MQLTV2 returns flat object
+                    }
 
                     String expiresAt = user.optString("expiresAt", "");
                     String plan = user.optString("plan", "");
-                    String displayName = user.optString("displayName", "");
+                    String displayName = user.optString("displayName", user.optString("name", ""));
 
                     String packagesRaw = "";
                     JSONArray pkgs = user.optJSONArray("packages");

@@ -216,7 +216,7 @@ public class LoginActivity extends FragmentActivity {
                     JSONObject userObj = json.optJSONObject("user");
                     String displayName = userObj != null ? userObj.optString("name", "") : "";
                     String plan = userObj != null ? userObj.optString("plan", "") : "";
-                    String expiresAt = "";
+                    String expiresAt = userObj != null ? userObj.optString("expiresAt", "") : "";
                     String packagesRaw = "";
 
                     if (token.trim().isEmpty()) {

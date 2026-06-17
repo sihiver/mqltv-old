@@ -20,13 +20,11 @@ public class ExpiredActivity extends FragmentActivity {
     protected void onResume() {
         super.onResume();
 
-        // If admin already renewed, refresh status and close expired screen.
+        // Jika admin sudah perpanjang, refresh status dan tutup layar expired.
         if (AuthPrefs.isLoggedIn(this)) {
             AccountStatusRefresher.refresh(this, () -> {
                 if (!SubscriptionGuard.isExpired(ExpiredActivity.this)) {
-                    Intent i = new Intent(ExpiredActivity.this, MainActivity.class);
-                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(i);
+                    // Kembali ke layar sebelumnya (grid), bukan paksa ke MainActivity.
                     finish();
                 }
             });
@@ -63,15 +61,18 @@ public class ExpiredActivity extends FragmentActivity {
         Button btn = findViewById(R.id.expired_btn_refresh);
         if (btn != null) {
             btn.setOnClickListener(v -> {
-                // Launcher behavior: go back to beranda (MainActivity).
-                Intent i = new Intent(ExpiredActivity.this, MainActivity.class);
-                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                startActivity(i);
+                // Kembali ke layar sebelumnya (grid Live TV), bukan reset ke MainActivity.
                 finish();
             });
         }
 
         // TV-friendly focus
         if (btn != null) btn.requestFocus();
+    }
+
+    @Override
+    public void onBackPressed() {
+        // Tombol back di remote TV → kembali ke layar sebelumnya.
+        finish();
     }
 }

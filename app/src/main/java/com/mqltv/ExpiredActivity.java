@@ -47,8 +47,12 @@ public class ExpiredActivity extends FragmentActivity {
 
         // Jika admin sudah perpanjang, refresh status dan tutup layar expired.
         if (AuthPrefs.isLoggedIn(this)) {
+            android.util.Log.d("ExpiredActivity", "onResume: refreshing account status");
             AccountStatusRefresher.refresh(this, () -> {
-                if (!SubscriptionGuard.isExpired(ExpiredActivity.this)) {
+                boolean expired = SubscriptionGuard.isExpired(ExpiredActivity.this);
+                android.util.Log.d("ExpiredActivity", "onResume: refresh done. still expired=" + expired);
+                if (!expired) {
+                    android.util.Log.d("ExpiredActivity", "onResume: finishing because subscription is active");
                     // Kembali ke layar sebelumnya (grid), bukan paksa ke MainActivity.
                     finish();
                 }

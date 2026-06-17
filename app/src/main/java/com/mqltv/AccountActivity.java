@@ -116,6 +116,7 @@ public class AccountActivity extends FragmentActivity {
         if (ms <= 0) return s;
 
         SimpleDateFormat fmt = new SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.US);
+        fmt.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
         return fmt.format(new Date(ms));
     }
 

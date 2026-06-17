@@ -23,13 +23,20 @@ public final class SubscriptionGuard {
     public static boolean isExpired(Context context) {
         if (context == null) return false;
         String expiresAt = AuthPrefs.getExpiresAt(context);
+        android.util.Log.d("SubscriptionGuard", "isExpired: raw expiresAt='" + expiresAt + "'");
         if (expiresAt == null) return false;
         expiresAt = expiresAt.trim();
-        if (expiresAt.isEmpty()) return false;
+        if (expiresAt.isEmpty() || "null".equalsIgnoreCase(expiresAt)) {
+            android.util.Log.d("SubscriptionGuard", "isExpired: empty or null string, returning false");
+            return false;
+        }
 
         long expMs = parseRfc3339ToMillis(expiresAt);
+        android.util.Log.d("SubscriptionGuard", "isExpired: parsed expMs=" + expMs + " currentMs=" + System.currentTimeMillis());
         if (expMs <= 0) return false;
-        return System.currentTimeMillis() > expMs;
+        boolean res = System.currentTimeMillis() > expMs;
+        android.util.Log.d("SubscriptionGuard", "isExpired: returning " + res);
+        return res;
     }
 
     /**

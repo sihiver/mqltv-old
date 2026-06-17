@@ -11,7 +11,7 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.SurfaceView;
+import android.view.TextureView;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -295,7 +295,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         super.onViewRecycled(holder);
         if (holder.video != null && liveTvBgPlayer != null) {
             try {
-                liveTvBgPlayer.clearVideoSurfaceView(holder.video);
+                liveTvBgPlayer.clearVideoTextureView(holder.video);
             } catch (Exception ignored) {
             }
         }
@@ -310,7 +310,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             holder.videoScrim.setVisibility(View.GONE);
             if (liveTvBgPlayer != null) {
                 try {
-                    liveTvBgPlayer.clearVideoSurfaceView(holder.video);
+                    liveTvBgPlayer.clearVideoTextureView(holder.video);
                 } catch (Exception ignored) {
                 }
             }
@@ -365,10 +365,10 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         }
 
         try {
-            p.setVideoSurfaceView(holder.video);
-            Log.d(TAG, "attached SurfaceView to player");
+            p.setVideoTextureView(holder.video);
+            Log.d(TAG, "attached TextureView to player");
         } catch (Exception e) {
-            Log.w(TAG, "failed attaching SurfaceView", e);
+            Log.w(TAG, "failed attaching TextureView", e);
             return;
         }
         try {
@@ -572,7 +572,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         final TextView title;
         final TextView subtitle;
         final View indicator;
-        final SurfaceView video;
+        final TextureView video;
         final View videoScrim;
 
         VH(@NonNull View itemView) {

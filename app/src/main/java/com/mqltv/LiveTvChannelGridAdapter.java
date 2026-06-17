@@ -138,6 +138,9 @@ public final class LiveTvChannelGridAdapter extends RecyclerView.Adapter<LiveTvC
     }
 
     private static Bitmap downloadBitmapOnce(String urlString) {
+        if (urlString == null || (!urlString.startsWith("http://") && !urlString.startsWith("https://"))) {
+            return null;
+        }
         try {
             String host = null;
             try {
@@ -158,7 +161,7 @@ public final class LiveTvChannelGridAdapter extends RecyclerView.Adapter<LiveTvC
                 byte[] bytes = body.bytes();
                 return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
             }
-        } catch (IOException e) {
+        } catch (IllegalArgumentException | IOException e) {
             Log.w(TAG, "Logo download failed for " + urlString + ": " + e.getMessage());
             return null;
         }

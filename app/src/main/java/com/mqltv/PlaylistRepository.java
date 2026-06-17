@@ -23,8 +23,8 @@ public final class PlaylistRepository {
             return Collections.emptyList();
         }
 
-        // Ambil channel dari REST API (limit 500)
-        String url = baseUrl + "/api/channels?limit=500";
+        // Ambil channel dari REST API (limit 10000 untuk memuat semua seperti M3U lama)
+        String url = baseUrl + "/api/channels?limit=10000";
 
         try {
             Request request = new Request.Builder()

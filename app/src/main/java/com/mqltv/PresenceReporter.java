@@ -153,6 +153,18 @@ public final class PresenceReporter {
                         if (resp.isSuccessful()) {
                             return; // Success; exit retry loop.
                         }
+                        
+                        // If token is invalid or subscription expired, server might return 401 or 403
+                        if (resp.code() == 401 || resp.code() == 403) {
+                            MAIN.post(() -> {
+                                MAIN.removeCallbacks(HEARTBEAT);
+                                hbTitle = null;
+                                hbUrl = null;
+                                SubscriptionGuard.showExpired(context);
+                            });
+                            return; // Stop retrying immediately
+                        }
+                        
                         // Server returned non-2xx; back off before retrying.
                         if (!sleepBeforeRetry(attempt)) return;
                     }

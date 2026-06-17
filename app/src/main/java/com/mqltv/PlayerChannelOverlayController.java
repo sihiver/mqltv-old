@@ -191,8 +191,15 @@ public final class PlayerChannelOverlayController {
 
     /** True when {@code channel} is the stream currently playing in this player session. */
     private boolean isCurrentChannel(@Nullable Channel channel) {
-        if (channel == null || currentId == 0) return false;
-        return channel.getId() == currentId;
+        if (channel == null) return false;
+        if (currentId != 0 && channel.getId() == currentId) return true;
+        
+        // Fallback checks to prevent unnecessary restarts if ID somehow didn't match
+        Channel playing = pickChannelToBind(allChannels, currentId);
+        if (playing != null) {
+            if (playing.getTitle() != null && playing.getTitle().equals(channel.getTitle())) return true;
+        }
+        return false;
     }
 
     /**

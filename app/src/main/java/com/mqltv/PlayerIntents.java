@@ -50,11 +50,26 @@ public final class PlayerIntents {
                         .build();
 
                 try (Response resp = NetworkClient.getClient().newCall(req).execute()) {
+                    ResponseBody body = resp.body();
                     if (!resp.isSuccessful()) {
-                        MAIN_HANDLER.post(() -> Toast.makeText(context, "Gagal memuat stream (HTTP " + resp.code() + ")", Toast.LENGTH_LONG).show());
+                        int code = resp.code();
+                        String errorMsg = "Gagal memuat stream (HTTP " + code + ")";
+                        if (body != null) {
+                            try {
+                                JSONObject errObj = new JSONObject(body.string());
+                                String parsedErr = errObj.optString("error", "");
+                                if (!parsedErr.isEmpty()) errorMsg = parsedErr;
+                            } catch (Exception ignored) { }
+                        }
+                        
+                        final String finalErrorMsg = errorMsg;
+                        if ((code == 401 || code == 403) && finalErrorMsg.toLowerCase().contains("subscription tidak aktif")) {
+                            MAIN_HANDLER.post(() -> SubscriptionGuard.showExpired(context));
+                        } else {
+                            MAIN_HANDLER.post(() -> Toast.makeText(context, finalErrorMsg, Toast.LENGTH_LONG).show());
+                        }
                         return;
                     }
-                    ResponseBody body = resp.body();
                     if (body == null) return;
                     
                     JSONObject json = new JSONObject(body.string());

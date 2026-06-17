@@ -25,8 +25,7 @@ public final class RecentChannelsStore {
 
     public static void record(Context context, Channel channel) {
         if (context == null || channel == null) return;
-        String url = channel.getUrl();
-        if (TextUtils.isEmpty(url)) return;
+        if (channel.getId() == 0 && TextUtils.isEmpty(channel.getTitle())) return;
 
         SharedPreferences sp = context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
 
@@ -45,8 +44,9 @@ public final class RecentChannelsStore {
             try {
                 JSONObject o = arr.getJSONObject(i);
                 if (o == null) continue;
-                String u = o.optString("url", "");
-                if (url.equals(u)) continue;
+                int id = o.optInt("id", 0);
+                if (channel.getId() == id && id != 0) continue;
+                if (id == 0 && channel.getTitle() != null && channel.getTitle().equals(o.optString("title", ""))) continue;
                 out.put(o);
             } catch (Exception ignored) {
             }
@@ -140,18 +140,10 @@ public final class RecentChannelsStore {
     @Nullable
     private static String channelIdentityKey(Channel c) {
         if (c == null) return null;
-        String sourceId = c.getSourceId();
-        String url = c.getUrl();
+        if (c.getId() > 0) return "id:" + c.getId();
         String title = c.getTitle();
-        String titleKey = title != null ? title.trim().toLowerCase(Locale.US) : "";
-        if (sourceId != null && !sourceId.trim().isEmpty()) {
-            return "id:" + sourceId.trim();
-        }
-        if (url != null && !url.trim().isEmpty()) {
-            return "u:" + url.trim() + "|t:" + titleKey;
-        }
-        if (!titleKey.isEmpty()) {
-            return "t:" + titleKey;
+        if (title != null && !title.trim().isEmpty()) {
+            return "t:" + title.trim().toLowerCase(Locale.US);
         }
         return null;
     }

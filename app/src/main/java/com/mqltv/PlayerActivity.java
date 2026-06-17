@@ -78,8 +78,7 @@ public class PlayerActivity extends FragmentActivity {
             if (!SubscriptionGuard.ensureNotExpired(PlayerActivity.this)) return;
             RecentChannelsStore.record(PlayerActivity.this, channel);
             PresenceReporter.reportOnlineLaunch(PlayerActivity.this, channel.getTitle(), channel.getUrl());
-            PlayerIntents.launchPlayer(PlayerActivity.this, channel);
-            finish();
+            PlayerIntents.launchPlayer(PlayerActivity.this, channel, this::finish);
         });
     }
 

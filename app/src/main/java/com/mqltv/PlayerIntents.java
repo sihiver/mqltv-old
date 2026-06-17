@@ -32,8 +32,11 @@ public final class PlayerIntents {
     public static final int PLAYER_MODE_NATIVE = PlaybackPrefs.PLAYER_MODE_NATIVE;
 
     public static void launchPlayer(Context context, Channel channel) {
+        launchPlayer(context, channel, null);
+    }
+
+    public static void launchPlayer(Context context, Channel channel, Runnable onLaunched) {
         if (channel == null || context == null) return;
-        Toast.makeText(context, "Memuat " + channel.getTitle() + "...", Toast.LENGTH_SHORT).show();
 
         EXECUTOR.execute(() -> {
             try {
@@ -74,6 +77,7 @@ public final class PlayerIntents {
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         }
                         context.startActivity(intent);
+                        if (onLaunched != null) onLaunched.run();
                     });
                 }
             } catch (Exception e) {

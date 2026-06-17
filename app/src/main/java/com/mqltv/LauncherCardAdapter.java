@@ -66,6 +66,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
     private boolean liveTvBgRenderedFirstFrame;
     private boolean liveTvBgPrepared;
     private boolean hostActive = true;
+    private TextureView currentlyAttachedTextureView = null;
 
     public LauncherCardAdapter(Listener listener) {
         this.listener = listener;
@@ -116,6 +117,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             liveTvBgPlayer = null;
             liveTvBgPrepared = false;
             liveTvBgPlayerInitializing = false;
+            currentlyAttachedTextureView = null;
         }
     }
 
@@ -295,7 +297,10 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         super.onViewRecycled(holder);
         if (holder.video != null && liveTvBgPlayer != null) {
             try {
-                liveTvBgPlayer.clearVideoTextureView(holder.video);
+                if (currentlyAttachedTextureView == holder.video) {
+                    liveTvBgPlayer.clearVideoTextureView(holder.video);
+                    currentlyAttachedTextureView = null;
+                }
             } catch (Exception ignored) {
             }
         }
@@ -310,7 +315,10 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             holder.videoScrim.setVisibility(View.GONE);
             if (liveTvBgPlayer != null) {
                 try {
-                    liveTvBgPlayer.clearVideoTextureView(holder.video);
+                    if (currentlyAttachedTextureView == holder.video) {
+                        liveTvBgPlayer.clearVideoTextureView(holder.video);
+                        currentlyAttachedTextureView = null;
+                    }
                 } catch (Exception ignored) {
                 }
             }
@@ -319,6 +327,12 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
 
         holder.video.setVisibility(View.VISIBLE);
         holder.videoScrim.setVisibility(View.VISIBLE);
+
+        if (!liveTvBgRenderedFirstFrame) {
+            holder.video.setAlpha(0f);
+        } else {
+            holder.video.setAlpha(1f);
+        }
 
         // Defer player attach to after layout so the launcher UI is drawn first.
         // If the player isn't ready yet (still initializing via preWarm), retry shortly.
@@ -364,8 +378,21 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             return;
         }
 
+        if (currentlyAttachedTextureView == holder.video) {
+            try {
+                if (!liveTvBgPrepared) {
+                    liveTvBgPrepared = true;
+                    p.prepare();
+                }
+                p.setPlayWhenReady(hostActive);
+            } catch (Exception ignored) {
+            }
+            return;
+        }
+
         try {
             p.setVideoTextureView(holder.video);
+            currentlyAttachedTextureView = holder.video;
             Log.d(TAG, "attached TextureView to player");
         } catch (Exception e) {
             Log.w(TAG, "failed attaching TextureView", e);
@@ -490,8 +517,15 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
                 @Override
                 public void onVideoSizeChanged(@NonNull VideoSize videoSize) {
                     if (videoSize.width > 0) {
-                        liveTvBgRenderedFirstFrame = true;
                         Log.d(TAG, "video size " + videoSize.width + "x" + videoSize.height);
+                        if (!liveTvBgRenderedFirstFrame) {
+                            liveTvBgRenderedFirstFrame = true;
+                            new Handler(Looper.getMainLooper()).post(() -> {
+                                if (currentlyAttachedTextureView != null) {
+                                    currentlyAttachedTextureView.animate().alpha(1f).setDuration(300).start();
+                                }
+                            });
+                        }
                     }
                 }
             });

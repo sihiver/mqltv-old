@@ -55,6 +55,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
     private RecyclerView cardsList;
     private LauncherCardAdapter adapter;
+    private View searchButton;
     private View settingsButton;
     private View profileButton;
     private int lastSelectedCardPosition = LIVE_TV_CARD_POSITION;
@@ -156,11 +157,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             });
         }
 
-        View search = v.findViewById(R.id.launcher_search);
-        if (search != null) {
+        searchButton = v.findViewById(R.id.launcher_search);
+        if (searchButton != null) {
             // Enable search bar functionality
-            search.setVisibility(View.VISIBLE);
-            search.setOnClickListener(v1 -> {
+            searchButton.setVisibility(View.VISIBLE);
+            searchButton.setOnClickListener(v1 -> {
                 Toast.makeText(appContext, "Fitur Pencarian Segera Hadir", Toast.LENGTH_SHORT).show();
             });
         }
@@ -517,6 +518,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     }
 
     private void setHeaderButtonsFocusable(boolean focusable) {
+        if (searchButton != null) {
+            searchButton.setFocusable(focusable);
+            searchButton.setFocusableInTouchMode(focusable);
+        }
         if (settingsButton != null) {
             settingsButton.setFocusable(focusable);
             settingsButton.setFocusableInTouchMode(focusable);

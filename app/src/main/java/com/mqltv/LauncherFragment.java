@@ -158,9 +158,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
         View search = v.findViewById(R.id.launcher_search);
         if (search != null) {
-            // Hide the search bar on homescreen (per product requirement).
-            search.setVisibility(View.GONE);
-            search.setOnClickListener(null);
+            // Enable search bar functionality
+            search.setVisibility(View.VISIBLE);
+            search.setOnClickListener(v1 -> {
+                Toast.makeText(appContext, "Fitur Pencarian Segera Hadir", Toast.LENGTH_SHORT).show();
+            });
         }
 
         settingsButton = v.findViewById(R.id.launcher_settings);

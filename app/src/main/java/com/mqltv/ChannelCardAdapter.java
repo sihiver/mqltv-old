@@ -135,9 +135,10 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
             PlayerIntents.launchPlayer(v.getContext(), fresh);
         });
 
-        holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
-            float s = hasFocus ? 1.05f : 1.0f;
-            v.animate().scaleX(s).scaleY(s).setDuration(120).start();
+        clickTarget.setOnFocusChangeListener((v, hasFocus) -> {
+            float s = hasFocus ? 1.10f : 1.0f;
+            float z = hasFocus ? 10f : 0f;
+            holder.itemView.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(120).start();
             v.setActivated(hasFocus);
 
             if (hasFocus && listener != null) {

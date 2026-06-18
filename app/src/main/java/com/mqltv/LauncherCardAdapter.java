@@ -261,13 +261,9 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         });
 
         holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
-            float s = (isLiveTv ? 1.0f : (hasFocus ? 1.03f : 1.0f));
-            v.animate().scaleX(s).scaleY(s).setDuration(120).start();
-
-            // Live TV card: keep flat (no shadow-like elevation on focus).
-            if (isLiveTv) {
-                ViewCompat.setElevation(v, 0f);
-            }
+            float s = hasFocus ? 1.10f : 1.0f;
+            float z = hasFocus ? 10f : 0f;
+            v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(120).start();
             v.setActivated(hasFocus);
             // Ensure stateful background updates when we drive activated.
             if (v.getBackground() != null) {

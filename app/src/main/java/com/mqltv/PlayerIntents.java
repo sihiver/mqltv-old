@@ -83,10 +83,10 @@ public final class PlayerIntents {
 
                     // Map MQLTV2 response to old ChannelPlaybackMeta format
                     JSONObject fakeMeta = new JSONObject();
-                    fakeMeta.put("drm_type", json.optString("drmType", ""));
-                    fakeMeta.put("drm_key", json.optString("drmKey", ""));
-                    fakeMeta.put("user_agent", json.optString("userAgent", ""));
-                    fakeMeta.put("referer", json.optString("referer", ""));
+                    fakeMeta.put("drm_type", json.isNull("drmType") ? "" : json.optString("drmType", ""));
+                    fakeMeta.put("drm_key", json.isNull("drmKey") ? "" : json.optString("drmKey", ""));
+                    fakeMeta.put("user_agent", json.isNull("userAgent") ? "" : json.optString("userAgent", ""));
+                    fakeMeta.put("referer", json.isNull("referer") ? "" : json.optString("referer", ""));
                     
                     ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromVisionPlusObject(fakeMeta);
 
@@ -180,8 +180,8 @@ public final class PlayerIntents {
     }
 
     public static Class<?> getTargetPlayerActivity(Context context, ChannelPlaybackMeta meta) {
-        // Vision+ JSON: headers and/or DRM — Media3 on all API levels (incl. API 19).
-        if (meta != null && meta.isActive()) {
+        // Vision+ JSON: DRM requires Media3.
+        if (meta != null && meta.requiresExoDrm()) {
             return PlayerActivity.class;
         }
 
@@ -189,6 +189,11 @@ public final class PlayerIntents {
         if (mode == PlaybackPrefs.PLAYER_MODE_VLC) return VlcPlayerActivity.class;
         if (mode == PlaybackPrefs.PLAYER_MODE_EXO) return PlayerActivity.class;
         if (mode == PlaybackPrefs.PLAYER_MODE_NATIVE) return NativePlayerActivity.class;
+
+        // Default to ExoPlayer in AUTO mode if there are headers
+        if (meta != null && meta.isActive() && mode == PlaybackPrefs.PLAYER_MODE_AUTO) {
+            return PlayerActivity.class;
+        }
 
         if (android.os.Build.VERSION.SDK_INT <= 19) {
             if (DeviceQuirks.isZteB760H()) return NativePlayerActivity.class;

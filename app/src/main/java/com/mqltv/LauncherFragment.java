@@ -798,31 +798,56 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 }
             }
 
-            final CharSequence[] labels = new CharSequence[candidates.size()];
-            for (int i = 0; i < candidates.size(); i++) {
-                labels[i] = candidates.get(i).label;
-            }
-
             mainHandler.post(() -> {
                 if (getActivity() == null) return;
                 if (candidates.isEmpty()) {
                     Toast.makeText(getContext(), "Tidak ada app untuk ditambahkan", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                new AlertDialog.Builder(getActivity())
-                        .setTitle("Tambah App")
-                        .setItems(labels, (d, which) -> {
-                            try {
-                                LauncherAppEntry picked = candidates.get(which);
-                                if (picked != null && picked.component != null) {
-                                    PinnedAppsStore.add(appContext, picked.component.flattenToString());
-                                    loadLauncherApps(appContext);
-                                }
-                            } catch (Exception ignored) {
+
+                android.app.Dialog dialog = new android.app.Dialog(getActivity(), android.R.style.Theme_Translucent_NoTitleBar);
+                dialog.setContentView(R.layout.dialog_add_app);
+
+                RecyclerView rv = dialog.findViewById(R.id.dialog_add_app_list);
+                // Menambahkan 4 kolom dengan margin bawah 14dp di setiap item
+                rv.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(appContext, 4));
+                rv.addItemDecoration(new RecyclerView.ItemDecoration() {
+                    @Override
+                    public void getItemOffsets(@NonNull android.graphics.Rect outRect, @NonNull View view, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+                        outRect.bottom = Math.round(14 * getResources().getDisplayMetrics().density);
+                    }
+                });
+
+                LauncherAppsAdapter dialogAdapter = new LauncherAppsAdapter(new LauncherAppsAdapter.Listener() {
+                    @Override
+                    public void onAppClicked(LauncherAppEntry entry) {
+                        try {
+                            if (entry != null && entry.component != null) {
+                                PinnedAppsStore.add(appContext, entry.component.flattenToString());
+                                loadLauncherApps(appContext);
+                                dialog.dismiss();
                             }
-                        })
-                        .setNegativeButton("Batal", (d, w) -> d.dismiss())
-                        .show();
+                        } catch (Exception ignored) {
+                        }
+                    }
+
+                    @Override
+                    public void onAppLongPressed(LauncherAppEntry entry) {
+                    }
+
+                    @Override
+                    public void onAddClicked() {
+                    }
+
+                    @Override
+                    public void onAppFocused(LauncherAppEntry entry, int position) {
+                    }
+                });
+                
+                rv.setAdapter(dialogAdapter);
+                dialogAdapter.submit(candidates);
+
+                dialog.show();
             });
         });
     }

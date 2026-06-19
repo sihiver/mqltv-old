@@ -229,6 +229,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         cardsList.setClipToPadding(false);
         cardsList.setClipChildren(false);
         cardsList.setPreserveFocusAfterLayout(true);
+        androidx.recyclerview.widget.RecyclerView.ItemAnimator animator1 = cardsList.getItemAnimator();
+        if (animator1 instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
+            ((androidx.recyclerview.widget.SimpleItemAnimator) animator1).setSupportsChangeAnimations(false);
+        }
 
         try {
             new StartSnapHelper().attachToRecyclerView(cardsList);
@@ -246,8 +250,12 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             appsList.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
             appsList.setHasFixedSize(false);
             appsList.setItemViewCacheSize(16);
-            appsList.setClipToPadding(false);
+        appsList.setClipToPadding(false);
             appsList.setClipChildren(false);
+            androidx.recyclerview.widget.RecyclerView.ItemAnimator animator2 = appsList.getItemAnimator();
+            if (animator2 instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
+                ((androidx.recyclerview.widget.SimpleItemAnimator) animator2).setSupportsChangeAnimations(false);
+            }
 
             appsAdapter = new LauncherAppsAdapter(new LauncherAppsAdapter.Listener() {
                 @Override
@@ -287,8 +295,12 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             recentList.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
             recentList.setHasFixedSize(false);
             recentList.setItemViewCacheSize(16);
-            recentList.setClipToPadding(false);
+        recentList.setClipToPadding(false);
             recentList.setClipChildren(false);
+            androidx.recyclerview.widget.RecyclerView.ItemAnimator animator3 = recentList.getItemAnimator();
+            if (animator3 instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
+                ((androidx.recyclerview.widget.SimpleItemAnimator) animator3).setSupportsChangeAnimations(false);
+            }
             recentAdapter = new ChannelCardAdapter();
             recentAdapter.setListener(new ChannelCardAdapter.Listener() {
                 @Override

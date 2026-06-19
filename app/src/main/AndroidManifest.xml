@@ -40,6 +40,11 @@
             android:exported="false" />
 
         <activity
+            android:name=".RadioPlayerActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:exported="false" />
+
+        <activity
             android:name=".MainActivity"
             android:theme="@style/Theme.MQLTV"
             android:launchMode="singleTask"

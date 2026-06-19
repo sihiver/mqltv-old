@@ -91,7 +91,18 @@ public final class PlayerIntents {
                     ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromVisionPlusObject(fakeMeta);
 
                     MAIN_HANDLER.post(() -> {
-                        Intent intent = createPreferredPlayIntent(context, channel.getId(), channel.getTitle(), streamUrl, meta);
+                        Intent intent;
+                        if (channel.getGroupTitle() != null && channel.getGroupTitle().toLowerCase().contains("radio")) {
+                            intent = new Intent(context, RadioPlayerActivity.class);
+                            intent.putExtra(Constants.EXTRA_CHANNEL_ID, channel.getId());
+                            intent.putExtra(Constants.EXTRA_TITLE, channel.getTitle());
+                            intent.putExtra(Constants.EXTRA_URL, streamUrl);
+                            intent.putExtra(Constants.EXTRA_LOGO, channel.getLogoUrl());
+                            if (meta != null) meta.putInIntent(intent);
+                        } else {
+                            intent = createPreferredPlayIntent(context, channel.getId(), channel.getTitle(), streamUrl, meta);
+                        }
+
                         if (!(context instanceof Activity)) {
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         }

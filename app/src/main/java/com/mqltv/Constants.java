@@ -6,6 +6,7 @@ public final class Constants {
     public static final String EXTRA_TITLE = "extra_title";
     public static final String EXTRA_URL = "extra_url";
     public static final String EXTRA_CHANNEL_ID = "extra_channel_id";
+    public static final String EXTRA_LOGO = "extra_logo";
 
         // Default playlists (loaded in order and merged).
         public static final String HOME_PLAYLIST_URL_1 = "http://192.168.15.1:5140/playlist.m3u";

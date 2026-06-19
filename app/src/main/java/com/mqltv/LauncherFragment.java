@@ -290,6 +290,12 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 }
             });
             recentList.setAdapter(recentAdapter);
+
+            // Prevent layout jumping by predicting visibility synchronously.
+            List<Channel> cachedRecent = RecentChannelsStore.load(appContext);
+            boolean hasRecent = cachedRecent != null && !cachedRecent.isEmpty();
+            if (recentTitle != null) recentTitle.setVisibility(hasRecent ? View.VISIBLE : View.GONE);
+            recentList.setVisibility(hasRecent ? View.VISIBLE : View.GONE);
         }
 
         // Seed cards with placeholders; subtitles will be updated after loading.
@@ -337,12 +343,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     });
                 }
             } else if (lastSelectedCardPosition == APPS_ROW_POSITION) {
+                lockFocusForRestoration(lastSelectedCardPosition);
                 requestFocusToApp(lastSelectedAppIndex);
             } else if (lastSelectedCardPosition == RECENT_ROW_POSITION) {
+                lockFocusForRestoration(lastSelectedCardPosition);
                 requestFocusToRecent(lastSelectedRecentUrl, lastSelectedRecentIndex);
             } else {
                 // Lock header focus while card focus is being restored to prevent bouncing.
-                setHeaderButtonsFocusable(false);
+                lockFocusForRestoration(lastSelectedCardPosition);
                 requestFocusToCard(lastSelectedCardPosition);
             }
         }
@@ -373,8 +381,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (vh != null && vh.itemView != null) {
             focused = vh.itemView.requestFocus();
         }
-        if (focused) return;
-        if (attempt >= 8) return;
+        if (focused) {
+            mainHandler.postDelayed(() -> restoreAllFocusability(), 120);
+            return;
+        }
+        if (attempt >= 8) {
+            mainHandler.postDelayed(() -> restoreAllFocusability(), 120);
+            return;
+        }
         recentList.postDelayed(() -> requestRecentFocusWithRetry(index, attempt + 1), 24);
     }
 
@@ -395,8 +409,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (vh != null && vh.itemView != null) {
             focused = vh.itemView.requestFocus();
         }
-        if (focused) return;
-        if (attempt >= 6) return;
+        if (focused) {
+            mainHandler.postDelayed(() -> restoreAllFocusability(), 120);
+            return;
+        }
+        if (attempt >= 6) {
+            mainHandler.postDelayed(() -> restoreAllFocusability(), 120);
+            return;
+        }
         appsList.postDelayed(() -> requestAppFocusWithRetry(index, attempt + 1), 24);
     }
 
@@ -507,11 +527,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         }
         if (focused) {
             // Re-enable header controls after focus is stable on the selected card.
-            mainHandler.postDelayed(() -> setHeaderButtonsFocusable(true), 120);
+            mainHandler.postDelayed(() -> restoreAllFocusability(), 120);
             return;
         }
         if (attempt >= 6) {
-            mainHandler.postDelayed(() -> setHeaderButtonsFocusable(true), 120);
+            mainHandler.postDelayed(() -> restoreAllFocusability(), 120);
             return;
         }
         cardsList.postDelayed(() -> requestCardFocusWithRetry(position, attempt + 1), 24);
@@ -530,6 +550,26 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             profileButton.setFocusable(focusable);
             profileButton.setFocusableInTouchMode(focusable);
         }
+    }
+
+    private void lockFocusForRestoration(int targetRowPosition) {
+        setHeaderButtonsFocusable(targetRowPosition == SETTINGS_BUTTON_POSITION || targetRowPosition == PROFILE_BUTTON_POSITION);
+        if (cardsList != null) {
+            cardsList.setDescendantFocusability(targetRowPosition == LIVE_TV_CARD_POSITION || targetRowPosition == RADIO_CARD_POSITION ? ViewGroup.FOCUS_AFTER_DESCENDANTS : ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        }
+        if (appsList != null) {
+            appsList.setDescendantFocusability(targetRowPosition == APPS_ROW_POSITION ? ViewGroup.FOCUS_AFTER_DESCENDANTS : ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        }
+        if (recentList != null) {
+            recentList.setDescendantFocusability(targetRowPosition == RECENT_ROW_POSITION ? ViewGroup.FOCUS_AFTER_DESCENDANTS : ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        }
+    }
+
+    private void restoreAllFocusability() {
+        setHeaderButtonsFocusable(true);
+        if (cardsList != null) cardsList.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        if (appsList != null) appsList.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        if (recentList != null) recentList.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
     }
 
     private void syncHomeFocusState(int position) {

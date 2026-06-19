@@ -60,202 +60,6 @@
         android:orientation="vertical"
         app:layout_constraintGuide_percent="0.96" />
 
-    <LinearLayout
-        android:id="@+id/launcher_brand"
-        android:layout_width="wrap_content"
-        android:layout_height="56dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        app:layout_constraintStart_toStartOf="@id/launcher_safe_left"
-        app:layout_constraintTop_toTopOf="@id/launcher_safe_top"
-        android:layout_marginTop="12dp">
-
-        <ImageView
-            android:id="@+id/launcher_brand_logo"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:src="@mipmap/ic_launcher"
-            android:padding="6dp"
-            android:background="@drawable/logo_circle_bg"
-            android:contentDescription="@string/app_name"
-            android:importantForAccessibility="no" />
-
-        <TextView
-            android:id="@+id/launcher_brand_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:text="MQLTV"
-            android:textColor="@color/mql_text_primary"
-            android:textSize="28sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.06"
-            android:shadowColor="#AA000000"
-            android:shadowDx="0"
-            android:shadowDy="2"
-            android:shadowRadius="4"
-            android:importantForAccessibility="no" />
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/launcher_search"
-        android:layout_width="0dp"
-        android:layout_height="52dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:background="@drawable/launcher_search_bg"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:nextFocusRight="@+id/launcher_settings"
-        android:nextFocusDown="@+id/launcher_cards"
-        android:visibility="gone"
-        android:importantForAccessibility="no"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        app:layout_constraintStart_toEndOf="@id/launcher_brand"
-        app:layout_constraintEnd_toStartOf="@id/launcher_actions"
-        app:layout_constraintTop_toTopOf="@id/launcher_brand"
-        app:layout_constraintBottom_toBottomOf="@id/launcher_brand"
-        android:layout_marginStart="18dp"
-        android:layout_marginEnd="18dp">
-
-        <ImageView
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:src="@android:drawable/ic_menu_search"
-            android:tint="@color/mql_text_secondary"
-            android:contentDescription="Search" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:text="Search"
-            android:textColor="@color/mql_text_secondary"
-            android:textSize="16sp" />
-
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-
-        <ImageView
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:src="@android:drawable/ic_btn_speak_now"
-            android:tint="@color/mql_text_secondary"
-            android:contentDescription="Mic" />
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/launcher_actions"
-        android:layout_width="wrap_content"
-        android:layout_height="56dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        app:layout_constraintEnd_toEndOf="@id/launcher_safe_right"
-        app:layout_constraintTop_toTopOf="@id/launcher_brand"
-        app:layout_constraintBottom_toBottomOf="@id/launcher_brand"
-        android:layout_marginEnd="0dp">
-
-        <TextView
-            android:id="@+id/launcher_header_time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="00:00"
-            android:textColor="@color/mql_text_primary"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:importantForAccessibility="no" />
-
-        <ImageView
-            android:id="@+id/launcher_header_net"
-            android:layout_width="26dp"
-            android:layout_height="26dp"
-            android:layout_marginStart="14dp"
-            android:src="@drawable/ic_mql_wifi"
-            android:tint="@color/mql_text_primary"
-            android:contentDescription="Network"
-            android:importantForAccessibility="no" />
-
-        <View
-            android:layout_width="14dp"
-            android:layout_height="0dp" />
-
-        <FrameLayout
-            android:id="@+id/launcher_settings"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:background="@drawable/launcher_card_bg_radio_80"
-            android:focusable="false"
-            android:focusableInTouchMode="false"
-            android:clickable="true"
-            android:contentDescription="Settings"
-            android:nextFocusDown="@+id/launcher_cards"
-            android:nextFocusLeft="@+id/launcher_search"
-            android:nextFocusRight="@+id/launcher_profile">
-
-            <ImageView
-                android:id="@+id/launcher_settings_icon"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="10dp"
-                android:src="@android:drawable/ic_menu_manage"
-                android:tint="@color/mql_text_primary"
-                android:importantForAccessibility="no" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/launcher_card_focus_frame"
-                android:clickable="false"
-                android:focusable="false"
-                android:importantForAccessibility="no"
-                android:duplicateParentState="true" />
-
-        </FrameLayout>
-
-        <View
-            android:layout_width="12dp"
-            android:layout_height="0dp" />
-
-        <FrameLayout
-            android:id="@+id/launcher_profile"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:background="@drawable/launcher_card_bg_radio_80"
-            android:focusable="false"
-            android:focusableInTouchMode="false"
-            android:clickable="true"
-            android:contentDescription="Profile"
-            android:nextFocusDown="@+id/launcher_cards"
-            android:nextFocusLeft="@+id/launcher_settings">
-
-            <TextView
-                android:id="@+id/launcher_profile_letter"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:text="?"
-                android:textStyle="bold"
-                android:textSize="16sp"
-                android:textColor="@color/mql_text_primary" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/launcher_card_focus_frame"
-                android:clickable="false"
-                android:focusable="false"
-                android:importantForAccessibility="no"
-                android:duplicateParentState="true" />
-
-        </FrameLayout>
-
-    </LinearLayout>
-
     <androidx.core.widget.NestedScrollView
         android:id="@+id/launcher_scroll"
         android:layout_width="0dp"
@@ -267,9 +71,8 @@
         android:paddingBottom="12dp"
         app:layout_constraintStart_toStartOf="@id/launcher_safe_left"
         app:layout_constraintEnd_toEndOf="@id/launcher_safe_right"
-        app:layout_constraintTop_toBottomOf="@id/launcher_brand"
-        app:layout_constraintBottom_toTopOf="@id/launcher_safe_bottom"
-        android:layout_marginTop="24dp">
+        app:layout_constraintTop_toTopOf="@id/launcher_safe_top"
+        app:layout_constraintBottom_toTopOf="@id/launcher_safe_bottom">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -277,6 +80,212 @@
             android:clipChildren="false"
             android:clipToPadding="false"
             android:orientation="vertical">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/launcher_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="24dp"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <LinearLayout
+                    android:id="@+id/launcher_brand"
+                    android:layout_width="wrap_content"
+                    android:layout_height="56dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <ImageView
+                        android:id="@+id/launcher_brand_logo"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:src="@mipmap/ic_launcher"
+                        android:padding="6dp"
+                        android:background="@drawable/logo_circle_bg"
+                        android:contentDescription="@string/app_name"
+                        android:importantForAccessibility="no" />
+
+                    <TextView
+                        android:id="@+id/launcher_brand_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:text="MQLTV"
+                        android:textColor="@color/mql_text_primary"
+                        android:textSize="28sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.06"
+                        android:shadowColor="#AA000000"
+                        android:shadowDx="0"
+                        android:shadowDy="2"
+                        android:shadowRadius="4"
+                        android:importantForAccessibility="no" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/launcher_search"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/launcher_search_bg"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:nextFocusRight="@+id/launcher_settings"
+                    android:nextFocusDown="@+id/launcher_cards"
+                    android:visibility="gone"
+                    android:importantForAccessibility="no"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    app:layout_constraintStart_toEndOf="@id/launcher_brand"
+                    app:layout_constraintEnd_toStartOf="@id/launcher_actions"
+                    app:layout_constraintTop_toTopOf="@id/launcher_brand"
+                    app:layout_constraintBottom_toBottomOf="@id/launcher_brand"
+                    android:layout_marginStart="18dp"
+                    android:layout_marginEnd="18dp">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@android:drawable/ic_menu_search"
+                        android:tint="@color/mql_text_secondary"
+                        android:contentDescription="Search" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="Search"
+                        android:textColor="@color/mql_text_secondary"
+                        android:textSize="16sp" />
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:layout_weight="1" />
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@android:drawable/ic_btn_speak_now"
+                        android:tint="@color/mql_text_secondary"
+                        android:contentDescription="Mic" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/launcher_actions"
+                    android:layout_width="wrap_content"
+                    android:layout_height="56dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="@id/launcher_brand"
+                    app:layout_constraintBottom_toBottomOf="@id/launcher_brand"
+                    android:layout_marginEnd="0dp">
+
+                    <TextView
+                        android:id="@+id/launcher_header_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="00:00"
+                        android:textColor="@color/mql_text_primary"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:importantForAccessibility="no" />
+
+                    <ImageView
+                        android:id="@+id/launcher_header_net"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="14dp"
+                        android:src="@drawable/ic_mql_wifi"
+                        android:tint="@color/mql_text_primary"
+                        android:contentDescription="Network"
+                        android:importantForAccessibility="no" />
+
+                    <View
+                        android:layout_width="14dp"
+                        android:layout_height="0dp" />
+
+                    <FrameLayout
+                        android:id="@+id/launcher_settings"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:background="@drawable/launcher_card_bg_radio_80"
+                        android:focusable="false"
+                        android:focusableInTouchMode="false"
+                        android:clickable="true"
+                        android:contentDescription="Settings"
+                        android:nextFocusDown="@+id/launcher_cards"
+                        android:nextFocusLeft="@+id/launcher_search"
+                        android:nextFocusRight="@+id/launcher_profile">
+
+                        <ImageView
+                            android:id="@+id/launcher_settings_icon"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:padding="10dp"
+                            android:src="@android:drawable/ic_menu_manage"
+                            android:tint="@color/mql_text_primary"
+                            android:importantForAccessibility="no" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/launcher_card_focus_frame"
+                            android:clickable="false"
+                            android:focusable="false"
+                            android:importantForAccessibility="no"
+                            android:duplicateParentState="true" />
+
+                    </FrameLayout>
+
+                    <View
+                        android:layout_width="12dp"
+                        android:layout_height="0dp" />
+
+                    <FrameLayout
+                        android:id="@+id/launcher_profile"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:background="@drawable/launcher_card_bg_radio_80"
+                        android:focusable="false"
+                        android:focusableInTouchMode="false"
+                        android:clickable="true"
+                        android:contentDescription="Profile"
+                        android:nextFocusDown="@+id/launcher_cards"
+                        android:nextFocusLeft="@+id/launcher_settings">
+
+                        <TextView
+                            android:id="@+id/launcher_profile_letter"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center"
+                            android:text="?"
+                            android:textStyle="bold"
+                            android:textSize="16sp"
+                            android:textColor="@color/mql_text_primary" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/launcher_card_focus_frame"
+                            android:clickable="false"
+                            android:focusable="false"
+                            android:importantForAccessibility="no"
+                            android:duplicateParentState="true" />
+
+                    </FrameLayout>
+
+                </LinearLayout>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/launcher_cards"

@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_pressed="true" android:drawable="@drawable/bg_login_button_pressed" />
-    <item android:state_focused="true" android:drawable="@drawable/bg_login_button_pressed" />
-    <item android:drawable="@drawable/bg_login_button_normal" />
+    <!-- Focused state -->
+    <item android:state_focused="true">
+        <shape>
+            <gradient android:startColor="#ff8a00" android:endColor="#e52e71" android:angle="45"/>
+            <corners android:radius="8dp" />
+            <stroke android:width="2dp" android:color="#ffffff" />
+        </shape>
+    </item>
+    <!-- Default state -->
+    <item>
+        <shape>
+            <gradient android:startColor="#ccff8a00" android:endColor="#cce52e71" android:angle="45"/>
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
 </selector>

@@ -722,7 +722,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             }
 
             // Add the plus button.
-            row.add(new LauncherAppEntry("Tambah", null, null, true));
+            row.add(new LauncherAppEntry("Tambah", null, null, null, true));
 
             mainHandler.post(() -> {
                 if (appsAdapter != null) appsAdapter.submit(row);

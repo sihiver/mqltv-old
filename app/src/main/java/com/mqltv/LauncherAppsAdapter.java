@@ -88,23 +88,40 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
                 holder.subtitle.setVisibility(View.VISIBLE);
             }
 
+            if (holder.banner != null) holder.banner.setVisibility(View.GONE);
+            if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.VISIBLE);
+
             holder.itemView.setBackground(createTileBackground(ctx, 0xFF4D5B6A));
         } else {
-            assert holder.icon != null;
-            holder.icon.setImageDrawable(e.icon);
-            holder.icon.clearColorFilter();
-
-            if (holder.subtitle != null) {
-                String sub = resolveSubtitle(ctx, e);
-                if (sub == null || sub.trim().isEmpty()) {
-                    holder.subtitle.setVisibility(View.GONE);
-                } else {
-                    holder.subtitle.setText(sub);
-                    holder.subtitle.setVisibility(View.VISIBLE);
+            if (e.banner != null) {
+                if (holder.banner != null) {
+                    holder.banner.setImageDrawable(e.banner);
+                    holder.banner.setVisibility(View.VISIBLE);
                 }
-            }
+                if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.GONE);
+                
+                // Use a neutral dark background since the banner covers most of it
+                holder.itemView.setBackground(createTileBackground(ctx, 0xFF2A2E35));
+            } else {
+                if (holder.banner != null) holder.banner.setVisibility(View.GONE);
+                if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.VISIBLE);
 
-            holder.itemView.setBackground(createTileBackground(ctx, colorFromEntry(e)));
+                assert holder.icon != null;
+                holder.icon.setImageDrawable(e.icon);
+                holder.icon.clearColorFilter();
+
+                if (holder.subtitle != null) {
+                    String sub = resolveSubtitle(ctx, e);
+                    if (sub == null || sub.trim().isEmpty()) {
+                        holder.subtitle.setVisibility(View.GONE);
+                    } else {
+                        holder.subtitle.setText(sub);
+                        holder.subtitle.setVisibility(View.VISIBLE);
+                    }
+                }
+
+                holder.itemView.setBackground(createTileBackground(ctx, colorFromEntry(e)));
+            }
         }
 
         holder.itemView.setOnClickListener(v -> {
@@ -146,12 +163,16 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         final ImageView icon;
         final TextView title;
         final TextView subtitle;
+        final ImageView banner;
+        final View contentGroup;
 
         VH(@NonNull View itemView) {
             super(itemView);
             icon = itemView.findViewById(R.id.launcher_app_icon);
             title = itemView.findViewById(R.id.launcher_app_title);
             subtitle = itemView.findViewById(R.id.launcher_app_subtitle);
+            banner = itemView.findViewById(R.id.launcher_app_banner);
+            contentGroup = itemView.findViewById(R.id.launcher_app_content);
         }
     }
 

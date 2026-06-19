@@ -11,12 +11,14 @@ import androidx.annotation.Nullable;
 public final class LauncherAppEntry {
     public final String label;
     public final Drawable icon;
+    public final Drawable banner;
     public final ComponentName component;
     public final boolean isAddButton;
 
-    public LauncherAppEntry(String label, Drawable icon, ComponentName component, boolean isAddButton) {
+    public LauncherAppEntry(String label, Drawable icon, Drawable banner, ComponentName component, boolean isAddButton) {
         this.label = label;
         this.icon = icon;
+        this.banner = banner;
         this.component = component;
         this.isAddButton = isAddButton;
     }
@@ -53,7 +55,20 @@ public final class LauncherAppEntry {
             }
         }
 
-        return new LauncherAppEntry(label, icon, cn, false);
+        Drawable banner = null;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            try {
+                if (ri.activityInfo != null) {
+                    banner = ri.activityInfo.loadBanner(pm);
+                }
+                if (banner == null && ri.activityInfo != null && ri.activityInfo.applicationInfo != null) {
+                    banner = pm.getApplicationBanner(ri.activityInfo.applicationInfo);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        return new LauncherAppEntry(label, icon, banner, cn, false);
     }
 
     @Nullable

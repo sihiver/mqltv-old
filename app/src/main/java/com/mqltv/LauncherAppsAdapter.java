@@ -100,7 +100,6 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
                 }
                 if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.GONE);
                 
-                // Use a neutral dark background since the banner covers most of it
                 holder.itemView.setBackground(createTileBackground(ctx, 0xFF2A2E35));
             } else {
                 if (holder.banner != null) holder.banner.setVisibility(View.GONE);
@@ -124,6 +123,10 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
             }
         }
 
+        if (holder.itemView instanceof android.widget.FrameLayout) {
+            ((android.widget.FrameLayout) holder.itemView).setForeground(createTileForeground(ctx));
+        }
+
         holder.itemView.setOnClickListener(v -> {
             if (e.isAddButton) {
                 if (listener != null) listener.onAddClicked();
@@ -144,6 +147,10 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
             v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(120).start();
             v.setActivated(hasFocus);
             if (v.getBackground() != null) v.getBackground().setState(v.getDrawableState());
+            if (v instanceof android.widget.FrameLayout) {
+                Drawable fg = ((android.widget.FrameLayout) v).getForeground();
+                if (fg != null) fg.setState(v.getDrawableState());
+            }
 
             if (hasFocus && listener != null) {
                 int pos = holder.getBindingAdapterPosition();
@@ -177,23 +184,27 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
     }
 
     private static Drawable createTileBackground(Context ctx, int baseColor) {
-        int radius = dp(ctx, 6);
-        int stroke = dp(ctx, 2);
-        int accent = ContextCompat.getColor(ctx, R.color.mql_accent);
-
+        int radius = dp(ctx, 14);
         GradientDrawable normal = new GradientDrawable();
         normal.setColor(baseColor);
         normal.setCornerRadius(radius);
+        return normal;
+    }
+
+    private static Drawable createTileForeground(Context ctx) {
+        int radius = dp(ctx, 14);
+        int stroke = dp(ctx, 3);
+        int accent = ContextCompat.getColor(ctx, R.color.mql_accent);
 
         GradientDrawable focused = new GradientDrawable();
-        focused.setColor(lighten(baseColor));
+        focused.setColor(Color.TRANSPARENT);
         focused.setCornerRadius(radius);
         focused.setStroke(stroke, accent);
 
         StateListDrawable s = new StateListDrawable();
         s.addState(new int[] { android.R.attr.state_focused }, focused);
         s.addState(new int[] { android.R.attr.state_activated }, focused);
-        s.addState(new int[] {}, normal);
+        s.addState(new int[] {}, new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         return s;
     }
 

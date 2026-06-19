@@ -58,6 +58,41 @@ public class SettingsFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
         Context appContext = v.getContext().getApplicationContext();
 
+        View menuGeneral = v.findViewById(R.id.menu_general);
+        View menuWallpaper = v.findViewById(R.id.menu_wallpaper);
+        View menuVlc = v.findViewById(R.id.menu_vlc);
+
+        View contentGeneral = v.findViewById(R.id.content_general);
+        View contentWallpaper = v.findViewById(R.id.content_wallpaper);
+        View contentVlc = v.findViewById(R.id.content_vlc);
+
+        View.OnFocusChangeListener focusListener = (view, hasFocus) -> {
+            if (hasFocus) {
+                if (contentGeneral != null) contentGeneral.setVisibility(view == menuGeneral ? View.VISIBLE : View.GONE);
+                if (contentWallpaper != null) contentWallpaper.setVisibility(view == menuWallpaper ? View.VISIBLE : View.GONE);
+                if (contentVlc != null) contentVlc.setVisibility(view == menuVlc ? View.VISIBLE : View.GONE);
+            }
+        };
+
+        View.OnClickListener clickListener = view -> {
+            if (contentGeneral != null) contentGeneral.setVisibility(view == menuGeneral ? View.VISIBLE : View.GONE);
+            if (contentWallpaper != null) contentWallpaper.setVisibility(view == menuWallpaper ? View.VISIBLE : View.GONE);
+            if (contentVlc != null) contentVlc.setVisibility(view == menuVlc ? View.VISIBLE : View.GONE);
+        };
+
+        if (menuGeneral != null) {
+            menuGeneral.setOnFocusChangeListener(focusListener);
+            menuGeneral.setOnClickListener(clickListener);
+        }
+        if (menuWallpaper != null) {
+            menuWallpaper.setOnFocusChangeListener(focusListener);
+            menuWallpaper.setOnClickListener(clickListener);
+        }
+        if (menuVlc != null) {
+            menuVlc.setOnFocusChangeListener(focusListener);
+            menuVlc.setOnClickListener(clickListener);
+        }
+
         // MX Player toggle
         Switch mxSwitch = v.findViewById(R.id.setting_use_mx_player);
         if (mxSwitch != null) {
@@ -312,7 +347,11 @@ public class SettingsFragment extends Fragment {
         });
 
         // Make sure something is focusable for TV (post so fragment is committed & laid out).
-        v.post(auto::requestFocus);
+        v.post(() -> {
+            if (v.findViewById(R.id.menu_general) != null) {
+                v.findViewById(R.id.menu_general).requestFocus();
+            }
+        });
         return v;
     }
 

@@ -18,28 +18,115 @@
         android:background="@drawable/launcher_wallpaper_overlay"
         android:importantForAccessibility="no" />
 
-    <ScrollView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@android:color/transparent"
-        android:fillViewport="true">
+        android:orientation="horizontal"
+        android:paddingTop="32dp"
+        android:paddingBottom="32dp"
+        android:paddingStart="40dp"
+        android:paddingEnd="40dp">
 
+        <!-- Left Menu Pane -->
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:id="@+id/settings_menu_pane"
+            android:layout_width="250dp"
+            android:layout_height="match_parent"
             android:orientation="vertical"
-            android:paddingStart="28dp"
-            android:paddingEnd="28dp"
-            android:paddingTop="18dp"
-            android:paddingBottom="18dp">
+            android:paddingEnd="16dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Pengaturan"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="24sp"
-        android:textStyle="bold" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Pengaturan"
+                android:textColor="@color/mql_text_primary"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="24dp"
+                android:paddingStart="14dp" />
+
+            <!-- Menu Items -->
+            <Button
+                android:id="@+id/menu_general"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:background="@drawable/settings_action_bg"
+                android:textColor="@color/mql_text_primary"
+                android:text="Umum &amp; Pemutar"
+                android:gravity="start|center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textAllCaps="false"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/menu_wallpaper"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:background="@drawable/settings_action_bg"
+                android:textColor="@color/mql_text_primary"
+                android:text="Wallpaper"
+                android:gravity="start|center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textAllCaps="false"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/menu_vlc"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:background="@drawable/settings_action_bg"
+                android:textColor="@color/mql_text_primary"
+                android:text="Lanjutan (VLC)"
+                android:gravity="start|center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textAllCaps="false"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
+        </LinearLayout>
+
+        <!-- Vertical Divider -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#33FFFFFF"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="24dp" />
+
+        <!-- Right Content Pane -->
+        <FrameLayout
+            android:id="@+id/settings_content_pane"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1">
+
+            <!-- Content: General -->
+            <ScrollView
+                android:id="@+id/content_general"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fillViewport="true"
+                android:visibility="visible">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingBottom="24dp"
+                    android:paddingEnd="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Umum &amp; Pemutar"
+                        android:textColor="@color/mql_text_primary"
+                        android:textSize="22sp"
+                        android:textStyle="bold" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -369,13 +456,29 @@
         android:focusable="true"
         android:focusableInTouchMode="true" />
 
+                </LinearLayout>
+            </ScrollView>
+
+            <!-- Content: Wallpaper -->
+            <ScrollView
+                android:id="@+id/content_wallpaper"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fillViewport="true"
+                android:visibility="gone">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingBottom="24dp"
+                    android:paddingEnd="16dp">
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
         android:text="Launcher Wallpaper"
         android:textColor="@color/mql_text_primary"
-        android:textSize="18sp"
+        android:textSize="22sp"
         android:textStyle="bold" />
 
     <TextView
@@ -423,10 +526,35 @@
         android:focusable="true"
         android:focusableInTouchMode="true" />
 
+                </LinearLayout>
+            </ScrollView>
+
+            <!-- Content: VLC -->
+            <ScrollView
+                android:id="@+id/content_vlc"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fillViewport="true"
+                android:visibility="gone">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingBottom="24dp"
+                    android:paddingEnd="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Lanjutan (VLC)"
+                        android:textColor="@color/mql_text_primary"
+                        android:textSize="22sp"
+                        android:textStyle="bold" />
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="20dp"
         android:text="VLC hardware decoding"
         android:textColor="@color/mql_text_primary"
         android:textSize="16sp"
@@ -752,8 +880,10 @@
         android:focusable="true"
         android:focusableInTouchMode="true" />
 
-        </LinearLayout>
+                </LinearLayout>
+            </ScrollView>
 
-    </ScrollView>
+        </FrameLayout>
+    </LinearLayout>
 
 </FrameLayout>

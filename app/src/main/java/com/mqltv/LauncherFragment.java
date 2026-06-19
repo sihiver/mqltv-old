@@ -866,43 +866,83 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     return;
                 }
 
-                List<String> actions = new ArrayList<>();
-                if (idx > 0) actions.add("Move Left");
-                if (idx < pinned.size() - 1) actions.add("Move Right");
-                actions.add("Hapus");
+                android.app.Dialog dialog = new android.app.Dialog(getActivity(), android.R.style.Theme_Translucent_NoTitleBar);
+                dialog.setContentView(R.layout.dialog_app_actions);
 
-                CharSequence[] items = new CharSequence[actions.size()];
-                for (int i = 0; i < actions.size(); i++) items[i] = actions.get(i);
+                ImageView icon = dialog.findViewById(R.id.dialog_app_action_icon);
+                TextView title = dialog.findViewById(R.id.dialog_app_action_title);
+                View btnLeft = dialog.findViewById(R.id.btn_move_left);
+                View btnRemove = dialog.findViewById(R.id.btn_remove);
+                View btnRight = dialog.findViewById(R.id.btn_move_right);
 
-                new AlertDialog.Builder(getActivity())
-                        .setTitle(entry.label != null ? entry.label : "App")
-                        .setItems(items, (d, which) -> {
-                            String action = actions.get(which);
-                            executor.execute(() -> {
-                                List<String> list = PinnedAppsStore.load(appContext);
-                                int pos = list.indexOf(key);
-                                if (pos < 0) return;
+                if (entry.icon != null) icon.setImageDrawable(entry.icon);
+                title.setText(entry.label != null ? entry.label : "App");
 
-                                if ("Move Left".equals(action) && pos > 0) {
-                                    String tmp = list.get(pos - 1);
-                                    list.set(pos - 1, list.get(pos));
-                                    list.set(pos, tmp);
-                                    PinnedAppsStore.save(appContext, list);
-                                } else if ("Move Right".equals(action) && pos < list.size() - 1) {
-                                    String tmp = list.get(pos + 1);
-                                    list.set(pos + 1, list.get(pos));
-                                    list.set(pos, tmp);
-                                    PinnedAppsStore.save(appContext, list);
-                                } else if ("Hapus".equals(action)) {
-                                    list.remove(pos);
-                                    PinnedAppsStore.save(appContext, list);
-                                }
+                View.OnFocusChangeListener focusListener = (v, hasFocus) -> {
+                    float s = hasFocus ? 1.10f : 1.0f;
+                    float z = hasFocus ? 10f : 0f;
+                    v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(120).start();
+                };
 
+                btnLeft.setOnFocusChangeListener(focusListener);
+                btnRemove.setOnFocusChangeListener(focusListener);
+                btnRight.setOnFocusChangeListener(focusListener);
+
+                if (idx == 0) {
+                    btnLeft.setVisibility(View.GONE);
+                } else {
+                    btnLeft.setOnClickListener(v -> {
+                        executor.execute(() -> {
+                            List<String> list = PinnedAppsStore.load(appContext);
+                            int pos = list.indexOf(key);
+                            if (pos > 0) {
+                                String tmp = list.get(pos - 1);
+                                list.set(pos - 1, list.get(pos));
+                                list.set(pos, tmp);
+                                PinnedAppsStore.save(appContext, list);
                                 mainHandler.post(() -> loadLauncherApps(appContext));
-                            });
-                        })
-                        .setNegativeButton("Batal", (d, w) -> d.dismiss())
-                        .show();
+                            }
+                        });
+                        dialog.dismiss();
+                    });
+                }
+
+                if (idx == pinned.size() - 1) {
+                    btnRight.setVisibility(View.GONE);
+                } else {
+                    btnRight.setOnClickListener(v -> {
+                        executor.execute(() -> {
+                            List<String> list = PinnedAppsStore.load(appContext);
+                            int pos = list.indexOf(key);
+                            if (pos >= 0 && pos < list.size() - 1) {
+                                String tmp = list.get(pos + 1);
+                                list.set(pos + 1, list.get(pos));
+                                list.set(pos, tmp);
+                                PinnedAppsStore.save(appContext, list);
+                                mainHandler.post(() -> loadLauncherApps(appContext));
+                            }
+                        });
+                        dialog.dismiss();
+                    });
+                }
+
+                btnRemove.setOnClickListener(v -> {
+                    executor.execute(() -> {
+                        List<String> list = PinnedAppsStore.load(appContext);
+                        int pos = list.indexOf(key);
+                        if (pos >= 0) {
+                            list.remove(pos);
+                            PinnedAppsStore.save(appContext, list);
+                            mainHandler.post(() -> loadLauncherApps(appContext));
+                        }
+                    });
+                    dialog.dismiss();
+                });
+
+                // Set focus back to default (remove gets focus first since it's the main action)
+                btnRemove.requestFocus();
+
+                dialog.show();
             });
         });
     }

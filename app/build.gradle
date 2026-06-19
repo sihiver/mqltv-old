@@ -12,6 +12,27 @@ android {
     namespace 'com.mqltv'
     compileSdk 34
 
+    // Membaca version.properties untuk auto-update version name (Build Number)
+    def versionPropsFile = file('version.properties')
+    def versionProps = new Properties()
+    if (versionPropsFile.canRead()) {
+        versionProps.load(new FileInputStream(versionPropsFile))
+    } else {
+        versionProps['BUILD_NUMBER'] = '1'
+        versionProps.store(versionPropsFile.newWriter(), null)
+    }
+
+    def runTasks = gradle.startParameter.taskNames
+    // Naikkan angka versi HANYA ketika melakukan Build Production (Release)
+    def isProductionBuild = runTasks.any { it.contains("Release") }
+    def currentBuildNumber = versionProps['BUILD_NUMBER'].toInteger()
+    
+    if (isProductionBuild) {
+        currentBuildNumber++
+        versionProps['BUILD_NUMBER'] = currentBuildNumber.toString()
+        versionProps.store(versionPropsFile.newWriter(), null)
+    }
+
     // APK base name
     setProperty("archivesBaseName", "MQLTV")
 
@@ -19,8 +40,12 @@ android {
         applicationId 'com.mqltv'
         minSdk 17
         targetSdk 34
+        
+        // Version Code HARUS DIUBAH SECARA MANUAL di bawah ini
         versionCode 1
-        versionName "1.0"
+        
+        // Version Name otomatis menambahkan Build Number di belakangnya
+        versionName "1.0." + currentBuildNumber
 
         multiDexEnabled true
 

@@ -352,6 +352,17 @@ public class SettingsFragment extends Fragment {
                 v.findViewById(R.id.menu_general).requestFocus();
             }
         });
+
+        // Set version text
+        try {
+            android.content.pm.PackageInfo pInfo = appContext.getPackageManager().getPackageInfo(appContext.getPackageName(), 0);
+            TextView tvVersion = v.findViewById(R.id.tv_app_version);
+            if (tvVersion != null) {
+                tvVersion.setText("Versi MQLTV: " + pInfo.versionName);
+            }
+        } catch (Exception ignored) {
+        }
+
         return v;
     }
 

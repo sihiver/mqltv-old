@@ -246,14 +246,14 @@ public class AppUpdater {
         layout.setPadding(pad, pad, pad, pad);
 
         TextView tvTitle = new TextView(activity);
-        tvTitle.setText("Izin Diperlukan");
+        tvTitle.setText("Peringatan Keamanan");
         tvTitle.setTextSize(18f);
         tvTitle.setTypeface(null, android.graphics.Typeface.BOLD);
         tvTitle.setTextColor(0xFFFFFFFF);
         layout.addView(tvTitle);
 
         TextView tvMsg = new TextView(activity);
-        tvMsg.setText("Pembaruan membutuhkan izin \"Sumber Tidak Dikenal\".\n\n1. Tekan \"Buka Setelan\"\n2. Cari menu \"Keamanan & Batasan\" atau \"Instal aplikasi yang tidak diketahui\" di bagian bawah\n3. Aktifkan izin untuk MQLTV\n4. Kembali ke sini dan tekan Update lagi.");
+        tvMsg.setText("Demi keamanan, TV Anda saat ini tidak diizinkan menginstal aplikasi yang tidak dikenal dari sumber ini.");
         tvMsg.setTextSize(14f);
         tvMsg.setTextColor(0xFFCCCCCC);
         tvMsg.setPadding(0, pad / 2, 0, pad);
@@ -283,48 +283,15 @@ public class AppUpdater {
         int flags = Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP;
         java.util.List<Intent> intents = new java.util.ArrayList<>();
 
-        // Strategi 1: ACTION_APPLICATION_DETAILS_SETTINGS (Paling akurat & cuma 1)
-        // Intent ini langsung membuka "Info Aplikasi" spesifik untuk MQLTV.
-        // Di sini TIDAK AKAN MUNCUL 2 PILIHAN. Pengguna tinggal gulir ke bawah ke "Sumber tidak dikenal".
-        Intent appInfo = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-        appInfo.setData(Uri.parse("package:" + activity.getPackageName()));
-        intents.add(appInfo);
-
-        // Strategi 2: ACTION_APPLICATION_SETTINGS khusus untuk Android TV Settings
+        // Strategi Utama: Pilihan langsung dari user (Hanya membuka Pengaturan Aplikasi TV)
         Intent tvApps = new Intent(android.provider.Settings.ACTION_APPLICATION_SETTINGS);
         tvApps.setPackage("com.android.tv.settings");
         intents.add(tvApps);
 
-        // Strategi 2: MANAGE_SPECIAL_APP_ACCESS (Akses Aplikasi Khusus) menggunakan literal string
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Intent i = new Intent("android.settings.MANAGE_SPECIAL_APP_ACCESS");
-            intents.add(i);
-        }
-
-        // Strategi 3: Android TV Specific (Security)
-        Intent tv2 = new Intent();
-        tv2.setClassName("com.android.tv.settings", "com.android.tv.settings.security.SecurityActivity");
-        intents.add(tv2);
-
-        // Strategi 4: Standar Security Settings
+        // Fallback cadangan
+        intents.add(new Intent(android.provider.Settings.ACTION_APPLICATION_SETTINGS));
         intents.add(new Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS));
-
-        // Strategi 5: Standar General Settings
         intents.add(new Intent(android.provider.Settings.ACTION_SETTINGS));
-
-        // Strategi 6: ACTION_MANAGE_UNKNOWN_APP_SOURCES (dengan package)
-        // Ditaruh PALING BAWAH karena OS Android TV sering menelan intent ini tanpa exception
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Intent i = new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
-            i.setData(Uri.parse("package:" + activity.getPackageName()));
-            intents.add(i);
-        }
-
-        // Strategi 7: ACTION_MANAGE_UNKNOWN_APP_SOURCES (tanpa package)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Intent i = new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
-            intents.add(i);
-        }
 
         for (int j = 0; j < intents.size(); j++) {
             try {

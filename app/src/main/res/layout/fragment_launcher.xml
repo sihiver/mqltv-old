@@ -107,6 +107,8 @@
         android:background="@drawable/launcher_search_bg"
         android:focusable="true"
         android:focusableInTouchMode="true"
+        android:nextFocusRight="@+id/launcher_settings"
+        android:nextFocusDown="@+id/launcher_cards"
         android:visibility="gone"
         android:importantForAccessibility="no"
         android:paddingStart="16dp"
@@ -192,7 +194,8 @@
             android:clickable="true"
             android:contentDescription="Settings"
             android:nextFocusDown="@+id/launcher_cards"
-            android:nextFocusLeft="@+id/launcher_profile">
+            android:nextFocusLeft="@+id/launcher_search"
+            android:nextFocusRight="@+id/launcher_profile">
 
             <ImageView
                 android:id="@+id/launcher_settings_icon"
@@ -228,7 +231,7 @@
             android:clickable="true"
             android:contentDescription="Profile"
             android:nextFocusDown="@+id/launcher_cards"
-            android:nextFocusRight="@id/launcher_settings">
+            android:nextFocusLeft="@+id/launcher_settings">
 
             <TextView
                 android:id="@+id/launcher_profile_letter"

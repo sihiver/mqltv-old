@@ -5,9 +5,12 @@ import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.BroadcastReceiver;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import androidx.core.app.NotificationManagerCompat;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
@@ -50,6 +53,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private static final int APPS_ROW_POSITION = 4;
     private static final int RECENT_ROW_POSITION = 5;
     private static final int NATIVE_SETTINGS_BUTTON_POSITION = 6;
+    private static final int NOTIFICATIONS_BUTTON_POSITION = 7;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -59,7 +63,30 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private View searchButton;
     private View settingsButton;
     private View nativeSettingsButton;
+    private View notificationsButton;
+    private TextView notificationsBadge;
     private View profileButton;
+
+    private final BroadcastReceiver notificationReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (MqlNotificationListenerService.ACTION_NOTIFICATION_COUNT_CHANGED.equals(intent.getAction())) {
+                int count = intent.getIntExtra(MqlNotificationListenerService.EXTRA_COUNT, 0);
+                updateNotificationBadge(count);
+            }
+        }
+    };
+
+    private void updateNotificationBadge(int count) {
+        if (notificationsBadge != null) {
+            if (count > 0) {
+                notificationsBadge.setVisibility(View.VISIBLE);
+                notificationsBadge.setText(String.valueOf(count));
+            } else {
+                notificationsBadge.setVisibility(View.GONE);
+            }
+        }
+    }
     private int lastSelectedCardPosition = LIVE_TV_CARD_POSITION;
     private int lastSelectedAppIndex = 0;
 
@@ -212,6 +239,51 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             });
         }
 
+        notificationsButton = v.findViewById(R.id.launcher_notifications);
+        notificationsBadge = v.findViewById(R.id.launcher_notifications_badge);
+        if (notificationsButton != null) notificationsButton.setOnClickListener(view -> {
+            syncHomeFocusState(NOTIFICATIONS_BUTTON_POSITION);
+            boolean isNotificationAccessGranted = NotificationManagerCompat.getEnabledListenerPackages(appContext).contains(appContext.getPackageName());
+            if (!isNotificationAccessGranted) {
+                Toast.makeText(appContext, "Mohon izinkan Akses Notifikasi untuk MQLTV", Toast.LENGTH_LONG).show();
+                Intent intent = new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS");
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                try { appContext.startActivity(intent); } catch (Exception e) { e.printStackTrace(); }
+            } else {
+                try {
+                    @SuppressLint("WrongConstant") Object sbm = appContext.getSystemService("statusbar");
+                    Class<?> statusbarManager = Class.forName("android.app.StatusBarManager");
+                    java.lang.reflect.Method expand = statusbarManager.getMethod("expandNotificationsPanel");
+                    expand.invoke(sbm);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    boolean success = false;
+                    String[] tvIntents = {
+                        "com.android.tv.NOTIFICATIONS",
+                        "com.google.android.tvlauncher.action.NOTIFICATIONS",
+                        "android.settings.NOTIFICATION_SETTINGS"
+                    };
+                    for (String action : tvIntents) {
+                        try {
+                            Intent intent = new Intent(action);
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            appContext.startActivity(intent);
+                            success = true;
+                            break;
+                        } catch (Exception ignored) {}
+                    }
+                    if (!success) {
+                        Toast.makeText(appContext, "TV Anda tidak memiliki panel notifikasi.", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        });
+        if (notificationsButton != null) {
+            notificationsButton.setOnFocusChangeListener((view, hasFocus) -> {
+                if (hasFocus) syncHomeFocusState(NOTIFICATIONS_BUTTON_POSITION);
+            });
+        }
+
         profileButton = v.findViewById(R.id.launcher_profile);
         TextView profileLetter = v.findViewById(R.id.launcher_profile_letter);
         if (profileLetter != null) {
@@ -358,6 +430,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     @Override
     public void onResume() {
         super.onResume();
+        if (getContext() != null) {
+            android.content.IntentFilter filter = new android.content.IntentFilter(MqlNotificationListenerService.ACTION_NOTIFICATION_COUNT_CHANGED);
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                getContext().registerReceiver(notificationReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                getContext().registerReceiver(notificationReceiver, filter);
+            }
+        }
         if (adapter != null) adapter.setHostActive(true);
         if (getContext() != null) {
             loadLauncherApps(getContext().getApplicationContext());
@@ -385,6 +465,15 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                         nativeSettingsButton.setFocusable(true);
                         nativeSettingsButton.setFocusableInTouchMode(true);
                         nativeSettingsButton.requestFocus();
+                    });
+                }
+            } else if (lastSelectedCardPosition == NOTIFICATIONS_BUTTON_POSITION) {
+                if (notificationsButton != null) {
+                    mainHandler.post(() -> {
+                        setHeaderButtonsFocusable(true);
+                        notificationsButton.setFocusable(true);
+                        notificationsButton.setFocusableInTouchMode(true);
+                        notificationsButton.requestFocus();
                     });
                 }
             } else if (lastSelectedCardPosition == PROFILE_BUTTON_POSITION) {
@@ -477,6 +566,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     @Override
     public void onPause() {
         syncFocusFromCurrentView();
+        if (getContext() != null) {
+            try {
+                getContext().unregisterReceiver(notificationReceiver);
+            } catch (Exception e) { e.printStackTrace(); }
+        }
         super.onPause();
         if (adapter != null) adapter.setHostActive(false);
     }
@@ -605,6 +699,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             nativeSettingsButton.setFocusable(focusable);
             nativeSettingsButton.setFocusableInTouchMode(focusable);
         }
+        if (notificationsButton != null) {
+            notificationsButton.setFocusable(focusable);
+            notificationsButton.setFocusableInTouchMode(focusable);
+        }
         if (profileButton != null) {
             profileButton.setFocusable(focusable);
             profileButton.setFocusableInTouchMode(focusable);
@@ -612,7 +710,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     }
 
     private void lockFocusForRestoration(int targetRowPosition) {
-        setHeaderButtonsFocusable(targetRowPosition == SETTINGS_BUTTON_POSITION || targetRowPosition == NATIVE_SETTINGS_BUTTON_POSITION || targetRowPosition == PROFILE_BUTTON_POSITION);
+        setHeaderButtonsFocusable(targetRowPosition == SETTINGS_BUTTON_POSITION || targetRowPosition == NATIVE_SETTINGS_BUTTON_POSITION || targetRowPosition == NOTIFICATIONS_BUTTON_POSITION || targetRowPosition == PROFILE_BUTTON_POSITION);
         if (cardsList != null) {
             cardsList.setDescendantFocusability(targetRowPosition == LIVE_TV_CARD_POSITION || targetRowPosition == RADIO_CARD_POSITION ? ViewGroup.FOCUS_AFTER_DESCENDANTS : ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         }
@@ -668,6 +766,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         }
         if (focused == nativeSettingsButton) {
             syncHomeFocusState(NATIVE_SETTINGS_BUTTON_POSITION);
+            return;
+        }
+        if (focused == notificationsButton) {
+            syncHomeFocusState(NOTIFICATIONS_BUTTON_POSITION);
             return;
         }
         if (focused == profileButton) {

@@ -1,144 +1,185 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:background="@android:color/black">
+    android:background="@drawable/account_page_bg">
 
+    <!-- Centered Card -->
     <LinearLayout
-        android:layout_width="match_parent"
+        android:layout_width="500dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:background="@drawable/account_card_bg"
+        android:padding="32dp"
+        android:elevation="8dp">
 
-        <FrameLayout
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:background="@drawable/launcher_icon_bg"
-            android:padding="0dp">
-
-            <TextView
-                android:id="@+id/account_profile_letter"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:text="?"
-                android:textStyle="bold"
-                android:textSize="22sp"
-                android:textColor="@color/mql_text_primary" />
-        </FrameLayout>
-
+        <!-- Header: Avatar & Info -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:orientation="vertical"
-            android:paddingStart="16dp">
+            android:gravity="center_horizontal">
+
+            <FrameLayout
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:background="@drawable/account_avatar_bg"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:id="@+id/account_profile_letter"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="?"
+                    android:textStyle="bold"
+                    android:textSize="36sp"
+                    android:textColor="#FFFFFF" />
+            </FrameLayout>
 
             <TextView
                 android:id="@+id/account_name"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="-"
-                android:textSize="20sp"
+                android:text="Nama Pengguna"
+                android:textSize="24sp"
                 android:textStyle="bold"
                 android:textColor="@color/mql_text_primary" />
 
             <TextView
                 android:id="@+id/account_username"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="-"
-                android:textSize="14sp"
+                android:layout_marginTop="4dp"
+                android:text="@username"
+                android:textSize="16sp"
                 android:textColor="@color/mql_text_secondary" />
+
+            <TextView
+                android:id="@+id/account_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="AKTIF"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:textColor="#00E676"
+                android:background="@drawable/account_badge_active" />
+
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/account_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="AKTIF"
-            android:textStyle="bold"
-            android:textSize="14sp"
-            android:padding="8dp"
-            android:textColor="@android:color/black"
-            android:background="@android:color/holo_green_light" />
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#33FFFFFF"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="24dp" />
 
-    </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="16dp" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-        <TextView
+        <!-- Info Grid -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Paket"
-            android:textSize="14sp"
-            android:textColor="@color/mql_text_secondary" />
+            android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/account_packages"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="-"
-            android:textSize="16sp"
-            android:textColor="@color/mql_text_primary" />
+            <!-- Paket -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Paket"
+                    android:textSize="14sp"
+                    android:textColor="@color/mql_text_secondary" />
+
+                <TextView
+                    android:id="@+id/account_packages"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="VIP Premium"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/mql_text_primary" />
+
+            </LinearLayout>
+
+            <!-- Expired -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="end">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Berakhir Pada"
+                    android:textSize="14sp"
+                    android:textColor="@color/mql_text_secondary" />
+
+                <TextView
+                    android:id="@+id/account_expires"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="12 Des 2024"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/mql_text_primary" />
+
+            </LinearLayout>
+
+        </LinearLayout>
 
         <View
             android:layout_width="match_parent"
-            android:layout_height="14dp" />
+            android:layout_height="32dp" />
 
-        <TextView
+        <!-- Buttons -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Expired"
-            android:textSize="14sp"
-            android:textColor="@color/mql_text_secondary" />
+            android:orientation="horizontal"
+            android:gravity="center">
 
-        <TextView
-            android:id="@+id/account_expires"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="-"
-            android:textSize="16sp"
-            android:textColor="@color/mql_text_primary" />
+            <Button
+                android:id="@+id/account_close"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/account_btn_bg"
+                android:textColor="@color/mql_text_primary"
+                android:textAllCaps="false"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:text="Tutup" />
+
+            <Button
+                android:id="@+id/account_logout"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/account_btn_bg"
+                android:textColor="#FF5252"
+                android:textAllCaps="false"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:text="Keluar (Logout)" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="end">
-
-        <Button
-            android:id="@+id/account_close"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="TUTUP" />
-
-        <View
-            android:layout_width="12dp"
-            android:layout_height="1dp" />
-
-        <Button
-            android:id="@+id/account_logout"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="LOGOUT" />
-
-    </LinearLayout>
-
-</LinearLayout>
+</FrameLayout>

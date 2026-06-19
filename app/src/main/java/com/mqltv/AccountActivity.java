@@ -101,8 +101,13 @@ public class AccountActivity extends FragmentActivity {
         boolean isExpired = SubscriptionGuard.isExpired(this);
         if (status != null) {
             status.setText(isExpired ? "EXPIRED" : "AKTIF");
-            int color = ContextCompat.getColor(this, isExpired ? android.R.color.holo_red_light : android.R.color.holo_green_light);
-            status.setBackgroundColor(color);
+            if (isExpired) {
+                status.setTextColor(android.graphics.Color.parseColor("#FF5252"));
+                status.setBackgroundResource(R.drawable.account_badge_expired);
+            } else {
+                status.setTextColor(android.graphics.Color.parseColor("#00E676"));
+                status.setBackgroundResource(R.drawable.account_badge_active);
+            }
         }
     }
 

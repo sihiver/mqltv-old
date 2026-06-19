@@ -46,8 +46,10 @@ public class AppUpdater {
         android.content.SharedPreferences prefs = activity.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         long lastChecked = prefs.getLong(KEY_LAST_CHECKED, 0);
         
-        // Lewati pengecekan jika belum 6 jam sejak pengecekan terakhir
-        if (System.currentTimeMillis() - lastChecked < COOLDOWN_MS) {
+        boolean isDebug = (activity.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        
+        // Lewati pengecekan jika belum 6 jam sejak pengecekan terakhir (kecuali saat Debug / Development)
+        if (System.currentTimeMillis() - lastChecked < COOLDOWN_MS && !isDebug) {
             return;
         }
 
@@ -231,41 +233,136 @@ public class AppUpdater {
         }).start();
     }
 
-    private static void installApk(Context context) {
+    /** Dialog peringatan izin: muncul sebelum download jika izin belum aktif */
+    private static void showPermissionDialog(Activity activity) {
+        if (activity.isFinishing() || activity.isDestroyed()) return;
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+
+        // Buat konten dialog secara programatik
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(activity);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (20 * activity.getResources().getDisplayMetrics().density);
+        layout.setPadding(pad, pad, pad, pad);
+
+        TextView tvTitle = new TextView(activity);
+        tvTitle.setText("Izin Diperlukan");
+        tvTitle.setTextSize(18f);
+        tvTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+        tvTitle.setTextColor(0xFFFFFFFF);
+        layout.addView(tvTitle);
+
+        TextView tvMsg = new TextView(activity);
+        tvMsg.setText("Pembaruan membutuhkan izin \"Sumber Tidak Dikenal\".\n\n1. Tekan \"Buka Setelan\"\n2. Cari menu \"Keamanan & Batasan\" atau \"Instal aplikasi yang tidak diketahui\" di bagian bawah\n3. Aktifkan izin untuk MQLTV\n4. Kembali ke sini dan tekan Update lagi.");
+        tvMsg.setTextSize(14f);
+        tvMsg.setTextColor(0xFFCCCCCC);
+        tvMsg.setPadding(0, pad / 2, 0, pad);
+        layout.addView(tvMsg);
+
+        Button btnSettings = new Button(activity);
+        btnSettings.setText("Buka Setelan");
+        layout.addView(btnSettings);
+
+        AlertDialog dialog = builder.setView(layout).setCancelable(true).create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        btnSettings.setOnClickListener(v2 -> {
+            dialog.dismiss();
+            openUnknownSourcesSettings(activity);
+        });
+
+        dialog.show();
+        btnSettings.requestFocus();
+    }
+
+    /** Multi-fallback untuk membuka setelan Sumber Tidak Dikenal (termasuk khusus Android TV) */
+    private static void openUnknownSourcesSettings(Activity activity) {
+        boolean success = false;
+        int flags = Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP;
+        java.util.List<Intent> intents = new java.util.ArrayList<>();
+
+        // Strategi 1: ACTION_APPLICATION_DETAILS_SETTINGS (Paling akurat & cuma 1)
+        // Intent ini langsung membuka "Info Aplikasi" spesifik untuk MQLTV.
+        // Di sini TIDAK AKAN MUNCUL 2 PILIHAN. Pengguna tinggal gulir ke bawah ke "Sumber tidak dikenal".
+        Intent appInfo = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+        appInfo.setData(Uri.parse("package:" + activity.getPackageName()));
+        intents.add(appInfo);
+
+        // Strategi 2: ACTION_APPLICATION_SETTINGS khusus untuk Android TV Settings
+        Intent tvApps = new Intent(android.provider.Settings.ACTION_APPLICATION_SETTINGS);
+        tvApps.setPackage("com.android.tv.settings");
+        intents.add(tvApps);
+
+        // Strategi 2: MANAGE_SPECIAL_APP_ACCESS (Akses Aplikasi Khusus) menggunakan literal string
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            if (!context.getPackageManager().canRequestPackageInstalls()) {
-                Toast.makeText(context, "Izinkan MQLTV di Keamanan > Sumber Tidak Dikenal, lalu klik Instal lagi.", Toast.LENGTH_LONG).show();
-                try {
-                    Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
-                    context.startActivity(intent);
-                } catch (Exception e) {
-                    try {
-                        Intent intent2 = new Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS);
-                        context.startActivity(intent2);
-                    } catch (Exception ex) {
-                        Log.e(TAG, "Gagal membuka setelan keamanan", ex);
-                    }
-                }
-                return; // Stop di sini agar user bisa mengaktifkan izin dulu.
+            Intent i = new Intent("android.settings.MANAGE_SPECIAL_APP_ACCESS");
+            intents.add(i);
+        }
+
+        // Strategi 3: Android TV Specific (Security)
+        Intent tv2 = new Intent();
+        tv2.setClassName("com.android.tv.settings", "com.android.tv.settings.security.SecurityActivity");
+        intents.add(tv2);
+
+        // Strategi 4: Standar Security Settings
+        intents.add(new Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS));
+
+        // Strategi 5: Standar General Settings
+        intents.add(new Intent(android.provider.Settings.ACTION_SETTINGS));
+
+        // Strategi 6: ACTION_MANAGE_UNKNOWN_APP_SOURCES (dengan package)
+        // Ditaruh PALING BAWAH karena OS Android TV sering menelan intent ini tanpa exception
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent i = new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+            i.setData(Uri.parse("package:" + activity.getPackageName()));
+            intents.add(i);
+        }
+
+        // Strategi 7: ACTION_MANAGE_UNKNOWN_APP_SOURCES (tanpa package)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent i = new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+            intents.add(i);
+        }
+
+        for (int j = 0; j < intents.size(); j++) {
+            try {
+                Intent i = intents.get(j);
+                i.setFlags(flags);
+                Log.d(TAG, "Mencoba fallback " + (j + 1) + ": " + i.getAction() + " / " + i.getComponent());
+                activity.startActivity(i);
+                Log.d(TAG, "Fallback " + (j + 1) + " BERHASIL diluncurkan tanpa exception!");
+                success = true;
+                break;
+            } catch (Exception e) {
+                Log.e(TAG, "Fallback " + (j + 1) + " GAGAL: " + e.getMessage());
             }
         }
 
+        if (!success) {
+            Log.e(TAG, "SEMUA FALLBACK SETELAN GAGAL DIBUKA!");
+            Toast.makeText(activity, "Perangkat menolak membuka setelan. Silakan buka setelan manual.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    public static void installApk(Activity activity) {
         try {
             Intent intent = new Intent(Intent.ACTION_VIEW);
-            File file = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "update.apk");
+            File file = new File(activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "update.apk");
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                Uri contentUri = FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", file);
+                Uri contentUri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".fileprovider", file);
                 intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             } else {
                 intent.setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive");
             }
-            
-            context.startActivity(intent);
+
+            activity.startActivity(intent);
         } catch (Exception e) {
             Log.e(TAG, "Gagal membuka instalasi: " + e.getMessage());
-            Toast.makeText(context, "Gagal membuka instalasi pembaruan.", Toast.LENGTH_LONG).show();
+            Toast.makeText(activity, "Gagal membuka instalasi pembaruan.", Toast.LENGTH_LONG).show();
         }
     }
 }

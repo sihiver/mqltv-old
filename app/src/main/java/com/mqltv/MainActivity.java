@@ -13,6 +13,8 @@ public class MainActivity extends FragmentActivity {
     private static final String KEY_APPS_INDEX = "apps_index";
     private static final String KEY_RECENT_URL = "recent_url";
     private static final String KEY_RECENT_INDEX = "recent_index";
+    
+    public static final int REQUEST_CODE_INSTALL_PERMISSION = 1001;
 
     private NavDestination currentDestination;
     private int homeFocusPosition = 0;
@@ -53,6 +55,20 @@ public class MainActivity extends FragmentActivity {
     protected void onPause() {
         persistHomeState();
         super.onPause();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_INSTALL_PERMISSION) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                if (getPackageManager().canRequestPackageInstalls()) {
+                    // Izin berhasil diaktifkan — lanjut instalasi APK
+                    AppUpdater.installApk(this);
+                }
+                // Jika masih belum diizinkan, biarkan user kembali ke dialog update & tekan "Update" lagi
+            }
+        }
     }
 
     public void navigateTo(NavDestination destination) {

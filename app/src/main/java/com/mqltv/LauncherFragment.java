@@ -49,6 +49,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private static final int PROFILE_BUTTON_POSITION = 3;
     private static final int APPS_ROW_POSITION = 4;
     private static final int RECENT_ROW_POSITION = 5;
+    private static final int NATIVE_SETTINGS_BUTTON_POSITION = 6;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -57,6 +58,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private LauncherCardAdapter adapter;
     private View searchButton;
     private View settingsButton;
+    private View nativeSettingsButton;
     private View profileButton;
     private int lastSelectedCardPosition = LIVE_TV_CARD_POSITION;
     private int lastSelectedAppIndex = 0;
@@ -194,6 +196,19 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (settingsButton != null) {
             settingsButton.setOnFocusChangeListener((view, hasFocus) -> {
                 if (hasFocus) syncHomeFocusState(SETTINGS_BUTTON_POSITION);
+            });
+        }
+
+        nativeSettingsButton = v.findViewById(R.id.launcher_native_settings);
+        if (nativeSettingsButton != null) nativeSettingsButton.setOnClickListener(view -> {
+            syncHomeFocusState(NATIVE_SETTINGS_BUTTON_POSITION);
+            Intent intent = new Intent(android.provider.Settings.ACTION_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            appContext.startActivity(intent);
+        });
+        if (nativeSettingsButton != null) {
+            nativeSettingsButton.setOnFocusChangeListener((view, hasFocus) -> {
+                if (hasFocus) syncHomeFocusState(NATIVE_SETTINGS_BUTTON_POSITION);
             });
         }
 
@@ -361,6 +376,15 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                         settingsButton.setFocusable(true);
                         settingsButton.setFocusableInTouchMode(true);
                         settingsButton.requestFocus();
+                    });
+                }
+            } else if (lastSelectedCardPosition == NATIVE_SETTINGS_BUTTON_POSITION) {
+                if (nativeSettingsButton != null) {
+                    mainHandler.post(() -> {
+                        setHeaderButtonsFocusable(true);
+                        nativeSettingsButton.setFocusable(true);
+                        nativeSettingsButton.setFocusableInTouchMode(true);
+                        nativeSettingsButton.requestFocus();
                     });
                 }
             } else if (lastSelectedCardPosition == PROFILE_BUTTON_POSITION) {
@@ -577,6 +601,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             settingsButton.setFocusable(focusable);
             settingsButton.setFocusableInTouchMode(focusable);
         }
+        if (nativeSettingsButton != null) {
+            nativeSettingsButton.setFocusable(focusable);
+            nativeSettingsButton.setFocusableInTouchMode(focusable);
+        }
         if (profileButton != null) {
             profileButton.setFocusable(focusable);
             profileButton.setFocusableInTouchMode(focusable);
@@ -584,7 +612,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     }
 
     private void lockFocusForRestoration(int targetRowPosition) {
-        setHeaderButtonsFocusable(targetRowPosition == SETTINGS_BUTTON_POSITION || targetRowPosition == PROFILE_BUTTON_POSITION);
+        setHeaderButtonsFocusable(targetRowPosition == SETTINGS_BUTTON_POSITION || targetRowPosition == NATIVE_SETTINGS_BUTTON_POSITION || targetRowPosition == PROFILE_BUTTON_POSITION);
         if (cardsList != null) {
             cardsList.setDescendantFocusability(targetRowPosition == LIVE_TV_CARD_POSITION || targetRowPosition == RADIO_CARD_POSITION ? ViewGroup.FOCUS_AFTER_DESCENDANTS : ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         }
@@ -636,6 +664,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
         if (focused == settingsButton) {
             syncHomeFocusState(SETTINGS_BUTTON_POSITION);
+            return;
+        }
+        if (focused == nativeSettingsButton) {
+            syncHomeFocusState(NATIVE_SETTINGS_BUTTON_POSITION);
             return;
         }
         if (focused == profileButton) {

@@ -176,7 +176,9 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             // Enable search bar functionality
             searchButton.setVisibility(View.VISIBLE);
             searchButton.setOnClickListener(v1 -> {
-                Toast.makeText(appContext, "Fitur Pencarian Segera Hadir", Toast.LENGTH_SHORT).show();
+                Intent i = new Intent(appContext, SearchActivity.class);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                appContext.startActivity(i);
             });
         }
 

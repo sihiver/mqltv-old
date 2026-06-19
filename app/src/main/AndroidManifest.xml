@@ -77,6 +77,11 @@
             android:theme="@style/Theme.MQLTV"
             android:exported="false" />
 
+        <activity
+            android:name=".SearchActivity"
+            android:theme="@style/Theme.MQLTV"
+            android:exported="false" />
+
     </application>
 
 </manifest>

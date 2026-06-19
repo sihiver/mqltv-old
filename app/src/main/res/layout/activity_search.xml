@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/account_page_bg"
+    android:orientation="vertical"
+    android:clipChildren="false"
+    android:padding="24dp">
+
+    <!-- Header Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/account_card_bg"
+        android:padding="16dp"
+        android:layout_marginBottom="24dp">
+
+        <ImageView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@android:drawable/ic_menu_search"
+            android:tint="#FFFFFF"
+            android:contentDescription="Search Icon" />
+
+        <EditText
+            android:id="@+id/search_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:background="@null"
+            android:hint="Cari Saluran atau Film..."
+            android:textColorHint="#88FFFFFF"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:singleLine="true"
+            android:imeOptions="actionSearch"
+            android:inputType="textNoSuggestions"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+    </LinearLayout>
+
+    <!-- Empty State -->
+    <TextView
+        android:id="@+id/search_empty_state"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:text="Ketik sesuatu untuk memulai pencarian."
+        android:textColor="#88FFFFFF"
+        android:textSize="18sp"
+        android:visibility="visible" />
+
+    <!-- Results Grid -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/search_results_list"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="center_horizontal"
+        android:paddingTop="16dp"
+        android:paddingBottom="48dp"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:visibility="gone" />
+
+</LinearLayout>

@@ -188,18 +188,26 @@ public final class LauncherWallpaper {
         }
 
         // 2) Auto Bing wallpaper (cached daily). Never do network on main thread.
-        // In auto mode (src != custom), try Bing first so auto-update actually changes
-        // even if a legacy custom wallpaper file exists.
         try {
-            boolean mainThread = Looper.getMainLooper() == Looper.myLooper();
-            if (!mainThread) {
-                ensureBingUpToDate(context);
-            }
-
             File f = getBingFile(context);
             if (f.exists() && f.length() > 0) {
+                // Return cached file immediately, but check for updates in background
+                boolean mainThread = Looper.getMainLooper() == Looper.myLooper();
+                if (!mainThread) {
+                    new Thread(() -> ensureBingUpToDate(context)).start();
+                }
                 try (FileInputStream fis = new FileInputStream(f)) {
                     return decodeScaled(context, new BufferedInputStream(fis));
+                }
+            } else {
+                boolean mainThread = Looper.getMainLooper() == Looper.myLooper();
+                if (!mainThread) {
+                    ensureBingUpToDate(context);
+                }
+                if (f.exists() && f.length() > 0) {
+                    try (FileInputStream fis = new FileInputStream(f)) {
+                        return decodeScaled(context, new BufferedInputStream(fis));
+                    }
                 }
             }
         } catch (Exception ignored) {

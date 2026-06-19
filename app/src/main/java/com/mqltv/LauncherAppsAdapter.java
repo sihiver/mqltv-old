@@ -39,8 +39,26 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
 
     @SuppressLint("NotifyDataSetChanged")
     public void submit(List<LauncherAppEntry> list) {
+        if (list == null) list = new ArrayList<>();
+        
+        // Prevent flicker and focus loss if the content is exactly the same
+        boolean same = items.size() == list.size();
+        if (same) {
+            for (int i = 0; i < items.size(); i++) {
+                LauncherAppEntry oldItem = items.get(i);
+                LauncherAppEntry newItem = list.get(i);
+                String oldLabel = oldItem != null ? oldItem.label : "";
+                String newLabel = newItem != null ? newItem.label : "";
+                if (!oldLabel.equals(newLabel)) {
+                    same = false;
+                    break;
+                }
+            }
+        }
+        if (same) return;
+
         items.clear();
-        if (list != null) items.addAll(list);
+        items.addAll(list);
         notifyDataSetChanged();
     }
 

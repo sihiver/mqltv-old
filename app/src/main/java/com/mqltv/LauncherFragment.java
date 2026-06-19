@@ -91,12 +91,15 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private final Runnable headerTicker = new Runnable() {
         @Override
         public void run() {
-            if (getContext() != null) {
-                Context appContext = getContext().getApplicationContext();
-                updateHeaderTime();
-                updateNetworkIcon(appContext);
+            try {
+                if (getContext() != null) {
+                    Context appContext = getContext().getApplicationContext();
+                    updateHeaderTime();
+                    updateNetworkIcon(appContext);
+                }
+            } finally {
+                mainHandler.postDelayed(this, 10_000);
             }
-            mainHandler.postDelayed(this, 10_000);
         }
     };
 
@@ -136,9 +139,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 }
             } else {
                 try {
-                    // Avoid showing a temporary fallback image; fade in when wallpaper is ready.
-                    wallpaper.setImageDrawable(null);
-                    wallpaper.setAlpha(0f);
+                    // Avoid showing a temporary fallback image immediately to prevent blackscreen.
+                    // Just leave whatever was there (transparent if new, or previous image).
                 } catch (Exception ignored) {
                 }
             }
@@ -522,10 +524,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 cards.add(new LauncherCard("Radios", "+" + finalRadioCount + " Stations", R.drawable.internet_radio_icon, NavDestination.SHOWS));
                 adapter.submit(cards);
 
-                // After async card refresh, restore card focus to prevent fallback to header buttons.
+                // After async card refresh, restore card focus.
                 if (lastSelectedCardPosition == LIVE_TV_CARD_POSITION || lastSelectedCardPosition == RADIO_CARD_POSITION) {
-                    setHeaderButtonsFocusable(false);
-                    requestFocusToCard(lastSelectedCardPosition);
+                    if (cardsList != null && !cardsList.hasFocus() && (getView() == null || getView().findFocus() == null || getView().findFocus().getParent() == cardsList)) {
+                        requestFocusToCard(lastSelectedCardPosition);
+                    }
                 }
             });
         });
@@ -724,9 +727,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             mainHandler.post(() -> {
                 if (appsAdapter != null) appsAdapter.submit(row);
                 // Jika terakhir user berada di baris Apps, pastikan fokus dikembalikan
-                // setelah data aplikasi selesai dimuat (khususnya penting di Android 4.x).
                 if (lastSelectedCardPosition == APPS_ROW_POSITION) {
-                    requestFocusToApp(lastSelectedAppIndex);
+                    if (appsList != null && !appsList.hasFocus() && (getView() == null || getView().findFocus() == null || getView().findFocus().getParent() == appsList)) {
+                        requestFocusToApp(lastSelectedAppIndex);
+                    }
                 }
             });
         });
@@ -751,7 +755,9 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
                 // If we are returning to the Recent row, re-apply focus after data refresh.
                 if (has && lastSelectedCardPosition == RECENT_ROW_POSITION) {
-                    requestFocusToRecent(lastSelectedRecentUrl, lastSelectedRecentIndex);
+                    if (recentList != null && !recentList.hasFocus() && (getView() == null || getView().findFocus() == null || getView().findFocus().getParent() == recentList)) {
+                        requestFocusToRecent(lastSelectedRecentUrl, lastSelectedRecentIndex);
+                    }
                 }
             });
         });

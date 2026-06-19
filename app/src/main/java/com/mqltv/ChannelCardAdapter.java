@@ -65,8 +65,24 @@ public class ChannelCardAdapter extends RecyclerView.Adapter<ChannelCardAdapter.
 
     @SuppressLint("NotifyDataSetChanged")
     public void submit(List<Channel> channels) {
+        if (channels == null) channels = new ArrayList<>();
+        
+        // Prevent flicker and focus loss if the content is exactly the same
+        boolean same = items.size() == channels.size();
+        if (same) {
+            for (int i = 0; i < items.size(); i++) {
+                Channel oldItem = items.get(i);
+                Channel newItem = channels.get(i);
+                if (oldItem == null || newItem == null || !TextUtils.equals(oldItem.getUrl(), newItem.getUrl())) {
+                    same = false;
+                    break;
+                }
+            }
+        }
+        if (same) return;
+
         items.clear();
-        if (channels != null) items.addAll(channels);
+        items.addAll(channels);
         notifyDataSetChanged();
     }
 

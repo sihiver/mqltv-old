@@ -70,7 +70,18 @@ public final class LauncherWallpaper {
         return new File(context.getFilesDir(), BING_FILE_NAME);
     }
 
+    private static Bitmap sCachedBitmap;
+    private static long sCachedTime;
+
+    public static Bitmap getCachedBitmap() {
+        if (sCachedBitmap != null && System.currentTimeMillis() - sCachedTime < 3600_000) {
+            return sCachedBitmap;
+        }
+        return null;
+    }
+
     public static boolean clear(Context context) {
+        sCachedBitmap = null;
         try {
             File f = getFile(context);
             boolean ok = f != null && (!f.exists() || f.delete());
@@ -92,6 +103,7 @@ public final class LauncherWallpaper {
     }
 
     private static boolean saveToFile(Context context, InputStream input, String fileName, boolean markCustom) {
+        sCachedBitmap = null;
         if (context == null || input == null) return false;
 
         File out = new File(context.getFilesDir(), fileName);
@@ -143,7 +155,19 @@ public final class LauncherWallpaper {
 
     public static Bitmap tryLoad(Context context) {
         if (context == null) return null;
+        
+        Bitmap cached = getCachedBitmap();
+        if (cached != null) return cached;
 
+        Bitmap decoded = doLoad(context);
+        if (decoded != null) {
+            sCachedBitmap = decoded;
+            sCachedTime = System.currentTimeMillis();
+        }
+        return decoded;
+    }
+
+    private static Bitmap doLoad(Context context) {
         String src = null;
         try {
             src = getSource(context);

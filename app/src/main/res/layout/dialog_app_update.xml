@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="400dp"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:background="@drawable/dialog_app_update_bg"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <ImageView
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+            android:layout_gravity="center_horizontal"
+            android:src="@mipmap/ic_launcher_round" />
+
+        <TextView
+            android:id="@+id/tvUpdateTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Pembaruan Tersedia!"
+            android:textAlignment="center"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvUpdateVersion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Versi Baru: 1.0.1"
+            android:textAlignment="center"
+            android:textColor="#A0A0A0"
+            android:textSize="14sp" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
+            android:fadeScrollbars="false">
+
+            <TextView
+                android:id="@+id/tvUpdateNotes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#D0D0D0"
+                android:textSize="14sp"
+                android:lineSpacingExtra="4dp"
+                android:text="Catatan rilis akan muncul di sini." />
+        </ScrollView>
+        
+        <ProgressBar
+            android:id="@+id/pbUpdateProgress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:max="100"
+            android:progress="0"
+            android:visibility="gone"
+            android:progressTint="#FF6B35" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end">
+
+            <Button
+                android:id="@+id/btnUpdateLater"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:background="@drawable/dialog_action_btn_bg"
+                android:text="Nanti"
+                android:textColor="#A0A0A0"
+                android:focusable="true"
+                android:nextFocusRight="@+id/btnUpdateNow" />
+
+            <Button
+                android:id="@+id/btnUpdateNow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/dialog_action_btn_bg"
+                android:text="Update Sekarang"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:focusable="true"
+                android:nextFocusLeft="@+id/btnUpdateLater" />
+        </LinearLayout>
+</LinearLayout>

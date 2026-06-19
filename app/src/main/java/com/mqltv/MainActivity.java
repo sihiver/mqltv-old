@@ -36,12 +36,17 @@ public class MainActivity extends FragmentActivity {
                 showDestination(NavDestination.LIVE_TV);
             }
         }
+        
+        // Cek update saat aplikasi pertama kali berjalan
+        AppUpdater.checkForUpdates(this);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         AccountStatusRefresher.refreshIfDue(this);
+        // Cek update (dibatasi 1x setiap 6 jam di dalam fungsi ini)
+        AppUpdater.checkForUpdates(this);
     }
 
     @Override

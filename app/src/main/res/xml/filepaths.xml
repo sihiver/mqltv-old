@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Untuk men-share file apk hasil download dari DownloadManager yang masuk ke cache atau external files dir -->
+    <external-path name="external_files" path="." />
+    <external-files-path name="external_files_dir" path="." />
+    <cache-path name="cache" path="." />
+    <external-cache-path name="external_cache" path="." />
+    <files-path name="internal_files" path="." />
+</paths>

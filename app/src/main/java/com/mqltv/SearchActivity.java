@@ -46,7 +46,7 @@ public class SearchActivity extends FragmentActivity {
         resultsList = findViewById(R.id.search_results_list);
 
         // Setup RecyclerView
-        resultsList.setLayoutManager(new GridLayoutManager(this, 4));
+        resultsList.setLayoutManager(new GridLayoutManager(this, 5));
         resultsList.setHasFixedSize(true);
         resultsList.setItemViewCacheSize(20);
         resultsList.addItemDecoration(new RecyclerView.ItemDecoration() {

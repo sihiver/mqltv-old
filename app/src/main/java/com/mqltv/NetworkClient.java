@@ -104,17 +104,10 @@ public final class NetworkClient {
      */
     public static OkHttpClient getLogoClient(String host) {
         if (Build.VERSION.SDK_INT > 19) return getClient();
-        if (host == null) return getClient();
-
-        // Allowlist only.
-        if (host.equalsIgnoreCase("images.indihometv.com") || host.toLowerCase().endsWith(".indihometv.com")) {
-            if (UNSAFE_LOGO_CLIENT == null) {
-                UNSAFE_LOGO_CLIENT = buildUnsafeLogoClient();
-            }
-            return UNSAFE_LOGO_CLIENT;
+        if (UNSAFE_LOGO_CLIENT == null) {
+            UNSAFE_LOGO_CLIENT = buildUnsafeLogoClient();
         }
-
-        return getClient();
+        return UNSAFE_LOGO_CLIENT;
     }
 
     private static OkHttpClient buildClient() {
@@ -272,9 +265,7 @@ public final class NetworkClient {
             SSLContext sslContext = SSLContext.getInstance("TLS");
             sslContext.init(null, new TrustManager[] { trustAll }, new SecureRandom());
 
-            HostnameVerifier verifier = (String hostname, SSLSession session) ->
-                    hostname != null && (hostname.equalsIgnoreCase("images.indihometv.com")
-                            || hostname.toLowerCase().endsWith(".indihometv.com"));
+            HostnameVerifier verifier = (String hostname, SSLSession session) -> true;
 
             ConnectionSpec tls = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
                     .tlsVersions(TlsVersion.TLS_1_2, TlsVersion.TLS_1_1, TlsVersion.TLS_1_0)

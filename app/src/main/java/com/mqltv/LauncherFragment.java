@@ -1015,7 +1015,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 View.OnFocusChangeListener focusListener = (v, hasFocus) -> {
                     float s = hasFocus ? 1.10f : 1.0f;
                     float z = hasFocus ? 10f : 0f;
-                    v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(120).start();
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                        v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(120).start();
+                    } else {
+                        v.animate().scaleX(s).scaleY(s).setDuration(120).start();
+                    }
                 };
 
                 btnLeft.setOnFocusChangeListener(focusListener);

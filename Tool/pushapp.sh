@@ -4,7 +4,24 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+# Detect connected devices
+CONNECTED_DEVS=($(adb devices 2>/dev/null | awk 'NR>1 && $2=="device" {print $1}' || true))
 DEFAULT_DEV="192.168.15.193:5555"
+
+# If the default IP is not connected, but we have connected devices, default to the first connected one
+if [[ -n "${CONNECTED_DEVS[*]:-}" ]]; then
+	FOUND=0
+	for d in "${CONNECTED_DEVS[@]}"; do
+		if [[ "$d" == "$DEFAULT_DEV" ]]; then
+			FOUND=1
+			break
+		fi
+	done
+	if [[ $FOUND -eq 0 ]]; then
+		DEFAULT_DEV="${CONNECTED_DEVS[0]}"
+	fi
+fi
+
 DEV="$DEFAULT_DEV"
 MODE="app" # app | vidio
 VARIANT="" # debug | release (default depends on mode)
@@ -121,6 +138,13 @@ pick_app_apk() {
 	fi
 	if [[ -f "$ROOT_DIR/app/build/outputs/apk/debug/app-debug.apk" ]]; then
 		echo "$ROOT_DIR/app/build/outputs/apk/debug/app-debug.apk"
+		return 0
+	fi
+	# Fallback to the first MQLTV-*-debug.apk found in the build outputs
+	local fallback=""
+	fallback="$(find "$ROOT_DIR/app/build/outputs/apk/debug" -maxdepth 1 -name "MQLTV-*-debug.apk" 2>/dev/null | head -n 1 || true)"
+	if [[ -n "$fallback" && -f "$fallback" ]]; then
+		echo "$fallback"
 		return 0
 	fi
 	return 1

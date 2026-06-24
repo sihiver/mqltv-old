@@ -33,6 +33,7 @@ import androidx.media3.exoplayer.hls.HlsMediaSource;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 import androidx.recyclerview.widget.RecyclerView;
+import com.mqltv.media3.OkHttpHttpDataSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -263,7 +264,11 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
             float s = hasFocus ? 1.10f : 1.0f;
             float z = hasFocus ? 10f : 0f;
-            v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(120).start();
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(120).start();
+            } else {
+                v.animate().scaleX(s).scaleY(s).setDuration(120).start();
+            }
             v.setActivated(hasFocus);
             // Ensure stateful background updates when we drive activated.
             if (v.getBackground() != null) {
@@ -342,7 +347,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             DefaultDataSource.Factory ds = new DefaultDataSource.Factory(context, http);
             return new ProgressiveMediaSource.Factory(ds).createMediaSource(MediaItem.fromUri(uri));
         }
-        DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory().setUserAgent(userAgent);
+        OkHttpHttpDataSource.Factory http = new OkHttpHttpDataSource.Factory(NetworkClient.getClient(), userAgent);
         MediaItem item = MediaItem.fromUri(uri);
         int type = Util.inferContentType(uri);
         if (type == C.CONTENT_TYPE_HLS) {

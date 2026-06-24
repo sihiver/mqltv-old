@@ -51,9 +51,9 @@ public final class NetworkClient {
         CLIENT = buildClient();
     }
 
-    /** Media3 DefaultHttpDataSource uses HttpURLConnection; enable TLS 1.2 + modern CAs on API 19. */
+    /** Media3 DefaultHttpDataSource uses HttpURLConnection; enable TLS 1.2 + modern CAs on API 25 and below. */
     private static void installLegacyHttpTlsDefaults(Context context) {
-        if (Build.VERSION.SDK_INT > 19) return;
+        if (Build.VERSION.SDK_INT > 25) return;
         try {
             SSLContext sslContext = createLegacySslContext(context);
             if (sslContext != null) {
@@ -118,7 +118,7 @@ public final class NetworkClient {
     }
 
     private static OkHttpClient buildClient() {
-        if (Build.VERSION.SDK_INT <= 19) {
+        if (Build.VERSION.SDK_INT <= 25) {
             try {
                 Security.insertProviderAt(Conscrypt.newProvider(), 1);
             } catch (Exception ignored) {
@@ -148,7 +148,7 @@ public final class NetworkClient {
             return chain.proceed(original);
         });
 
-        if (Build.VERSION.SDK_INT <= 19) {
+        if (Build.VERSION.SDK_INT <= 25) {
             enableTls12(builder, APP_CONTEXT);
         }
 
@@ -163,14 +163,20 @@ public final class NetworkClient {
                 trustManager = getTrustManager(null, context);
             }
             if (sslContext != null && trustManager != null) {
-                builder.sslSocketFactory(new Tls12SocketFactory(sslContext.getSocketFactory()), trustManager);
+                if (Build.VERSION.SDK_INT <= 19) {
+                    builder.sslSocketFactory(new Tls12SocketFactory(sslContext.getSocketFactory()), trustManager);
+                } else {
+                    builder.sslSocketFactory(sslContext.getSocketFactory(), trustManager);
+                }
             }
 
-            ConnectionSpec tls12 = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
-                    .tlsVersions(TlsVersion.TLS_1_2, TlsVersion.TLS_1_1, TlsVersion.TLS_1_0)
-                    .build();
+            if (Build.VERSION.SDK_INT <= 19) {
+                ConnectionSpec tls12 = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
+                        .tlsVersions(TlsVersion.TLS_1_2, TlsVersion.TLS_1_1, TlsVersion.TLS_1_0)
+                        .build();
 
-            builder.connectionSpecs(Arrays.asList(tls12, ConnectionSpec.COMPATIBLE_TLS, ConnectionSpec.CLEARTEXT));
+                builder.connectionSpecs(Arrays.asList(tls12, ConnectionSpec.COMPATIBLE_TLS, ConnectionSpec.CLEARTEXT));
+            }
         } catch (Exception ignored) {
             // If TLS 1.2 setup fails, fall back to default behavior.
         }
@@ -210,7 +216,9 @@ public final class NetworkClient {
 
             int index = 0;
             index = loadExtraCaFromRaw(context, cf, ks, R.raw.digicert_indihome_ca, index);
+            index = loadExtraCaFromRaw(context, cf, ks, R.raw.digicert_global_root_g2, index);
             index = loadExtraCaFromRaw(context, cf, ks, R.raw.digicert_global_root_g3, index);
+            index = loadExtraCaFromRaw(context, cf, ks, R.raw.isrg_root_x1, index);
             Log.d(TAG, "extra CA loaded count=" + index);
 
             TrustManagerFactory tmf = provider == null

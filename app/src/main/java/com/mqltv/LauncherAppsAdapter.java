@@ -144,7 +144,11 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
             float s = hasFocus ? 1.10f : 1.0f;
             float z = hasFocus ? 10f : 0f;
-            v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(120).start();
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(120).start();
+            } else {
+                v.animate().scaleX(s).scaleY(s).setDuration(120).start();
+            }
             v.setActivated(hasFocus);
             if (v.getBackground() != null) v.getBackground().setState(v.getDrawableState());
             if (v instanceof android.widget.FrameLayout) {

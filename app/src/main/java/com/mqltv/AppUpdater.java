@@ -50,7 +50,7 @@ public class AppUpdater {
 
         String baseUrl = AuthPrefs.getBaseUrl(activity);
         if (!baseUrl.endsWith("/")) baseUrl += "/";
-        String url = baseUrl + "api/app-updates/latest";
+        String url = baseUrl + "api/app-updates/latest?appId=" + activity.getPackageName();
 
         Request request = new Request.Builder()
                 .url(url)
@@ -142,15 +142,10 @@ public class AppUpdater {
         }
 
         btnNow.setOnClickListener(v -> {
-            File file = new File(activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "update.apk");
-            if (file.exists() && file.length() > 0) {
-                installApk(activity);
-            } else {
-                btnNow.setEnabled(false);
-                btnLater.setEnabled(false);
-                pbProgress.setVisibility(View.VISIBLE);
-                startDownload(activity, apkUrl, pbProgress, dialog, btnNow, btnLater);
-            }
+            btnNow.setEnabled(false);
+            btnLater.setEnabled(false);
+            pbProgress.setVisibility(View.VISIBLE);
+            startDownload(activity, apkUrl, pbProgress, dialog, btnNow, btnLater);
         });
 
         dialog.show();
@@ -159,8 +154,15 @@ public class AppUpdater {
     }
 
     private static void startDownload(Activity activity, String apkUrl, ProgressBar pbProgress, AlertDialog dialog, Button btnNow, Button btnLater) {
+        String bypassUrl = apkUrl;
+        if (bypassUrl.contains("?")) {
+            bypassUrl += "&t=" + System.currentTimeMillis();
+        } else {
+            bypassUrl += "?t=" + System.currentTimeMillis();
+        }
+
         Request request = new Request.Builder()
-                .url(apkUrl)
+                .url(bypassUrl)
                 .build();
 
         File file = new File(activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "update.apk");

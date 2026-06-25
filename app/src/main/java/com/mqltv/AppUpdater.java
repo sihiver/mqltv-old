@@ -2,12 +2,8 @@ package com.mqltv;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.DownloadManager;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -36,7 +32,6 @@ import okhttp3.Response;
 public class AppUpdater {
 
     private static final String TAG = "AppUpdater";
-    private static long downloadId = -1;
 
     private static final String PREFS_NAME = "AppUpdaterPrefs";
     private static final String KEY_LAST_CHECKED = "last_checked_time";
@@ -164,73 +159,109 @@ public class AppUpdater {
     }
 
     private static void startDownload(Activity activity, String apkUrl, ProgressBar pbProgress, AlertDialog dialog, Button btnNow, Button btnLater) {
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(apkUrl));
-        request.setTitle("Mengunduh Pembaruan MQLTV");
-        request.setDescription("Sedang mengunduh versi terbaru...");
-        // Taruh di internal storage agar tidak perlu WRITE_EXTERNAL_STORAGE di Android >= 10
-        request.setDestinationInExternalFilesDir(activity, Environment.DIRECTORY_DOWNLOADS, "update.apk");
-
-        DownloadManager dm = (DownloadManager) activity.getSystemService(Context.DOWNLOAD_SERVICE);
-        if (dm == null) {
-            Toast.makeText(activity, "DownloadManager tidak tersedia.", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        Request request = new Request.Builder()
+                .url(apkUrl)
+                .build();
 
         File file = new File(activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "update.apk");
         if (file.exists()) {
             file.delete();
         }
 
-        downloadId = dm.enqueue(request);
+        NetworkClient.getClient().newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    Toast.makeText(activity, "Gagal mengunduh pembaruan: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    btnNow.setEnabled(true);
+                    btnLater.setEnabled(true);
+                    pbProgress.setVisibility(View.GONE);
+                });
+            }
 
-        // Pantau progress via thread
-        new Thread(() -> {
-            boolean downloading = true;
-            while (downloading) {
-                DownloadManager.Query q = new DownloadManager.Query();
-                q.setFilterById(downloadId);
-                Cursor cursor = dm.query(q);
-                if (cursor != null && cursor.moveToFirst()) {
-                    int statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
-                    int downloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR);
-                    int totalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES);
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        Toast.makeText(activity, "Gagal mengunduh pembaruan (Server error)", Toast.LENGTH_SHORT).show();
+                        btnNow.setEnabled(true);
+                        btnLater.setEnabled(true);
+                        pbProgress.setVisibility(View.GONE);
+                    });
+                    return;
+                }
 
-                    if (statusIndex >= 0 && downloadedIndex >= 0 && totalIndex >= 0) {
-                        int status = cursor.getInt(statusIndex);
-                        int bytesDownloaded = cursor.getInt(downloadedIndex);
-                        int bytesTotal = cursor.getInt(totalIndex);
+                okhttp3.ResponseBody body = response.body();
+                if (body == null) {
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        Toast.makeText(activity, "Gagal mengunduh pembaruan (Data kosong)", Toast.LENGTH_SHORT).show();
+                        btnNow.setEnabled(true);
+                        btnLater.setEnabled(true);
+                        pbProgress.setVisibility(View.GONE);
+                    });
+                    return;
+                }
 
-                        if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                            downloading = false;
-                            new Handler(Looper.getMainLooper()).post(() -> {
-                                pbProgress.setProgress(100);
-                                btnNow.setText("Instal Sekarang");
-                                btnNow.setEnabled(true);
-                                btnLater.setEnabled(true);
-                                installApk(activity);
-                            });
-                        } else if (status == DownloadManager.STATUS_FAILED) {
-                            downloading = false;
-                            new Handler(Looper.getMainLooper()).post(() -> {
-                                Toast.makeText(activity, "Gagal mengunduh pembaruan.", Toast.LENGTH_SHORT).show();
-                                btnNow.setEnabled(true);
-                                btnLater.setEnabled(true);
-                                pbProgress.setVisibility(View.GONE);
-                            });
-                        } else {
-                            if (bytesTotal > 0) {
-                                int progress = (int) ((bytesDownloaded * 100L) / bytesTotal);
+                long totalBytes = body.contentLength();
+                java.io.InputStream inputStream = null;
+                java.io.FileOutputStream outputStream = null;
+                try {
+                    inputStream = body.byteStream();
+                    outputStream = new java.io.FileOutputStream(file);
+
+                    byte[] buffer = new byte[4096];
+                    long bytesRead = 0;
+                    int read;
+                    long lastUpdateTime = 0;
+
+                    while ((read = inputStream.read(buffer)) != -1) {
+                        outputStream.write(buffer, 0, read);
+                        bytesRead += read;
+
+                        if (totalBytes > 0) {
+                            final int progress = (int) ((bytesRead * 100) / totalBytes);
+                            long now = System.currentTimeMillis();
+                            if (now - lastUpdateTime > 100 || progress == 100) {
+                                lastUpdateTime = now;
                                 new Handler(Looper.getMainLooper()).post(() -> pbProgress.setProgress(progress));
                             }
                         }
                     }
-                    cursor.close();
+                    outputStream.flush();
+
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        pbProgress.setProgress(100);
+                        btnNow.setText("Instal Sekarang");
+                        btnNow.setEnabled(true);
+                        btnLater.setEnabled(true);
+                        installApk(activity);
+                    });
+
+                } catch (IOException e) {
+                    if (file.exists()) {
+                        file.delete();
+                    }
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        Toast.makeText(activity, "Gagal menulis file: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        btnNow.setEnabled(true);
+                        btnLater.setEnabled(true);
+                        pbProgress.setVisibility(View.GONE);
+                    });
+                } finally {
+                    if (inputStream != null) {
+                        try {
+                            inputStream.close();
+                        } catch (IOException ignored) {}
+                    }
+                    if (outputStream != null) {
+                        try {
+                            outputStream.close();
+                        } catch (IOException ignored) {}
+                    }
+                    body.close();
                 }
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException ignored) {}
             }
-        }).start();
+        });
     }
 
     /** Dialog peringatan izin: muncul sebelum download jika izin belum aktif */

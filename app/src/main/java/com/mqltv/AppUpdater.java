@@ -38,13 +38,17 @@ public class AppUpdater {
     private static final long COOLDOWN_MS = 6 * 60 * 60 * 1000L; // 6 jam
 
     public static void checkForUpdates(Activity activity) {
+        checkForUpdates(activity, false);
+    }
+
+    public static void checkForUpdates(Activity activity, boolean force) {
         android.content.SharedPreferences prefs = activity.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         long lastChecked = prefs.getLong(KEY_LAST_CHECKED, 0);
         
         boolean isDebug = (activity.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
         
-        // Lewati pengecekan jika belum 6 jam sejak pengecekan terakhir (kecuali saat Debug / Development)
-        if (System.currentTimeMillis() - lastChecked < COOLDOWN_MS && !isDebug) {
+        // Lewati pengecekan jika belum 6 jam sejak pengecekan terakhir (kecuali saat Debug / Development atau dipaksa manual)
+        if (System.currentTimeMillis() - lastChecked < COOLDOWN_MS && !isDebug && !force) {
             return;
         }
 
@@ -60,16 +64,28 @@ public class AppUpdater {
             @Override
             public void onFailure(Call call, IOException e) {
                 Log.e(TAG, "Gagal mengecek update: " + e.getMessage());
+                if (force) {
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        Toast.makeText(activity, "Gagal mengecek pembaruan: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 if (!response.isSuccessful()) {
+                    if (force) {
+                        new Handler(Looper.getMainLooper()).post(() -> {
+                            Toast.makeText(activity, "Gagal mengecek pembaruan (HTTP " + response.code() + ")", Toast.LENGTH_SHORT).show();
+                        });
+                    }
                     return;
                 }
                 
-                // Simpan waktu pengecekan sukses agar cooldown 6 jam berfungsi
-                prefs.edit().putLong(KEY_LAST_CHECKED, System.currentTimeMillis()).apply();
+                // Simpan waktu pengecekan sukses agar cooldown 6 jam berfungsi (hanya jika pengecekan otomatis, jika manual jangan batasi cooldown selanjutnya)
+                if (!force) {
+                    prefs.edit().putLong(KEY_LAST_CHECKED, System.currentTimeMillis()).apply();
+                }
                 
                 try {
                     String json = response.body().string();
@@ -102,14 +118,27 @@ public class AppUpdater {
                     }
 
                     final String finalApkUrl = apkUrl;
+                    final int finalLatestVersionCode = latestVersionCode;
+                    final int finalCurrentVersionCode = currentVersionCode;
 
-                    if (latestVersionCode > currentVersionCode && !finalApkUrl.isEmpty()) {
+                    if (finalLatestVersionCode > finalCurrentVersionCode && !finalApkUrl.isEmpty()) {
                         new Handler(Looper.getMainLooper()).post(() -> {
                             showUpdateDialog(activity, latestVersionName, releaseNotes, finalApkUrl, isForceUpdate);
                         });
+                    } else {
+                        if (force) {
+                            new Handler(Looper.getMainLooper()).post(() -> {
+                                Toast.makeText(activity, "Aplikasi Anda sudah versi terbaru.", Toast.LENGTH_SHORT).show();
+                            });
+                        }
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Error parsing update json: " + e.getMessage());
+                    if (force) {
+                        new Handler(Looper.getMainLooper()).post(() -> {
+                            Toast.makeText(activity, "Gagal mengurai respon server.", Toast.LENGTH_SHORT).show();
+                        });
+                    }
                 }
             }
         });

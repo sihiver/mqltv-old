@@ -42,7 +42,7 @@ android {
         targetSdk 34
         
         // Version Code HARUS DIUBAH SECARA MANUAL di bawah ini
-        versionCode 5
+        versionCode 6
         
         // Version Name otomatis menambahkan Build Number di belakangnya
         versionName "1.0." + currentBuildNumber

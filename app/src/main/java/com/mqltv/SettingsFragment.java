@@ -363,6 +363,16 @@ public class SettingsFragment extends Fragment {
         } catch (Exception ignored) {
         }
 
+        View btnCheckUpdate = v.findViewById(R.id.btn_check_update);
+        if (btnCheckUpdate != null) {
+            btnCheckUpdate.setOnClickListener(view -> {
+                Activity act = getActivity();
+                if (act != null) {
+                    AppUpdater.checkForUpdates(act, true);
+                }
+            });
+        }
+
         return v;
     }
 

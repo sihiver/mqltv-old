@@ -91,6 +91,8 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
             if (holder.banner != null) holder.banner.setVisibility(View.GONE);
             if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.VISIBLE);
 
+            if (holder.title != null) holder.title.setTextColor(Color.WHITE);
+            if (holder.subtitle != null) holder.subtitle.setTextColor(0xFFD9E2F2);
             holder.itemView.setBackground(createTileBackground(ctx, 0xFF4D5B6A));
         } else {
             if (e.banner != null) {
@@ -101,6 +103,8 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
                 if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.GONE);
                 
                 holder.itemView.setBackground(createTileBackground(ctx, 0xFF2A2E35));
+                if (holder.title != null) holder.title.setTextColor(Color.WHITE);
+                if (holder.subtitle != null) holder.subtitle.setTextColor(0xFFD9E2F2);
             } else {
                 if (holder.banner != null) holder.banner.setVisibility(View.GONE);
                 if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.VISIBLE);
@@ -119,7 +123,15 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
                     }
                 }
 
-                holder.itemView.setBackground(createTileBackground(ctx, colorFromEntry(e)));
+                int bgColor = colorFromEntry(e);
+                holder.itemView.setBackground(createTileBackground(ctx, bgColor));
+                boolean isDark = isColorDark(bgColor);
+                if (holder.title != null) {
+                    holder.title.setTextColor(isDark ? Color.WHITE : 0xFF222222);
+                }
+                if (holder.subtitle != null) {
+                    holder.subtitle.setTextColor(isDark ? 0xFFD9E2F2 : 0xFF555555);
+                }
             }
         }
 
@@ -219,6 +231,11 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         }
         if (key == null) key = e != null ? e.label : "app";
         return colorFromString(key);
+    }
+
+    private static boolean isColorDark(int color) {
+        double darkness = 1 - (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) / 255;
+        return darkness >= 0.45;
     }
 
     private static int colorFromString(String s) {

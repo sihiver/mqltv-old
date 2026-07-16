@@ -90,6 +90,11 @@ public final class PlayerIntents {
                     
                     ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromVisionPlusObject(fakeMeta);
 
+                    if (DrmCapabilities.isDashClearKeyUnsupportedOnThisDevice(meta, streamUrl)) {
+                        MAIN_HANDLER.post(() -> Toast.makeText(context, DrmCapabilities.getDashClearKeyUnsupportedMessage(), Toast.LENGTH_LONG).show());
+                        return;
+                    }
+
                     MAIN_HANDLER.post(() -> {
                         Intent intent;
                         if (channel.getGroupTitle() != null && channel.getGroupTitle().toLowerCase().contains("radio")) {

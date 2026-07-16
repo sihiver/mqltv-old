@@ -62,6 +62,19 @@ public class PlayerActivity extends FragmentActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        String url = getIntent().getStringExtra(Constants.EXTRA_URL);
+        ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromIntent(getIntent());
+        if (DrmCapabilities.isDashClearKeyUnsupportedOnThisDevice(meta, url)) {
+            android.util.Log.w("PlayerActivity", "dash-clearkey blocked on API "
+                    + android.os.Build.VERSION.SDK_INT + " jenis="
+                    + (meta != null ? meta.getJenis() : ""));
+            Toast.makeText(this, DrmCapabilities.getDashClearKeyUnsupportedMessage(),
+                    Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_player);
 
         playerView = findViewById(R.id.player_view);
@@ -109,15 +122,6 @@ public class PlayerActivity extends FragmentActivity {
         if (url == null || url.trim().isEmpty()) return;
 
         ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromIntent(getIntent());
-        if (DrmCapabilities.isDashClearKeyUnsupportedOnThisDevice(meta, url)) {
-            android.util.Log.w("PlayerActivity", "dash-clearkey blocked on API "
-                    + android.os.Build.VERSION.SDK_INT + " jenis="
-                    + (meta != null ? meta.getJenis() : ""));
-            Toast.makeText(this, DrmCapabilities.getDashClearKeyUnsupportedMessage(),
-                    Toast.LENGTH_LONG).show();
-            finish();
-            return;
-        }
 
         int currentId = getIntent().getIntExtra(Constants.EXTRA_CHANNEL_ID, 0);
         if (channelOverlay != null) channelOverlay.setCurrentChannelId(currentId);

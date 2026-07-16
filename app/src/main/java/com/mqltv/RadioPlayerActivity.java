@@ -8,11 +8,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.app.Activity;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.common.util.UnstableApi;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.source.MediaSource;
 
 
 
@@ -73,6 +77,7 @@ public class RadioPlayerActivity extends Activity {
         }).start();
     }
 
+    @OptIn(markerClass = UnstableApi.class)
     private void initializePlayer() {
         if (url == null || url.isEmpty()) {
             Toast.makeText(this, "URL Audio tidak valid", Toast.LENGTH_SHORT).show();
@@ -82,9 +87,9 @@ public class RadioPlayerActivity extends Activity {
 
         player = new ExoPlayer.Builder(this).build();
         
-        MediaItem mediaItem = MediaItem.fromUri(url);
-
-        player.setMediaItem(mediaItem);
+        // Use VisionPlusPlayback helper to ensure OkHttpHttpDataSource (Conscrypt + TLS 1.2 + Extra CAs) is used.
+        MediaSource mediaSource = VisionPlusPlayback.buildMedia3Source(this, android.net.Uri.parse(url), null);
+        player.setMediaSource(mediaSource);
         player.prepare();
         player.setPlayWhenReady(true);
 

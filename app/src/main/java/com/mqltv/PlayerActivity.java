@@ -270,7 +270,8 @@ public class PlayerActivity extends FragmentActivity {
         } else {
             android.util.Log.w("PlayerActivity", "No Vision+ meta for url=" + url
                     + " — playlist JSON/header_iptv may be missing; re-login if needed.");
-            player.setMediaItem(MediaItem.fromUri(uri));
+            MediaSource mediaSource = VisionPlusPlayback.buildMedia3Source(this, uri, meta);
+            player.setMediaSource(mediaSource);
         }
         player.prepare();
         player.play();

@@ -57,7 +57,11 @@ public final class NetworkClient {
         try {
             SSLContext sslContext = createLegacySslContext(context);
             if (sslContext != null) {
-                HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
+                if (Build.VERSION.SDK_INT <= 19) {
+                    HttpsURLConnection.setDefaultSSLSocketFactory(new Tls12SocketFactory(sslContext.getSocketFactory()));
+                } else {
+                    HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
+                }
                 Log.d(TAG, "HttpsURLConnection TLS defaults installed (Conscrypt)");
             }
         } catch (Exception e) {
@@ -102,7 +106,7 @@ public final class NetworkClient {
      * For a few CDNs that fail TLS validation on Android 4.2/4.4 due to missing CA store,
      * we use a scoped "unsafe" client to download channel logos only.
      */
-    public static OkHttpClient getLogoClient(String host) {
+    public static OkHttpClient getLogoClient(String ignoredHost) {
         if (Build.VERSION.SDK_INT > 19) return getClient();
         if (UNSAFE_LOGO_CLIENT == null) {
             UNSAFE_LOGO_CLIENT = buildUnsafeLogoClient();
@@ -128,7 +132,7 @@ public final class NetworkClient {
             okhttp3.Request original = chain.request();
             if (APP_CONTEXT != null) {
                 String token = AuthPrefs.getAccessToken(APP_CONTEXT);
-                if (token != null && !token.trim().isEmpty()) {
+                if (!token.trim().isEmpty()) {
                     // Jangan timpa header Authorization jika request sudah memilikinya (misalnya saat request stream info dengan token tersendiri)
                     if (original.header("Authorization") == null) {
                         okhttp3.Request request = original.newBuilder()

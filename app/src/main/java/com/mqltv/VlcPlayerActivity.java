@@ -120,6 +120,7 @@ public class VlcPlayerActivity extends FragmentActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        overridePendingTransition(0, 0);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_vlc_player);
 
@@ -530,5 +531,11 @@ public class VlcPlayerActivity extends FragmentActivity {
             try { libVLC.release(); } catch (Exception ignored) {}
             libVLC = null;
         }
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
+        overridePendingTransition(0, 0);
     }
 }

@@ -99,6 +99,7 @@ public final class PlayerIntents {
                         Intent intent;
                         if (channel.getGroupTitle() != null && channel.getGroupTitle().toLowerCase().contains("radio")) {
                             intent = new Intent(context, RadioPlayerActivity.class);
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
                             intent.putExtra(Constants.EXTRA_CHANNEL_ID, channel.getId());
                             intent.putExtra(Constants.EXTRA_TITLE, channel.getTitle());
                             intent.putExtra(Constants.EXTRA_URL, streamUrl);
@@ -108,10 +109,14 @@ public final class PlayerIntents {
                             intent = createPreferredPlayIntent(context, channel.getId(), channel.getTitle(), streamUrl, meta);
                         }
 
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
                         if (!(context instanceof Activity)) {
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         }
                         context.startActivity(intent);
+                        if (context instanceof Activity) {
+                            ((Activity) context).overridePendingTransition(0, 0);
+                        }
                         if (onLaunched != null) onLaunched.run();
                     });
                 }
@@ -129,6 +134,7 @@ public final class PlayerIntents {
                                           ChannelPlaybackMeta meta) {
         Class<?> target = getTargetPlayerActivity(context, meta);
         Intent intent = new Intent(context, target);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
         intent.putExtra(Constants.EXTRA_CHANNEL_ID, id);
         intent.putExtra(Constants.EXTRA_TITLE, title);
         intent.putExtra(Constants.EXTRA_URL, url);

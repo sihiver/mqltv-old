@@ -135,6 +135,7 @@ public class NativePlayerActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        overridePendingTransition(0, 0);
         super.onCreate(savedInstanceState);
 
         if (!PlaybackAccessEnforcer.ensureAccessOrFinish(this, LoginActivity.DEST_LIVE_TV)) return;
@@ -549,5 +550,11 @@ public class NativePlayerActivity extends Activity {
         mainHandler.removeCallbacks(accessTick);
         mainHandler.removeCallbacks(watchdog);
         releasePlayer();
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
+        overridePendingTransition(0, 0);
     }
 }

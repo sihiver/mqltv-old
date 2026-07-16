@@ -35,6 +35,7 @@ public class RadioPlayerActivity extends Activity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        overridePendingTransition(0, 0);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_radio_player);
 
@@ -178,5 +179,11 @@ public class RadioPlayerActivity extends Activity {
             player = null;
         }
         visualizer.setPlaying(false);
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
+        overridePendingTransition(0, 0);
     }
 }

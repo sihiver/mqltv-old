@@ -61,6 +61,7 @@ public class PlayerActivity extends FragmentActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        overridePendingTransition(0, 0);
         super.onCreate(savedInstanceState);
 
         String url = getIntent().getStringExtra(Constants.EXTRA_URL);
@@ -355,5 +356,11 @@ public class PlayerActivity extends FragmentActivity {
         }
         trackSelector = null;
         super.onDestroy();
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
+        overridePendingTransition(0, 0);
     }
 }

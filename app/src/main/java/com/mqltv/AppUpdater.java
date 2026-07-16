@@ -37,6 +37,8 @@ public class AppUpdater {
     private static final String KEY_LAST_CHECKED = "last_checked_time";
     private static final long COOLDOWN_MS = 6 * 60 * 60 * 1000L; // 6 jam
 
+    private static AlertDialog activeDialog;
+
     public static void checkForUpdates(Activity activity) {
         checkForUpdates(activity, false);
     }
@@ -163,6 +165,7 @@ public class AppUpdater {
 
         AlertDialog dialog = builder.create();
         dialog.setCanceledOnTouchOutside(!isForceUpdate);
+        activeDialog = dialog;
 
         if (isForceUpdate) {
             btnLater.setVisibility(View.GONE);
@@ -180,6 +183,13 @@ public class AppUpdater {
         dialog.show();
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         btnNow.requestFocus();
+    }
+
+    public static void dismissDialog() {
+        if (activeDialog != null && activeDialog.isShowing()) {
+            activeDialog.dismiss();
+        }
+        activeDialog = null;
     }
 
     private static void startDownload(Activity activity, String apkUrl, ProgressBar pbProgress, AlertDialog dialog, Button btnNow, Button btnLater) {
@@ -335,6 +345,7 @@ public class AppUpdater {
             openUnknownSourcesSettings(activity);
         });
 
+        activeDialog = dialog;
         dialog.show();
         btnSettings.requestFocus();
     }
@@ -345,7 +356,14 @@ public class AppUpdater {
         int flags = Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP;
         java.util.List<Intent> intents = new java.util.ArrayList<>();
 
-        // Strategi Utama: Pilihan langsung dari user (Hanya membuka Pengaturan Aplikasi TV)
+        // Strategi Utama: Setelan khusus install aplikasi tidak dikenal untuk paket aplikasi ini (Android 8.0+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent manageAppSources = new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+            manageAppSources.setData(Uri.parse("package:" + activity.getPackageName()));
+            intents.add(manageAppSources);
+        }
+
+        // Pilihan khusus untuk Android TV (Hanya membuka Pengaturan Aplikasi TV)
         Intent tvApps = new Intent(android.provider.Settings.ACTION_APPLICATION_SETTINGS);
         tvApps.setPackage("com.android.tv.settings");
         intents.add(tvApps);
@@ -376,6 +394,12 @@ public class AppUpdater {
     }
 
     public static void installApk(Activity activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!activity.getPackageManager().canRequestPackageInstalls()) {
+                showPermissionDialog(activity);
+                return;
+            }
+        }
         try {
             Intent intent = new Intent(Intent.ACTION_VIEW);
             File file = new File(activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "update.apk");

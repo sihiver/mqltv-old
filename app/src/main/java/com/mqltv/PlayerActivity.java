@@ -293,6 +293,9 @@ public class PlayerActivity extends FragmentActivity {
     @Override
     protected void onPause() {
         accessHandler.removeCallbacks(accessTick);
+        if (player != null) {
+            player.pause();
+        }
         super.onPause();
     }
 

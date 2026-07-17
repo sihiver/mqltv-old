@@ -164,6 +164,14 @@ public class RadioPlayerActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        if (player != null) {
+            player.pause();
+        }
+        super.onPause();
+    }
+
+    @Override
     protected void onStop() {
         super.onStop();
         if (player != null) {

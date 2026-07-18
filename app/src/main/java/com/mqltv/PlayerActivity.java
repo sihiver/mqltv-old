@@ -177,6 +177,13 @@ public class PlayerActivity extends FragmentActivity {
 
         channelMixerAudioProcessor = new ChannelMixerAudioProcessor();
         channelMixerAudioProcessor.setMode(PlaybackPrefs.getAudioChannelMode(this));
+        channelMixerAudioProcessor.setListener(suggestedMode -> {
+            channelMixerAudioProcessor.setMode(suggestedMode);
+            PlaybackPrefs.setAudioChannelMode(PlayerActivity.this, suggestedMode);
+            Toast.makeText(PlayerActivity.this,
+                    "Mendeteksi Dual Audio: Mengaktifkan Bahasa Indonesia otomatis",
+                    Toast.LENGTH_LONG).show();
+        });
 
         DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this) {
             @Override

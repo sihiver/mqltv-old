@@ -230,6 +230,9 @@ public class VlcPlayerActivity extends FragmentActivity {
             options.add("--avcodec-fast");
             options.add("--avcodec-skip-frame=nonref");
             options.add("--avcodec-skip-idct=nonref");
+            // Relax clock jitter so VLC doesn't drop frames aggressively on slow CPUs.
+            options.add("--clock-jitter=0");
+            options.add("--clock-synchro=0");
         }
         int hwMode = PlaybackPrefs.getVlcHwDecoderMode(this);
         if (DeviceQuirks.isHuaweiEc6108v9() && hwMode == PlaybackPrefs.VLC_HW_PLUS) {
@@ -252,7 +255,9 @@ public class VlcPlayerActivity extends FragmentActivity {
             Log.w(TAG, "VLC vout android_surface not available; forcing android_display");
         }
         options.add("--vout=" + voutName);
-        options.add("--android-display-chroma=RV16");
+        // RV16 on legacy SoCs causes frozen video (hardware can't render it to SurfaceView).
+        // Use RV32 for Android 4.4 to ensure correct pixel format rendering.
+        options.add(legacySdk ? "--android-display-chroma=RV32" : "--android-display-chroma=RV16");
 
         if (deinterlace) {
             options.add("--deinterlace=1");
@@ -342,18 +347,28 @@ public class VlcPlayerActivity extends FragmentActivity {
                 media.addOption(":avcodec-fast");
                 media.addOption(":avcodec-skip-frame=nonref");
                 media.addOption(":avcodec-skip-idct=nonref");
+                media.addOption(":clock-jitter=0");
             }
-            media.addOption(":android-display-chroma=RV16");
+            media.addOption(":android-display-chroma=" + (legacySdk ? "RV32" : "RV16"));
             if (deinterlace) {
                 media.addOption(":deinterlace=1");
                 media.addOption(":deinterlace-mode=yadif");
             } else {
                 media.addOption(":deinterlace=0");
             }
-            boolean forceHw = hwModeFinal == PlaybackPrefs.VLC_HW_PLUS;
-            media.setHWDecoderEnabled(useHw, forceHw);
-            if (forceHwOnly && useHw) {
-                media.addOption(":codec=" + hwCodecList);
+            // Android 4.4: Direct rendering (mediacodec-dr) causes frozen frame on legacy SoCs
+            // because the HW decoder writes directly to the Surface in an incompatible format.
+            // Fix: enable HW decode but disable direct rendering — VLC copies frames via buffer.
+            // Software decode (setHWDecoderEnabled=false) is too slow for live video on old CPUs.
+            if (legacySdk) {
+                media.setHWDecoderEnabled(true, false);
+                Log.w(TAG, "Legacy device (API <=19): HW decode ON, direct rendering OFF");
+            } else {
+                boolean forceHw = hwModeFinal == PlaybackPrefs.VLC_HW_PLUS;
+                media.setHWDecoderEnabled(useHw, forceHw);
+                if (forceHwOnly && useHw) {
+                    media.addOption(":codec=" + hwCodecList);
+                }
             }
             mediaPlayer.setMedia(media);
             media.release();

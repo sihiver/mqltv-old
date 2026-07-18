@@ -165,4 +165,14 @@ public final class PlaybackPrefs {
     public static void setVideoDisplayMode(Context context, int mode) {
         sp(context).edit().putInt(PREF_VIDEO_DISPLAY, mode).apply();
     }
+
+    public static final String PREF_AUDIO_CHANNEL_MODE = "pref_audio_channel_mode";
+
+    public static int getAudioChannelMode(Context context) {
+        return sp(context).getInt(PREF_AUDIO_CHANNEL_MODE, ChannelMixerAudioProcessor.MODE_STEREO);
+    }
+
+    public static void setAudioChannelMode(Context context, int mode) {
+        sp(context).edit().putInt(PREF_AUDIO_CHANNEL_MODE, mode).apply();
+    }
 }

@@ -39,6 +39,7 @@ public class PlayerActivity extends FragmentActivity {
     private PlayerChannelOverlayController channelOverlay;
     @Nullable private DefaultTrackSelector trackSelector;
     private boolean visionPlusPlayback;
+    private ChannelMixerAudioProcessor channelMixerAudioProcessor;
 
     private final Handler accessHandler = new Handler(Looper.getMainLooper());
     private boolean accessCheckInFlight = false;
@@ -100,7 +101,37 @@ public class PlayerActivity extends FragmentActivity {
     @Override
     public boolean dispatchKeyEvent(android.view.KeyEvent event) {
         if (channelOverlay != null && channelOverlay.handleKeyEvent(event)) return true;
+
+        if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+            int keyCode = event.getKeyCode();
+            if (keyCode == android.view.KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK
+                    || keyCode == android.view.KeyEvent.KEYCODE_MENU
+                    || keyCode == android.view.KeyEvent.KEYCODE_PROG_RED) {
+                toggleAudioChannelMode();
+                return true;
+            }
+        }
         return super.dispatchKeyEvent(event);
+    }
+
+    private void toggleAudioChannelMode() {
+        if (channelMixerAudioProcessor == null) return;
+        int currentMode = channelMixerAudioProcessor.getMode();
+        int newMode;
+        String label;
+        if (currentMode == ChannelMixerAudioProcessor.MODE_STEREO) {
+            newMode = ChannelMixerAudioProcessor.MODE_LEFT_ONLY;
+            label = "Audio: Kiri (Bahasa Indonesia)";
+        } else if (currentMode == ChannelMixerAudioProcessor.MODE_LEFT_ONLY) {
+            newMode = ChannelMixerAudioProcessor.MODE_RIGHT_ONLY;
+            label = "Audio: Kanan (Bahasa Inggris / Original)";
+        } else {
+            newMode = ChannelMixerAudioProcessor.MODE_STEREO;
+            label = "Audio: Stereo (Semua Bunyi)";
+        }
+        channelMixerAudioProcessor.setMode(newMode);
+        PlaybackPrefs.setAudioChannelMode(this, newMode);
+        Toast.makeText(this, label, Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -144,9 +175,24 @@ public class PlayerActivity extends FragmentActivity {
             }
         }
 
-        DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
-            .setEnableDecoderFallback(!DeviceQuirks.isHuaweiEc6108v9())
-            // Prefer extension decoders when available (e.g., FFmpeg for MP2 audio).
+        channelMixerAudioProcessor = new ChannelMixerAudioProcessor();
+        channelMixerAudioProcessor.setMode(PlaybackPrefs.getAudioChannelMode(this));
+
+        DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this) {
+            @Override
+            @Nullable
+            protected androidx.media3.exoplayer.audio.AudioSink buildAudioSink(
+                    android.content.Context context,
+                    boolean enableFloatOutput,
+                    boolean enableAudioTrackPlaybackParams) {
+                return new androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
+                        .setAudioProcessors(new androidx.media3.common.audio.AudioProcessor[] { channelMixerAudioProcessor })
+                        .setEnableFloatOutput(enableFloatOutput)
+                        .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                        .build();
+            }
+        };
+        renderersFactory.setEnableDecoderFallback(!DeviceQuirks.isHuaweiEc6108v9())
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()

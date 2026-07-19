@@ -286,8 +286,15 @@ public class PlayerActivity extends FragmentActivity {
                 }
                 Toast.makeText(PlayerActivity.this, msg, Toast.LENGTH_LONG).show();
 
-                // If Media3 can't decode, fall back to VLC when not already in VLC mode.
-                if (codecNotSupported) {
+                // Fallback logic
+                if (android.os.Build.VERSION.SDK_INT <= 19) {
+                    // Android 4.4 and below: always fall back to Native (MediaPlayer)
+                    Intent nativeIntent = new Intent(PlayerActivity.this, NativePlayerActivity.class);
+                    nativeIntent.putExtras(getIntent());
+                    startActivity(nativeIntent);
+                    finish();
+                } else if (codecNotSupported) {
+                    // Modern Android versions: fall back to VLC on codec errors
                     int mode = PlaybackPrefs.getPlayerMode(PlayerActivity.this);
                     if (mode != PlaybackPrefs.PLAYER_MODE_VLC) {
                         Intent vlcIntent = new Intent(PlayerActivity.this, VlcPlayerActivity.class);

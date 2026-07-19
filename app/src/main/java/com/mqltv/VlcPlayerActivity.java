@@ -49,6 +49,25 @@ public class VlcPlayerActivity extends FragmentActivity {
 
     private PlayerChannelOverlayController channelOverlay;
 
+    private final Handler idleHandler = new Handler(Looper.getMainLooper());
+    private final Runnable idleRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing()) return;
+            Toast.makeText(VlcPlayerActivity.this, "Tidak ada interaksi selama 2 jam. Menutup siaran.", Toast.LENGTH_LONG).show();
+            finish();
+        }
+    };
+
+    private void resetIdleTimer() {
+        idleHandler.removeCallbacks(idleRunnable);
+        idleHandler.postDelayed(idleRunnable, 7_200_000); // 2 hours = 7,200,000 ms
+    }
+
+    private void stopIdleTimer() {
+        idleHandler.removeCallbacks(idleRunnable);
+    }
+
     private final IVLCVout.Callback vlcVoutCallback = new IVLCVout.Callback() {
         @Override
         public void onSurfacesCreated(IVLCVout vout) {
@@ -510,6 +529,7 @@ public class VlcPlayerActivity extends FragmentActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        resetIdleTimer();
         if (!PlaybackAccessEnforcer.ensureAccessOrFinish(this, LoginActivity.DEST_LIVE_TV)) return;
         uiHandler.removeCallbacks(accessTick);
         uiHandler.post(accessTick);
@@ -517,9 +537,16 @@ public class VlcPlayerActivity extends FragmentActivity {
 
     @Override
     protected void onPause() {
+        stopIdleTimer();
         uiHandler.removeCallbacks(accessTick);
         super.onPause();
         releasePlayer();
+    }
+
+    @Override
+    public void onUserInteraction() {
+        super.onUserInteraction();
+        resetIdleTimer();
     }
 
     private void releasePlayer() {

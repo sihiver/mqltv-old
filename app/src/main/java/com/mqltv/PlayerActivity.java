@@ -41,6 +41,25 @@ public class PlayerActivity extends FragmentActivity {
     private boolean visionPlusPlayback;
     private ChannelMixerAudioProcessor channelMixerAudioProcessor;
 
+    private final Handler idleHandler = new Handler(Looper.getMainLooper());
+    private final Runnable idleRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing()) return;
+            Toast.makeText(PlayerActivity.this, "Tidak ada interaksi selama 2 jam. Menutup siaran.", Toast.LENGTH_LONG).show();
+            finish();
+        }
+    };
+
+    private void resetIdleTimer() {
+        idleHandler.removeCallbacks(idleRunnable);
+        idleHandler.postDelayed(idleRunnable, 7_200_000); // 2 hours = 7,200,000 ms
+    }
+
+    private void stopIdleTimer() {
+        idleHandler.removeCallbacks(idleRunnable);
+    }
+
     private final Handler accessHandler = new Handler(Looper.getMainLooper());
     private boolean accessCheckInFlight = false;
 
@@ -345,6 +364,7 @@ public class PlayerActivity extends FragmentActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        resetIdleTimer();
         if (!PlaybackAccessEnforcer.ensureAccessOrFinish(this, LoginActivity.DEST_LIVE_TV)) return;
         accessHandler.removeCallbacks(accessTick);
         accessHandler.post(accessTick);
@@ -352,11 +372,18 @@ public class PlayerActivity extends FragmentActivity {
 
     @Override
     protected void onPause() {
+        stopIdleTimer();
         accessHandler.removeCallbacks(accessTick);
         if (player != null) {
             player.pause();
         }
         super.onPause();
+    }
+
+    @Override
+    public void onUserInteraction() {
+        super.onUserInteraction();
+        resetIdleTimer();
     }
 
     private void applyMedia3VideoDisplay() {

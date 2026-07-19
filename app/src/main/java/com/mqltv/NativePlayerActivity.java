@@ -44,6 +44,25 @@ public class NativePlayerActivity extends Activity {
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    private final Handler idleHandler = new Handler(Looper.getMainLooper());
+    private final Runnable idleRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing()) return;
+            Toast.makeText(NativePlayerActivity.this, "Tidak ada interaksi selama 2 jam. Menutup siaran.", Toast.LENGTH_LONG).show();
+            finish();
+        }
+    };
+
+    private void resetIdleTimer() {
+        idleHandler.removeCallbacks(idleRunnable);
+        idleHandler.postDelayed(idleRunnable, 7_200_000); // 2 hours = 7,200,000 ms
+    }
+
+    private void stopIdleTimer() {
+        idleHandler.removeCallbacks(idleRunnable);
+    }
+
     private boolean accessCheckInFlight = false;
     private final Runnable accessTick = new Runnable() {
         @Override
@@ -205,6 +224,7 @@ public class NativePlayerActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        resetIdleTimer();
         if (!PlaybackAccessEnforcer.ensureAccessOrFinish(this, LoginActivity.DEST_LIVE_TV)) return;
         mainHandler.removeCallbacks(accessTick);
         mainHandler.post(accessTick);
@@ -531,10 +551,17 @@ public class NativePlayerActivity extends Activity {
 
     @Override
     protected void onPause() {
+        stopIdleTimer();
         mainHandler.removeCallbacks(accessTick);
         super.onPause();
         // Stop playback when leaving.
         releasePlayer();
+    }
+
+    @Override
+    public void onUserInteraction() {
+        super.onUserInteraction();
+        resetIdleTimer();
     }
 
     @Override

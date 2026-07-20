@@ -175,4 +175,31 @@ public final class PlaybackPrefs {
     public static void setAudioChannelMode(Context context, int mode) {
         sp(context).edit().putInt(PREF_AUDIO_CHANNEL_MODE, mode).apply();
     }
+
+    public static final String PREF_IDLE_TIMEOUT_HOURS = "pref_idle_timeout_hours";
+    public static final int IDLE_TIMEOUT_OFF = 0;
+    public static final int IDLE_TIMEOUT_1_MIN = -1; // 1 Minute (testing)
+    public static final int IDLE_TIMEOUT_1_HOUR = 1;
+    public static final int IDLE_TIMEOUT_2_HOURS = 2; // Default
+    public static final int IDLE_TIMEOUT_3_HOURS = 3;
+    public static final int IDLE_TIMEOUT_4_HOURS = 4;
+
+    public static int getIdleTimeoutHours(Context context) {
+        return sp(context).getInt(PREF_IDLE_TIMEOUT_HOURS, IDLE_TIMEOUT_2_HOURS);
+    }
+
+    public static void setIdleTimeoutHours(Context context, int hours) {
+        sp(context).edit().putInt(PREF_IDLE_TIMEOUT_HOURS, hours).apply();
+    }
+
+    public static long getIdleTimeoutMillis(Context context) {
+        int val = getIdleTimeoutHours(context);
+        if (val == IDLE_TIMEOUT_OFF) return 0;
+        if (val == IDLE_TIMEOUT_1_MIN) return 60_000L; // 60 seconds
+        return val * 3_600_000L;
+    }
+
+    public static boolean isIdleTimeoutEnabled(Context context) {
+        return getIdleTimeoutHours(context) != IDLE_TIMEOUT_OFF;
+    }
 }

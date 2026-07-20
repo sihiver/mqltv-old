@@ -144,6 +144,7 @@ public class SettingsFragment extends Fragment {
 
         bindVideoDisplayGroup(v);
         bindVisionQualityGroup(v);
+        bindIdleTimeoutGroup(v);
 
         Switch exoLimit = v.findViewById(R.id.setting_exo_limit_480p);
         exoLimit.setChecked(PlaybackPrefs.isExoLimit480p(v.getContext()));
@@ -413,6 +414,54 @@ public class SettingsFragment extends Fragment {
             Toast.makeText(v.getContext(),
                     v.getContext().getString(R.string.player_quality_applied, label),
                     Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void bindIdleTimeoutGroup(View v) {
+        RadioGroup group = v.findViewById(R.id.idle_timeout_group);
+        if (group == null) return;
+
+        int hours = PlaybackPrefs.getIdleTimeoutHours(v.getContext());
+        int checkedId = R.id.idle_timeout_2h;
+        if (hours == PlaybackPrefs.IDLE_TIMEOUT_OFF) {
+            checkedId = R.id.idle_timeout_off;
+        } else if (hours == PlaybackPrefs.IDLE_TIMEOUT_1_MIN) {
+            checkedId = R.id.idle_timeout_1m;
+        } else if (hours == PlaybackPrefs.IDLE_TIMEOUT_1_HOUR) {
+            checkedId = R.id.idle_timeout_1h;
+        } else if (hours == PlaybackPrefs.IDLE_TIMEOUT_2_HOURS) {
+            checkedId = R.id.idle_timeout_2h;
+        } else if (hours == PlaybackPrefs.IDLE_TIMEOUT_3_HOURS) {
+            checkedId = R.id.idle_timeout_3h;
+        } else if (hours == PlaybackPrefs.IDLE_TIMEOUT_4_HOURS) {
+            checkedId = R.id.idle_timeout_4h;
+        }
+        group.check(checkedId);
+
+        group.setOnCheckedChangeListener((g, id) -> {
+            int newHours = PlaybackPrefs.IDLE_TIMEOUT_2_HOURS;
+            String label = "2 Jam";
+            if (id == R.id.idle_timeout_off) {
+                newHours = PlaybackPrefs.IDLE_TIMEOUT_OFF;
+                label = "Nonaktif";
+            } else if (id == R.id.idle_timeout_1m) {
+                newHours = PlaybackPrefs.IDLE_TIMEOUT_1_MIN;
+                label = "1 Menit (Tes)";
+            } else if (id == R.id.idle_timeout_1h) {
+                newHours = PlaybackPrefs.IDLE_TIMEOUT_1_HOUR;
+                label = "1 Jam";
+            } else if (id == R.id.idle_timeout_2h) {
+                newHours = PlaybackPrefs.IDLE_TIMEOUT_2_HOURS;
+                label = "2 Jam";
+            } else if (id == R.id.idle_timeout_3h) {
+                newHours = PlaybackPrefs.IDLE_TIMEOUT_3_HOURS;
+                label = "3 Jam";
+            } else if (id == R.id.idle_timeout_4h) {
+                newHours = PlaybackPrefs.IDLE_TIMEOUT_4_HOURS;
+                label = "4 Jam";
+            }
+            PlaybackPrefs.setIdleTimeoutHours(v.getContext(), newHours);
+            Toast.makeText(v.getContext(), "Auto exit: " + label, Toast.LENGTH_SHORT).show();
         });
     }
 

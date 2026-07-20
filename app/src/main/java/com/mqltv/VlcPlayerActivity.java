@@ -1,8 +1,10 @@
 package com.mqltv;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -49,23 +51,88 @@ public class VlcPlayerActivity extends FragmentActivity {
 
     private PlayerChannelOverlayController channelOverlay;
 
+    private AlertDialog idleDialog;
+    private CountDownTimer idleCountDownTimer;
+
     private final Handler idleHandler = new Handler(Looper.getMainLooper());
     private final Runnable idleRunnable = new Runnable() {
         @Override
         public void run() {
             if (isFinishing()) return;
-            Toast.makeText(VlcPlayerActivity.this, "Tidak ada interaksi selama 2 jam. Menutup siaran.", Toast.LENGTH_LONG).show();
-            finish();
+            showIdleConfirmationDialog();
         }
     };
 
+    private void showIdleConfirmationDialog() {
+        if (isFinishing()) return;
+        dismissIdleConfirmationDialog();
+
+        int val = PlaybackPrefs.getIdleTimeoutHours(this);
+        String timeStr = (val == PlaybackPrefs.IDLE_TIMEOUT_1_MIN) ? "1 menit" : val + " jam";
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Apakah Anda Masih Nonton?");
+        builder.setMessage("Tidak ada interaksi selama " + timeStr + ".\nSiaran akan ditutup dalam 30 detik.");
+
+        builder.setPositiveButton("Lanjut Nonton", (dialog, which) -> {
+            dismissIdleConfirmationDialog();
+            resetIdleTimer();
+        });
+
+        builder.setNegativeButton("Keluar", (dialog, which) -> {
+            dismissIdleConfirmationDialog();
+            finish();
+        });
+
+        builder.setOnCancelListener(dialog -> {
+            dismissIdleConfirmationDialog();
+            resetIdleTimer();
+        });
+
+        idleDialog = builder.create();
+        idleDialog.show();
+
+        idleCountDownTimer = new CountDownTimer(30_000, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                if (idleDialog != null && idleDialog.isShowing()) {
+                    long seconds = (millisUntilFinished / 1000) + 1;
+                    idleDialog.setMessage("Tidak ada interaksi selama " + timeStr + ".\nSiaran akan ditutup dalam " + seconds + " detik.");
+                }
+            }
+
+            @Override
+            public void onFinish() {
+                dismissIdleConfirmationDialog();
+                finish();
+            }
+        }.start();
+    }
+
+    private void dismissIdleConfirmationDialog() {
+        if (idleCountDownTimer != null) {
+            idleCountDownTimer.cancel();
+            idleCountDownTimer = null;
+        }
+        if (idleDialog != null) {
+            if (idleDialog.isShowing()) {
+                try { idleDialog.dismiss(); } catch (Exception ignored) {}
+            }
+            idleDialog = null;
+        }
+    }
+
     private void resetIdleTimer() {
         idleHandler.removeCallbacks(idleRunnable);
-        idleHandler.postDelayed(idleRunnable, 7_200_000); // 2 hours = 7,200,000 ms
+        long timeoutMs = PlaybackPrefs.getIdleTimeoutMillis(this);
+        if (timeoutMs > 0) {
+            idleHandler.postDelayed(idleRunnable, timeoutMs);
+        }
     }
 
     private void stopIdleTimer() {
         idleHandler.removeCallbacks(idleRunnable);
+        dismissIdleConfirmationDialog();
     }
 
     private final IVLCVout.Callback vlcVoutCallback = new IVLCVout.Callback() {
@@ -546,6 +613,9 @@ public class VlcPlayerActivity extends FragmentActivity {
     @Override
     public void onUserInteraction() {
         super.onUserInteraction();
+        if (idleDialog != null && idleDialog.isShowing()) {
+            dismissIdleConfirmationDialog();
+        }
         resetIdleTimer();
     }
 

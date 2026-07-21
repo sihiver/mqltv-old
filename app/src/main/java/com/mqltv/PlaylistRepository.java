@@ -18,6 +18,10 @@ public final class PlaylistRepository {
     private static final String TAG = "PlaylistRepo";
 
     public List<Channel> loadForUser(Context context) {
+        return loadForUserInternal(context, 0);
+    }
+
+    private List<Channel> loadForUserInternal(Context context, int attempt) {
         String baseUrl = AuthPrefs.getBaseUrl(context);
         if (baseUrl == null || baseUrl.isEmpty()) {
             return Collections.emptyList();
@@ -35,7 +39,14 @@ public final class PlaylistRepository {
 
             try (Response response = NetworkClient.getClient().newCall(request).execute()) {
                 if (!response.isSuccessful()) {
-                    Log.e(TAG, "Failed to load channels: " + response.code());
+                    Log.e(TAG, "Failed to load channels: " + response.code() + " (attempt " + (attempt + 1) + ")");
+                    if ((response.code() == 401 || response.code() == 403) && attempt < 2) {
+                        AccountStatusRefresher.refresh(context, null);
+                    }
+                    if (attempt < 2) {
+                        try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
+                        return loadForUserInternal(context, attempt + 1);
+                    }
                     return Collections.emptyList();
                 }
 
@@ -45,7 +56,14 @@ public final class PlaylistRepository {
                 String jsonStr = body.string();
                 JSONObject json = new JSONObject(jsonStr);
                 JSONArray data = json.optJSONArray("data");
-                if (data == null) return Collections.emptyList();
+                if (data == null || data.length() == 0) {
+                    if (attempt < 2) {
+                        Log.w(TAG, "Channels array empty, retrying attempt " + (attempt + 1));
+                        try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
+                        return loadForUserInternal(context, attempt + 1);
+                    }
+                    return Collections.emptyList();
+                }
 
                 List<Channel> channels = new ArrayList<>();
                 for (int i = 0; i < data.length(); i++) {
@@ -66,7 +84,11 @@ public final class PlaylistRepository {
                 return channels;
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error fetching channels", e);
+            Log.e(TAG, "Error fetching channels (attempt " + (attempt + 1) + ")", e);
+            if (attempt < 2) {
+                try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
+                return loadForUserInternal(context, attempt + 1);
+            }
             return Collections.emptyList();
         }
     }

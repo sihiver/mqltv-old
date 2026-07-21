@@ -232,6 +232,16 @@ public class LiveTvFragment extends Fragment {
                 }
                 applyCategory(context, 0);
 
+                // Jika daftar channel masih kosong, jadwalkan auto-refresh otomatis 4 detik kemudian!
+                if (filtered.isEmpty()) {
+                    mainHandler.postDelayed(() -> {
+                        if (isAdded() && (allChannels == null || allChannels.isEmpty())) {
+                            android.util.Log.w("LiveTvFragment", "Channel list empty, auto-refreshing playlist...");
+                            load(context);
+                        }
+                    }, 4000);
+                }
+
                 // Prefer focus into the grid (like typical TV channel browsers).
                 if (grid != null) {
                     grid.post(() -> {

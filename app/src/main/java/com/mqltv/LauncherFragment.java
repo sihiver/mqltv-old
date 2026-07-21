@@ -642,6 +642,15 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 cards.add(new LauncherCard("Radios", "+" + finalRadioCount + " Stations", R.drawable.internet_radio_icon, NavDestination.SHOWS));
                 adapter.submit(cards);
 
+                // If channel count is 0 (load failed or network delayed), schedule auto-retry in 4 seconds
+                if (finalLiveCount == 0 && finalRadioCount == 0) {
+                    mainHandler.postDelayed(() -> {
+                        if (isAdded()) {
+                            loadCounts(appContext);
+                        }
+                    }, 4000);
+                }
+
                 // After async card refresh, restore card focus.
                 if (lastSelectedCardPosition == LIVE_TV_CARD_POSITION || lastSelectedCardPosition == RADIO_CARD_POSITION) {
                     if (cardsList != null && !cardsList.hasFocus() && (getView() == null || getView().findFocus() == null || getView().findFocus().getParent() == cardsList)) {

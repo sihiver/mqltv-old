@@ -67,9 +67,14 @@ public class HomeFragment extends Fragment {
                 setLoading(false);
                 if (sections.isEmpty()) {
                     if (errorText != null) {
-                        errorText.setText("Playlist kosong atau gagal dimuat");
+                        errorText.setText("Playlist kosong — memuat ulang otomatis...");
                         errorText.setVisibility(View.VISIBLE);
                     }
+                    mainHandler.postDelayed(() -> {
+                        if (isAdded() && (lastChannels == null || lastChannels.isEmpty())) {
+                            load(appContext);
+                        }
+                    }, 4000);
                 } else {
                     if (errorText != null) errorText.setVisibility(View.GONE);
                 }

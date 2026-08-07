@@ -154,15 +154,25 @@ public final class PresenceReporter {
                             return; // Success; exit retry loop.
                         }
                         
-                        // If token is invalid or subscription expired, server might return 401 or 403
-                        if (resp.code() == 401 || resp.code() == 403) {
-                            MAIN.post(() -> {
-                                MAIN.removeCallbacks(HEARTBEAT);
-                                hbTitle = null;
-                                hbUrl = null;
-                                SubscriptionGuard.showExpired(context);
-                            });
-                            return; // Stop retrying immediately
+                        // If subscription is expired (403), show Expired screen
+                        if (resp.code() == 403) {
+                            String bodyStr = "";
+                            if (resp.body() != null) {
+                                try { bodyStr = resp.body().string(); } catch (Exception ignored) {}
+                            }
+                            if (bodyStr.toLowerCase().contains("subscription tidak aktif") || SubscriptionGuard.isExpired(context)) {
+                                MAIN.post(() -> {
+                                    MAIN.removeCallbacks(HEARTBEAT);
+                                    hbTitle = null;
+                                    hbUrl = null;
+                                    SubscriptionGuard.showExpired(context);
+                                });
+                                return; // Stop retrying immediately
+                            }
+                        }
+
+                        if (resp.code() == 401) {
+                            return; // Token issue handled automatically by Authenticator; stop retrying this tick without booting user out
                         }
                         
                         // Server returned non-2xx; back off before retrying.

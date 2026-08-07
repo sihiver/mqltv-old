@@ -224,7 +224,7 @@ public class LoginActivity extends FragmentActivity {
                         throw new RuntimeException("Response login tidak valid (token kosong)");
                     }
 
-                    AuthPrefs.setLogin(getApplicationContext(), username, displayName, token, refreshToken, plan, packagesRaw, expiresAt);
+                    AuthPrefs.setLogin(getApplicationContext(), username, password, displayName, token, refreshToken, plan, packagesRaw, expiresAt);
                 }
 
                 mainHandler.post(() -> {

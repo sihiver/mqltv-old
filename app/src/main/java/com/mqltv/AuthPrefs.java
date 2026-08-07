@@ -12,6 +12,7 @@ public final class AuthPrefs {
     private static final String KEY_DISPLAY_NAME = "auth_display_name";
     private static final String KEY_ACCESS_TOKEN = "auth_access_token";
     private static final String KEY_REFRESH_TOKEN = "auth_refresh_token";
+    private static final String KEY_PASSWORD = "auth_password";
     private static final String KEY_PLAN = "auth_plan";
     private static final String KEY_PACKAGES = "auth_packages";
     private static final String KEY_EXPIRES_AT = "auth_expires_at";
@@ -42,6 +43,10 @@ public final class AuthPrefs {
 
     public static String getUsername(Context context) {
         return sp(context).getString(KEY_USERNAME, "");
+    }
+
+    public static String getPassword(Context context) {
+        return sp(context).getString(KEY_PASSWORD, "");
     }
 
     public static String getDisplayName(Context context) {
@@ -77,22 +82,30 @@ public final class AuthPrefs {
     }
 
     public static void setLogin(Context context, String username, String displayName, String token, String refreshToken, String plan, String packagesRaw, String expiresAt) {
+        setLogin(context, username, "", displayName, token, refreshToken, plan, packagesRaw, expiresAt);
+    }
+
+    public static void setLogin(Context context, String username, String password, String displayName, String token, String refreshToken, String plan, String packagesRaw, String expiresAt) {
         if (username == null) username = "";
+        if (password == null) password = "";
         if (displayName == null) displayName = "";
         if (token == null) token = "";
         if (refreshToken == null) refreshToken = "";
         if (plan == null) plan = "";
         if (packagesRaw == null) packagesRaw = "";
         if (expiresAt == null) expiresAt = "";
-        sp(context).edit()
+        SharedPreferences.Editor editor = sp(context).edit()
                 .putString(KEY_USERNAME, username.trim())
                 .putString(KEY_DISPLAY_NAME, displayName.trim())
                 .putString(KEY_ACCESS_TOKEN, token.trim())
                 .putString(KEY_REFRESH_TOKEN, refreshToken.trim())
                 .putString(KEY_PLAN, plan.trim())
                 .putString(KEY_PACKAGES, packagesRaw.trim())
-                .putString(KEY_EXPIRES_AT, expiresAt.trim())
-                .apply();
+                .putString(KEY_EXPIRES_AT, expiresAt.trim());
+        if (!password.isEmpty()) {
+            editor.putString(KEY_PASSWORD, password);
+        }
+        editor.apply();
     }
 
     public static long getLastStatusRefreshMs(Context context) {
@@ -119,9 +132,19 @@ public final class AuthPrefs {
                 .apply();
     }
 
+    public static void updateTokens(Context context, String accessToken, String refreshToken) {
+        if (accessToken == null) accessToken = "";
+        SharedPreferences.Editor editor = sp(context).edit().putString(KEY_ACCESS_TOKEN, accessToken.trim());
+        if (refreshToken != null && !refreshToken.trim().isEmpty()) {
+            editor.putString(KEY_REFRESH_TOKEN, refreshToken.trim());
+        }
+        editor.apply();
+    }
+
     public static void clear(Context context) {
         sp(context).edit()
                 .remove(KEY_USERNAME)
+                .remove(KEY_PASSWORD)
                 .remove(KEY_DISPLAY_NAME)
                 .remove(KEY_ACCESS_TOKEN)
                 .remove(KEY_REFRESH_TOKEN)

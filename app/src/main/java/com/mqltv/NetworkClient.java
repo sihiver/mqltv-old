@@ -28,6 +28,7 @@ import javax.net.ssl.X509TrustManager;
 
 import okhttp3.ConnectionSpec;
 import okhttp3.OkHttpClient;
+import okhttp3.Response;
 import okhttp3.TlsVersion;
 
 import org.conscrypt.Conscrypt;
@@ -114,6 +115,27 @@ public final class NetworkClient {
         return UNSAFE_LOGO_CLIENT;
     }
 
+    private static volatile OkHttpClient RAW_CLIENT;
+
+    private static OkHttpClient getRawClient() {
+        if (RAW_CLIENT == null) {
+            synchronized (NetworkClient.class) {
+                if (RAW_CLIENT == null) {
+                    OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                            .connectTimeout(8, TimeUnit.SECONDS)
+                            .readTimeout(15, TimeUnit.SECONDS)
+                            .writeTimeout(15, TimeUnit.SECONDS)
+                            .retryOnConnectionFailure(true);
+                    if (Build.VERSION.SDK_INT <= 25) {
+                        enableTls12(builder, APP_CONTEXT);
+                    }
+                    RAW_CLIENT = builder.build();
+                }
+            }
+        }
+        return RAW_CLIENT;
+    }
+
     private static OkHttpClient buildClient() {
         if (Build.VERSION.SDK_INT <= 25) {
             try {
@@ -145,11 +167,131 @@ public final class NetworkClient {
             return chain.proceed(original);
         });
 
+        builder.authenticator((route, response) -> {
+            if (responseCount(response) >= 3) {
+                return null;
+            }
+
+            if (APP_CONTEXT == null) return null;
+
+            String refreshToken = AuthPrefs.getRefreshToken(APP_CONTEXT);
+            String baseUrl = AuthPrefs.getBaseUrl(APP_CONTEXT);
+            String username = AuthPrefs.getUsername(APP_CONTEXT);
+            String password = AuthPrefs.getPassword(APP_CONTEXT);
+
+            if (baseUrl.trim().isEmpty()) return null;
+
+            synchronized (NetworkClient.class) {
+                String currentToken = AuthPrefs.getAccessToken(APP_CONTEXT);
+                String reqAuth = response.request().header("Authorization");
+                if (reqAuth != null && reqAuth.startsWith("Bearer ")) {
+                    String tokenInReq = reqAuth.substring(7).trim();
+                    if (!tokenInReq.equals(currentToken) && !currentToken.isEmpty()) {
+                        return response.request().newBuilder()
+                                .header("Authorization", "Bearer " + currentToken)
+                                .build();
+                    }
+                }
+
+                // 1. Try refreshing with refresh token
+                if (!refreshToken.trim().isEmpty()) {
+                    try {
+                        org.json.JSONObject payload = new org.json.JSONObject();
+                        payload.put("refreshToken", refreshToken);
+
+                        String refreshUrl = joinUrl(baseUrl, "/api/auth/refresh");
+                        okhttp3.Request refreshReq = new okhttp3.Request.Builder()
+                                .url(refreshUrl)
+                                .post(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json; charset=utf-8"), payload.toString()))
+                                .header("Accept", "application/json")
+                                .header("User-Agent", "MQLTV/1.0")
+                                .build();
+
+                        try (Response refreshResp = getRawClient().newCall(refreshReq).execute()) {
+                            if (refreshResp.isSuccessful() && refreshResp.body() != null) {
+                                String bodyStr = refreshResp.body().string();
+                                org.json.JSONObject json = new org.json.JSONObject(bodyStr);
+                                String newToken = json.optString("token", "");
+                                String newRefreshToken = json.optString("refreshToken", json.optString("refresh_token", ""));
+
+                                if (!newToken.trim().isEmpty()) {
+                                    AuthPrefs.updateTokens(APP_CONTEXT, newToken, newRefreshToken);
+                                    return response.request().newBuilder()
+                                            .header("Authorization", "Bearer " + newToken)
+                                            .build();
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Automatic token refresh failed: " + e.getMessage());
+                    }
+                }
+
+                // 2. Fallback: Auto-relogin if refresh token expired (e.g. STB off > 30 days)
+                if (!username.trim().isEmpty() && !password.isEmpty()) {
+                    try {
+                        org.json.JSONObject loginPayload = new org.json.JSONObject();
+                        loginPayload.put("email", username.trim());
+                        loginPayload.put("password", password);
+
+                        String loginUrl = joinUrl(baseUrl, "/api/auth/login");
+                        okhttp3.Request loginReq = new okhttp3.Request.Builder()
+                                .url(loginUrl)
+                                .post(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json; charset=utf-8"), loginPayload.toString()))
+                                .header("Accept", "application/json")
+                                .header("User-Agent", "MQLTV/1.0")
+                                .build();
+
+                        try (Response loginResp = getRawClient().newCall(loginReq).execute()) {
+                            if (loginResp.isSuccessful() && loginResp.body() != null) {
+                                String bodyStr = loginResp.body().string();
+                                org.json.JSONObject json = new org.json.JSONObject(bodyStr);
+                                String newToken = json.optString("token", "");
+                                String newRefreshToken = json.optString("refreshToken", json.optString("refresh_token", ""));
+                                org.json.JSONObject userObj = json.optJSONObject("user");
+                                String displayName = userObj != null ? userObj.optString("name", "") : "";
+                                String plan = userObj != null ? userObj.optString("plan", "") : "";
+                                String expiresAt = userObj != null ? userObj.optString("expiresAt", "") : "";
+
+                                if (!newToken.trim().isEmpty()) {
+                                    AuthPrefs.setLogin(APP_CONTEXT, username, password, displayName, newToken, newRefreshToken, plan, "", expiresAt);
+                                    return response.request().newBuilder()
+                                            .header("Authorization", "Bearer " + newToken)
+                                            .build();
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Auto-relogin fallback failed: " + e.getMessage());
+                    }
+                }
+            }
+            return null;
+        });
+
         if (Build.VERSION.SDK_INT <= 25) {
             enableTls12(builder, APP_CONTEXT);
         }
 
         return builder.build();
+    }
+
+    private static int responseCount(Response response) {
+        int result = 1;
+        while ((response = response.priorResponse()) != null) {
+            result++;
+        }
+        return result;
+    }
+
+    private static String joinUrl(String base, String path) {
+        if (base == null) base = "";
+        if (path == null) path = "";
+        base = base.trim();
+        path = path.trim();
+        while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+        if (!path.startsWith("/")) path = "/" + path;
+        return base + path;
     }
 
     private static void enableTls12(OkHttpClient.Builder builder, Context context) {

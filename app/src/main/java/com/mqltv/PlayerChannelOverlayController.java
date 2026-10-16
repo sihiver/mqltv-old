@@ -858,6 +858,12 @@ public final class PlayerChannelOverlayController {
                 || u.contains("|LOCAL") || u.contains("LOCAL|");
     }
 
+    private static boolean isSportsGroup(String groupTitle) {
+        if (groupTitle == null) return false;
+        String u = groupTitle.trim().toUpperCase(Locale.US);
+        return u.contains("SPORT") || u.contains("OLAHRAGA");
+    }
+
     private static CategoryState buildCategories(List<Channel> channels) {
         List<String> labels = new ArrayList<>();
         Map<String, List<Channel>> map = new LinkedHashMap<>();
@@ -865,23 +871,27 @@ public final class PlayerChannelOverlayController {
         String all = "ALL CHANNELS";
         labels.add(all);
 
-        // For ALL CHANNELS: Local channels first, then the rest.
-        List<Channel> localAll = new ArrayList<>();
-        List<Channel> restAll  = new ArrayList<>();
+        // For ALL CHANNELS: Local channels first, then Sports, then the rest.
+        List<Channel> localAll  = new ArrayList<>();
+        List<Channel> sportsAll = new ArrayList<>();
+        List<Channel> restAll   = new ArrayList<>();
         if (channels != null) {
             for (Channel c : channels) {
                 if (c == null) continue;
                 if (isLocalGroup(c.getGroupTitle())) localAll.add(c);
+                else if (isSportsGroup(c.getGroupTitle())) sportsAll.add(c);
                 else restAll.add(c);
             }
         }
         List<Channel> orderedAll = new ArrayList<>(localAll);
+        orderedAll.addAll(sportsAll);
         orderedAll.addAll(restAll);
         map.put(all, orderedAll);
 
-        // Collect per-category buckets: Local groups first, then others.
-        Map<String, List<Channel>> localGroups = new LinkedHashMap<>();
-        Map<String, List<Channel>> otherGroups = new LinkedHashMap<>();
+        // Collect per-category buckets: Local groups first, then Sports, then others.
+        Map<String, List<Channel>> localGroups  = new LinkedHashMap<>();
+        Map<String, List<Channel>> sportsGroups = new LinkedHashMap<>();
+        Map<String, List<Channel>> otherGroups  = new LinkedHashMap<>();
 
         if (channels != null) {
             for (Channel c : channels) {
@@ -892,6 +902,9 @@ public final class PlayerChannelOverlayController {
                 if (isLocalGroup(g)) {
                     if (!localGroups.containsKey(g)) localGroups.put(g, new ArrayList<>());
                     localGroups.get(g).add(c);
+                } else if (isSportsGroup(g)) {
+                    if (!sportsGroups.containsKey(g)) sportsGroups.put(g, new ArrayList<>());
+                    sportsGroups.get(g).add(c);
                 } else {
                     if (!otherGroups.containsKey(g)) otherGroups.put(g, new ArrayList<>());
                     otherGroups.get(g).add(c);
@@ -900,6 +913,10 @@ public final class PlayerChannelOverlayController {
         }
 
         for (Map.Entry<String, List<Channel>> e : localGroups.entrySet()) {
+            labels.add(e.getKey());
+            map.put(e.getKey(), e.getValue());
+        }
+        for (Map.Entry<String, List<Channel>> e : sportsGroups.entrySet()) {
             labels.add(e.getKey());
             map.put(e.getKey(), e.getValue());
         }

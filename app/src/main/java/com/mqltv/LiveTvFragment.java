@@ -288,15 +288,18 @@ public class LiveTvFragment extends Fragment {
 
         if (CAT_ALL.equals(key)) {
             if (base != null) {
-                // Local channels first, then the rest.
+                // Local channels first, then Sports, then the rest.
                 List<Channel> local = new ArrayList<>();
+                List<Channel> sports = new ArrayList<>();
                 List<Channel> rest  = new ArrayList<>();
                 for (Channel c : base) {
                     if (c == null) continue;
                     if (isLocalGroup(c.getGroupTitle())) local.add(c);
+                    else if (isSportsGroup(c.getGroupTitle())) sports.add(c);
                     else rest.add(c);
                 }
                 out.addAll(local);
+                out.addAll(sports);
                 out.addAll(rest);
             }
         } else {
@@ -370,6 +373,12 @@ public class LiveTvFragment extends Fragment {
                 || u.contains("|LOCAL") || u.contains("LOCAL|");
     }
 
+    private static boolean isSportsGroup(String groupTitle) {
+        if (groupTitle == null) return false;
+        String u = groupTitle.trim().toUpperCase(Locale.US);
+        return u.contains("SPORT") || u.contains("OLAHRAGA");
+    }
+
     private static CategoryData buildCategories(List<Channel> channels) {
         List<String> keys = new ArrayList<>();
         List<String> labels = new ArrayList<>();
@@ -380,6 +389,7 @@ public class LiveTvFragment extends Fragment {
         // Keep insertion order; de-dupe by display label (case-insensitive).
         Map<String, String> seen = new LinkedHashMap<>();
         Map<String, String> localSeen = new LinkedHashMap<>();
+        Map<String, String> sportsSeen = new LinkedHashMap<>();
 
         if (channels != null) {
             for (Channel c : channels) {
@@ -391,14 +401,20 @@ public class LiveTvFragment extends Fragment {
                 String label = g.toUpperCase(Locale.US);
                 if (isLocalGroup(g)) {
                     if (!localSeen.containsKey(label)) localSeen.put(label, g);
+                } else if (isSportsGroup(g)) {
+                    if (!sportsSeen.containsKey(label)) sportsSeen.put(label, g);
                 } else {
                     if (!seen.containsKey(label)) seen.put(label, g);
                 }
             }
         }
 
-        // Local categories first, then the rest.
+        // Local categories first, then Sports, then the rest.
         for (Map.Entry<String, String> e : localSeen.entrySet()) {
+            keys.add(e.getValue());
+            labels.add(e.getKey());
+        }
+        for (Map.Entry<String, String> e : sportsSeen.entrySet()) {
             keys.add(e.getValue());
             labels.add(e.getKey());
         }

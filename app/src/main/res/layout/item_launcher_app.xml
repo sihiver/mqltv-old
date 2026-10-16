@@ -16,6 +16,7 @@
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
         android:visibility="gone"
+        android:clipToOutline="true"
         android:contentDescription="Banner" />
 
     <LinearLayout

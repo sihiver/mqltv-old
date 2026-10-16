@@ -5,12 +5,15 @@ import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.Outline;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
+import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -196,6 +199,42 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
             subtitle = itemView.findViewById(R.id.launcher_app_subtitle);
             banner = itemView.findViewById(R.id.launcher_app_banner);
             contentGroup = itemView.findViewById(R.id.launcher_app_content);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                final int radius = dp(itemView.getContext(), 14);
+                ViewOutlineProvider roundOutline = new ViewOutlineProvider() {
+                    @Override
+                    public void getOutline(View view, Outline outline) {
+                        if (view.getWidth() > 0 && view.getHeight() > 0) {
+                            outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
+                        } else {
+                            outline.setEmpty();
+                        }
+                    }
+                };
+                itemView.setOutlineProvider(roundOutline);
+                itemView.setClipToOutline(true);
+
+                if (banner != null) {
+                    banner.setOutlineProvider(roundOutline);
+                    banner.setClipToOutline(true);
+                }
+
+                if (icon != null) {
+                    final int iconRadius = dp(itemView.getContext(), 10);
+                    icon.setOutlineProvider(new ViewOutlineProvider() {
+                        @Override
+                        public void getOutline(View view, Outline outline) {
+                            if (view.getWidth() > 0 && view.getHeight() > 0) {
+                                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), iconRadius);
+                            } else {
+                                outline.setEmpty();
+                            }
+                        }
+                    });
+                    icon.setClipToOutline(true);
+                }
+            }
         }
     }
 

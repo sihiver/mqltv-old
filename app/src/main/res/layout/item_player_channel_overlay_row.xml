@@ -13,12 +13,15 @@
 
     <TextView
         android:id="@+id/player_channel_row_number"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
+        android:layout_width="wrap_content"
+        android:layout_height="32dp"
+        android:minWidth="34dp"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
         android:gravity="center"
         android:text="1"
         android:textColor="#FFFFFFFF"
-        android:textSize="14sp"
+        android:textSize="16sp"
         android:textStyle="bold"
         android:background="#22000000" />
 

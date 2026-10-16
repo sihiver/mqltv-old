@@ -179,18 +179,21 @@ public class LoginActivity extends FragmentActivity {
     }
 
     private void doLogin() {
-        final String baseUrlRaw = baseUrlInput != null ? String.valueOf(baseUrlInput.getText()).trim() : "";
+        String baseUrlRaw = baseUrlInput != null ? String.valueOf(baseUrlInput.getText()).trim() : "";
+        if (baseUrlRaw.isEmpty()) {
+            baseUrlRaw = AuthPrefs.getBaseUrl(this);
+        }
         final String baseUrl = normalizeBaseUrl(baseUrlRaw);
         final String username = usernameInput != null ? String.valueOf(usernameInput.getText()).trim() : "";
         final String password = passwordInput != null ? String.valueOf(passwordInput.getText()).trim() : "";
 
-        if (baseUrl.isEmpty() || username.isEmpty() || password.isEmpty()) {
-            setStatus("Base URL, username, dan password wajib diisi");
+        if (username.isEmpty() || password.isEmpty()) {
+            setStatus("Username dan password wajib diisi");
             return;
         }
 
-        if (!looksLikeValidBaseUrl(baseUrl)) {
-            setStatus("Base URL tidak valid. Contoh: http://192.168.56.1:8088");
+        if (baseUrl.isEmpty() || !looksLikeValidBaseUrl(baseUrl)) {
+            setStatus("Server Base URL tidak valid");
             return;
         }
 

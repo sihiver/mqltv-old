@@ -33,12 +33,14 @@
             android:layout_marginBottom="24dp" />
 
         <TextView
+            android:id="@+id/login_base_url_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Server Base URL"
             android:textColor="#CCCCCC"
             android:textSize="12sp"
-            android:layout_marginBottom="4dp" />
+            android:layout_marginBottom="4dp"
+            android:visibility="gone" />
 
         <EditText
             android:id="@+id/login_base_url"
@@ -53,6 +55,7 @@
             android:paddingLeft="16dp"
             android:paddingRight="16dp"
             android:layout_marginBottom="16dp"
+            android:visibility="gone"
             android:nextFocusDown="@+id/login_username" />
 
         <TextView
@@ -76,7 +79,6 @@
             android:paddingLeft="16dp"
             android:paddingRight="16dp"
             android:layout_marginBottom="16dp"
-            android:nextFocusUp="@+id/login_base_url"
             android:nextFocusDown="@+id/login_password" />
 
         <TextView

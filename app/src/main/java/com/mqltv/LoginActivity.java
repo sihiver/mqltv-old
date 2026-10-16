@@ -52,15 +52,31 @@ public class LoginActivity extends FragmentActivity {
 
         baseUrlInput.setText(AuthPrefs.getBaseUrl(this));
         usernameInput.setText(AuthPrefs.getUsername(this));
+        passwordInput.setText(AuthPrefs.getPassword(this));
 
         if (loginBtn != null) {
             loginBtn.setOnClickListener(v -> doLogin());
         }
 
-        // Focus on username by default (TV-friendly).
-        if (usernameInput != null) {
+        // Focus on login button if username & password are pre-filled (TV-friendly),
+        // otherwise focus on empty field.
+        String u = AuthPrefs.getUsername(this);
+        String p = AuthPrefs.getPassword(this);
+        if (!u.isEmpty() && !p.isEmpty() && loginBtn != null) {
+            loginBtn.requestFocus();
+        } else if (!u.isEmpty() && passwordInput != null) {
+            passwordInput.requestFocus();
+        } else if (usernameInput != null) {
             usernameInput.requestFocus();
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        Intent i = new Intent(this, MainActivity.class);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(i);
+        finish();
     }
 
     @Override

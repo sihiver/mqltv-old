@@ -143,8 +143,6 @@ public final class AuthPrefs {
 
     public static void clear(Context context) {
         sp(context).edit()
-                .remove(KEY_USERNAME)
-                .remove(KEY_PASSWORD)
                 .remove(KEY_DISPLAY_NAME)
                 .remove(KEY_ACCESS_TOKEN)
                 .remove(KEY_REFRESH_TOKEN)

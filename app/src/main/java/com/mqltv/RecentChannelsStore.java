@@ -67,10 +67,8 @@ public final class RecentChannelsStore {
     public static List<Channel> loadSyncedWithPlaylist(Context context, @Nullable List<Channel> playlist) {
         List<Channel> recent = loadRaw(context);
         if (playlist == null || playlist.isEmpty()) {
-            if (!recent.isEmpty()) {
-                saveAll(context, new ArrayList<>());
-            }
-            return new ArrayList<>();
+            // Jangan hapus recent channels jika playlist gagal diambil atau kosong sementara (offline/booting)
+            return recent;
         }
         List<Channel> filtered = filterByPlaylist(recent, playlist);
         if (filtered.size() != recent.size()) {

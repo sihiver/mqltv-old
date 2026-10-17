@@ -217,7 +217,9 @@ public class LiveTvFragment extends Fragment {
                 }
             }
 
-            RecentChannelsStore.pruneAgainstPlaylist(context, filtered);
+            if (!filtered.isEmpty()) {
+                RecentChannelsStore.pruneAgainstPlaylist(context, filtered);
+            }
             allChannels = filtered;
 
             final CategoryData cats = buildCategories(filtered);

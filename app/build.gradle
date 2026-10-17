@@ -38,7 +38,7 @@ android {
 
     defaultConfig {
         applicationId 'com.mqltv'
-        minSdk 17
+        minSdk 18
         targetSdk 34
         
         // Version Code HARUS DIUBAH SECARA MANUAL di bawah ini

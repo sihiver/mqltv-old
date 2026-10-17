@@ -142,6 +142,11 @@ public final class AuthPrefs {
     }
 
     public static void clear(Context context) {
+        if (context != null) {
+            try {
+                new java.io.File(context.getApplicationContext().getFilesDir(), "channels_cache.json").delete();
+            } catch (Exception ignored) {}
+        }
         sp(context).edit()
                 .remove(KEY_DISPLAY_NAME)
                 .remove(KEY_ACCESS_TOKEN)

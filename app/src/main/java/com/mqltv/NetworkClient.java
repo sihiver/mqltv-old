@@ -194,7 +194,10 @@ public final class NetworkClient {
                 }
 
                 // 1. Try refreshing with refresh token
+                boolean refreshAttempted = false;
+                boolean refreshExplicitlyRejected = false;
                 if (!refreshToken.trim().isEmpty()) {
+                    refreshAttempted = true;
                     try {
                         org.json.JSONObject payload = new org.json.JSONObject();
                         payload.put("refreshToken", refreshToken);
@@ -220,6 +223,8 @@ public final class NetworkClient {
                                             .header("Authorization", "Bearer " + newToken)
                                             .build();
                                 }
+                            } else if (refreshResp.code() == 401 || refreshResp.code() == 403) {
+                                refreshExplicitlyRejected = true;
                             }
                         }
                     } catch (Exception e) {
@@ -227,8 +232,11 @@ public final class NetworkClient {
                     }
                 }
 
-                // 2. Fallback: Auto-relogin if refresh token expired (e.g. STB off > 30 days)
+                // 2. Fallback: Auto-relogin if refresh token expired (e.g. STB off > 90 days)
+                boolean loginAttempted = false;
+                boolean loginExplicitlyRejected = false;
                 if (!username.trim().isEmpty() && !password.isEmpty()) {
+                    loginAttempted = true;
                     try {
                         org.json.JSONObject loginPayload = new org.json.JSONObject();
                         loginPayload.put("email", username.trim());
@@ -259,11 +267,20 @@ public final class NetworkClient {
                                             .header("Authorization", "Bearer " + newToken)
                                             .build();
                                 }
+                            } else if (loginResp.code() == 401 || loginResp.code() == 403) {
+                                loginExplicitlyRejected = true;
                             }
                         }
                     } catch (Exception e) {
                         Log.w(TAG, "Auto-relogin fallback failed: " + e.getMessage());
                     }
+                }
+
+                // If auth is truly rejected by server (not a network timeout) and credentials expired:
+                if (refreshExplicitlyRejected && (!loginAttempted || loginExplicitlyRejected)) {
+                    Log.e(TAG, "Session expired and cannot be restored. Clearing tokens.");
+                    AuthPrefs.clear(APP_CONTEXT);
+                    LoginGuard.ensureLoggedIn(APP_CONTEXT);
                 }
             }
             return null;

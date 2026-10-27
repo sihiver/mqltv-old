@@ -34,12 +34,22 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     public void getItemOffsets(@NonNull Rect outRect, @NonNull View view, @NonNull RecyclerView parent,
                                @NonNull RecyclerView.State state) {
         int pos = parent.getChildAdapterPosition(view);
-        if (pos >= 0 && pos < dockSize) {
+        if (pos == RecyclerView.NO_POSITION) return;
+
+        int spanCount = dockSize; // 4 columns
+        int column = pos % spanCount;
+        int spacing = Math.round(20 * density);
+
+        // Column 0 left = 0 (aligns with left edge / clock), column 3 right = 0 (aligns with right edge)
+        outRect.left = column * spacing / spanCount;
+        outRect.right = spacing - (column + 1) * spacing / spanCount;
+
+        if (pos < dockSize) {
             outRect.top = (int) (6 * density);
-            outRect.bottom = (int) (12 * density);
+            outRect.bottom = (int) (14 * density);
         } else {
             outRect.top = (int) (6 * density);
-            outRect.bottom = (int) (6 * density);
+            outRect.bottom = (int) (8 * density);
         }
     }
 

@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.mqltv.RatioFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="96dp"
-    android:layout_marginStart="10dp"
-    android:layout_marginEnd="10dp"
-    android:layout_marginTop="8dp"
-    android:layout_marginBottom="8dp"
+    android:layout_height="wrap_content"
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:clickable="true"
@@ -33,15 +29,15 @@
 
         <ImageView
             android:id="@+id/launcher_app_icon"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
             android:contentDescription="App" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="10dp"
             android:orientation="vertical">
 
             <TextView
@@ -51,7 +47,7 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textColor="@color/mql_text_primary"
-                android:textSize="15sp"
+                android:textSize="14sp"
                 android:fontFamily="sans-serif-medium"
                 android:textStyle="bold" />
 
@@ -59,13 +55,13 @@
                 android:id="@+id/launcher_app_subtitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textColor="#B0C0D4"
-                android:textSize="11sp" />
+                android:textSize="10.5sp" />
 
         </LinearLayout>
     </LinearLayout>
 
-</FrameLayout>
+</com.mqltv.RatioFrameLayout>

@@ -136,6 +136,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private View heroKickerBar;
     private TextView heroTitle;
     private TextView heroSubtitle;
+    private View launcherHero;
 
     private final Runnable headerTicker = new Runnable() {
         @Override
@@ -218,6 +219,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         heroKickerBar = v.findViewById(R.id.launcher_hero_kicker_bar);
         heroTitle = v.findViewById(R.id.launcher_hero_title);
         heroSubtitle = v.findViewById(R.id.launcher_hero_subtitle);
+        launcherHero = v.findViewById(R.id.launcher_hero);
 
         updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV", "+5000 Saluran TV Lokal & Internasional", 0xFF8B5CF6);
 
@@ -415,15 +417,21 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     int color = 0xFF3B82F6;
                     if (entry != null) {
                         color = LauncherAppsAdapter.colorFromEntry(entry);
-                        if (entry.isLiveTv) {
-                            updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV",
-                                    latestLiveSubtitle != null ? latestLiveSubtitle + " TV Lokal & Internasional" : "+5000 Saluran TV Lokal & Internasional",
-                                    color);
-                        } else if (entry.isAddButton) {
-                            updateHero("APLIKASI", "TAMBAH APLIKASI", "Sematkan aplikasi favorit ke beranda", color);
+                        if (position < 4) {
+                            if (launcherHero != null) {
+                                launcherHero.animate().alpha(1f).setDuration(160).start();
+                            }
+                            if (entry.isLiveTv) {
+                                updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV",
+                                        latestLiveSubtitle != null ? latestLiveSubtitle + " TV Lokal & Internasional" : "+5000 Saluran TV Lokal & Internasional",
+                                        color);
+                            } else {
+                                updateHero("APLIKASI", entry.label, "", color);
+                            }
                         } else {
-                            String sub = entry.component != null ? entry.component.getPackageName() : "Aplikasi TV";
-                            updateHero("APLIKASI", entry.label, sub, color);
+                            if (launcherHero != null) {
+                                launcherHero.animate().alpha(0f).setDuration(160).start();
+                            }
                         }
                     }
                     moveGlassToCard(cardView, color);

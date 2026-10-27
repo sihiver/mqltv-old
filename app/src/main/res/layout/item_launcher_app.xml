@@ -1,67 +1,107 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.mqltv.RatioFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:clickable="true"
     android:longClickable="true"
-    android:clipToOutline="true"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:descendantFocusability="blocksDescendants">
 
-    <ImageView
-        android:id="@+id/launcher_app_banner"
+    <!-- 16:9 Card Tile -->
+    <com.mqltv.RatioFrameLayout
+        android:id="@+id/launcher_app_tile"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:visibility="gone"
-        android:clipToOutline="true"
-        android:contentDescription="Banner" />
-
-    <LinearLayout
-        android:id="@+id/launcher_app_content"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp">
+        android:layout_height="wrap_content"
+        android:clipToOutline="true">
 
         <ImageView
-            android:id="@+id/launcher_app_icon"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:contentDescription="App" />
+            android:id="@+id/launcher_app_banner"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            android:clipToOutline="true"
+            android:contentDescription="Banner" />
 
+        <!-- Row 1 horizontal content (for Live TV or cards with subtitle) -->
         <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="10dp"
-            android:orientation="vertical">
+            android:id="@+id/launcher_app_content"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp">
 
-            <TextView
-                android:id="@+id/launcher_app_title"
-                android:layout_width="match_parent"
+            <ImageView
+                android:id="@+id/launcher_app_icon"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:contentDescription="App" />
+
+            <LinearLayout
+                android:id="@+id/launcher_app_text_group"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/mql_text_primary"
-                android:textSize="14sp"
-                android:fontFamily="sans-serif-medium"
-                android:textStyle="bold" />
+                android:layout_weight="1"
+                android:layout_marginStart="10dp"
+                android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/launcher_app_subtitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="#B0C0D4"
-                android:textSize="10.5sp" />
+                <TextView
+                    android:id="@+id/launcher_app_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/mql_text_primary"
+                    android:textSize="14sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:textStyle="bold" />
 
+                <TextView
+                    android:id="@+id/launcher_app_subtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#B0C0D4"
+                    android:textSize="10.5sp" />
+
+            </LinearLayout>
         </LinearLayout>
-    </LinearLayout>
 
-</com.mqltv.RatioFrameLayout>
+        <!-- Row 2+ Centered Icon (for apps without banner) -->
+        <ImageView
+            android:id="@+id/launcher_app_center_icon"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            android:contentDescription="App Icon" />
+
+    </com.mqltv.RatioFrameLayout>
+
+    <!-- Row 2+ Centered Bottom Title (smaller font, centered directly under app card) -->
+    <TextView
+        android:id="@+id/launcher_app_bottom_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:textAlignment="center"
+        android:maxLines="1"
+        android:ellipsize="marquee"
+        android:marqueeRepeatLimit="marquee_forever"
+        android:singleLine="true"
+        android:textSize="12.5sp"
+        android:fontFamily="sans-serif-medium"
+        android:textColor="#FFFFFFFF"
+        android:visibility="gone" />
+
+</LinearLayout>

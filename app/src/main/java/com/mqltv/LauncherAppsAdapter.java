@@ -81,94 +81,101 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
     public void onBindViewHolder(@NonNull VH holder, int position) {
         LauncherAppEntry e = items.get(position);
         Context ctx = holder.itemView.getContext();
+        View targetCard = holder.tile != null ? holder.tile : holder.itemView;
+        boolean isRow1 = position < 4;
 
         if (holder.icon != null) holder.icon.setContentDescription(e.label);
         if (holder.title != null) holder.title.setText(e.label);
 
-        if (e.isAddButton) {
-            assert holder.icon != null;
-            holder.icon.setImageResource(android.R.drawable.ic_input_add);
-            holder.icon.setColorFilter(ContextCompat.getColor(holder.itemView.getContext(), R.color.mql_text_primary));
-
-            if (holder.subtitle != null) {
-                holder.subtitle.setText("Tambah");
-                holder.subtitle.setVisibility(View.VISIBLE);
+        if (isRow1) {
+            // Row 1: Title besar di atas, tanpa bottom title
+            if (holder.bottomTitle != null) {
+                holder.bottomTitle.setVisibility(View.GONE);
+            }
+            if (holder.centerIcon != null) {
+                holder.centerIcon.setVisibility(View.GONE);
             }
 
-            if (holder.banner != null) holder.banner.setVisibility(View.GONE);
-            if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.VISIBLE);
-
-            if (holder.title != null) holder.title.setTextColor(Color.WHITE);
-            if (holder.subtitle != null) holder.subtitle.setTextColor(0xFFD9E2F2);
-            holder.itemView.setBackground(createTileBackground(ctx, 0xFF4D5B6A));
-        } else if (e.isLiveTv) {
-            if (holder.banner != null) holder.banner.setVisibility(View.GONE);
-            if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.VISIBLE);
-
-            if (holder.icon != null) {
-                if (e.icon != null) {
-                    holder.icon.setImageDrawable(e.icon);
-                } else {
-                    holder.icon.setImageResource(R.mipmap.ic_launcher);
+            if (e.isLiveTv) {
+                if (holder.banner != null) holder.banner.setVisibility(View.GONE);
+                if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.VISIBLE);
+                if (holder.icon != null) {
+                    if (e.icon != null) holder.icon.setImageDrawable(e.icon);
+                    else holder.icon.setImageResource(R.mipmap.ic_launcher);
+                    holder.icon.clearColorFilter();
                 }
-                holder.icon.clearColorFilter();
-            }
-
-            if (holder.title != null) {
-                holder.title.setText(e.label != null ? e.label : "Live TV");
-                holder.title.setTextColor(Color.WHITE);
-            }
-
-            if (holder.subtitle != null) {
-                holder.subtitle.setText(e.customSubtitle != null ? e.customSubtitle : "+5000 Saluran");
-                holder.subtitle.setVisibility(View.VISIBLE);
-                holder.subtitle.setTextColor(0xFFD9E2F2);
-            }
-
-            holder.itemView.setBackground(createTileBackground(ctx, 0xFF7C3AED));
-        } else {
-            if (e.banner != null) {
+                if (holder.title != null) {
+                    holder.title.setText(e.label != null ? e.label : "Live TV");
+                    holder.title.setTextColor(Color.WHITE);
+                }
+                if (holder.subtitle != null) {
+                    holder.subtitle.setText(e.customSubtitle != null ? e.customSubtitle : "+5000 Saluran");
+                    holder.subtitle.setVisibility(View.VISIBLE);
+                    holder.subtitle.setTextColor(0xFFD9E2F2);
+                }
+                targetCard.setBackground(createTileBackground(ctx, 0xFF7C3AED));
+            } else if (e.banner != null) {
                 if (holder.banner != null) {
                     holder.banner.setImageDrawable(e.banner);
                     holder.banner.setVisibility(View.VISIBLE);
                 }
                 if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.GONE);
-                
-                holder.itemView.setBackground(createTileBackground(ctx, 0xFF2A2E35));
-                if (holder.title != null) holder.title.setTextColor(Color.WHITE);
-                if (holder.subtitle != null) holder.subtitle.setTextColor(0xFFD9E2F2);
+                targetCard.setBackground(createTileBackground(ctx, 0xFF2A2E35));
             } else {
                 if (holder.banner != null) holder.banner.setVisibility(View.GONE);
                 if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.VISIBLE);
-
-                assert holder.icon != null;
-                holder.icon.setImageDrawable(e.icon);
-                holder.icon.clearColorFilter();
-
-                if (holder.subtitle != null) {
-                    String sub = resolveSubtitle(ctx, e);
-                    if (sub == null || sub.trim().isEmpty()) {
-                        holder.subtitle.setVisibility(View.GONE);
-                    } else {
-                        holder.subtitle.setText(sub);
-                        holder.subtitle.setVisibility(View.VISIBLE);
-                    }
+                if (holder.icon != null) {
+                    holder.icon.setImageDrawable(e.icon);
+                    holder.icon.clearColorFilter();
                 }
-
-                int bgColor = colorFromEntry(e);
-                holder.itemView.setBackground(createTileBackground(ctx, bgColor));
-                boolean isDark = isColorDark(bgColor);
                 if (holder.title != null) {
-                    holder.title.setTextColor(isDark ? Color.WHITE : 0xFF222222);
+                    holder.title.setText(e.label);
+                    holder.title.setTextColor(Color.WHITE);
                 }
                 if (holder.subtitle != null) {
-                    holder.subtitle.setTextColor(isDark ? 0xFFD9E2F2 : 0xFF555555);
+                    holder.subtitle.setVisibility(View.GONE);
                 }
+                targetCard.setBackground(createTileBackground(ctx, colorFromEntry(e)));
+            }
+        } else {
+            // Row 2+: Title pindah ke bawah app dengan posisi center font di kecilkan
+            if (holder.bottomTitle != null) {
+                holder.bottomTitle.setVisibility(View.VISIBLE);
+                holder.bottomTitle.setText(e.isAddButton ? "Tambah" : (e.label != null ? e.label : ""));
+                holder.bottomTitle.setTextColor(0xB3FFFFFF);
+            }
+            if (holder.contentGroup != null) {
+                holder.contentGroup.setVisibility(View.GONE);
+            }
+
+            if (e.isAddButton) {
+                if (holder.banner != null) holder.banner.setVisibility(View.GONE);
+                if (holder.centerIcon != null) {
+                    holder.centerIcon.setVisibility(View.VISIBLE);
+                    holder.centerIcon.setImageResource(android.R.drawable.ic_input_add);
+                    holder.centerIcon.setColorFilter(Color.WHITE);
+                }
+                targetCard.setBackground(createTileBackground(ctx, 0xFF4D5B6A));
+            } else if (e.banner != null) {
+                if (holder.centerIcon != null) holder.centerIcon.setVisibility(View.GONE);
+                if (holder.banner != null) {
+                    holder.banner.setImageDrawable(e.banner);
+                    holder.banner.setVisibility(View.VISIBLE);
+                }
+                targetCard.setBackground(createTileBackground(ctx, 0xFF2A2E35));
+            } else {
+                if (holder.banner != null) holder.banner.setVisibility(View.GONE);
+                if (holder.centerIcon != null) {
+                    holder.centerIcon.setVisibility(View.VISIBLE);
+                    holder.centerIcon.setImageDrawable(e.icon);
+                    holder.centerIcon.clearColorFilter();
+                }
+                targetCard.setBackground(createTileBackground(ctx, colorFromEntry(e)));
             }
         }
 
-        if (holder.itemView instanceof android.widget.FrameLayout) {
-            ((android.widget.FrameLayout) holder.itemView).setForeground(createTileForeground(ctx));
+        if (targetCard instanceof android.widget.FrameLayout) {
+            ((android.widget.FrameLayout) targetCard).setForeground(createTileForeground(ctx));
         }
 
         holder.itemView.setOnClickListener(v -> {
@@ -186,26 +193,25 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         });
 
         holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
-            float s = hasFocus ? 1.12f : 1.0f;
+            float s = hasFocus ? 1.10f : 1.0f;
             float z = hasFocus ? 14f : 0f;
+            View animTarget = holder.tile != null ? holder.tile : v;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(160)
+                animTarget.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(160)
                         .setInterpolator(new android.view.animation.DecelerateInterpolator(1.4f)).start();
             } else {
-                v.animate().scaleX(s).scaleY(s).setDuration(160)
+                animTarget.animate().scaleX(s).scaleY(s).setDuration(160)
                         .setInterpolator(new android.view.animation.DecelerateInterpolator(1.4f)).start();
             }
-            v.setActivated(hasFocus);
-            if (v.getBackground() != null) v.getBackground().setState(v.getDrawableState());
-            if (v instanceof android.widget.FrameLayout) {
-                Drawable fg = ((android.widget.FrameLayout) v).getForeground();
-                if (fg != null) fg.setState(v.getDrawableState());
+            if (holder.bottomTitle != null) {
+                holder.bottomTitle.setTextColor(hasFocus ? 0xFFFFFFFF : 0xB3FFFFFF);
+                holder.bottomTitle.setSelected(hasFocus);
             }
 
             if (hasFocus && listener != null) {
                 int pos = holder.getBindingAdapterPosition();
                 if (pos != RecyclerView.NO_POSITION) {
-                    listener.onAppFocused(e, pos, holder.itemView);
+                    listener.onAppFocused(e, pos, animTarget);
                 }
             }
         });
@@ -217,19 +223,25 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
     }
 
     static class VH extends RecyclerView.ViewHolder {
+        final View tile;
         final ImageView icon;
         final TextView title;
         final TextView subtitle;
         final ImageView banner;
         final View contentGroup;
+        final ImageView centerIcon;
+        final TextView bottomTitle;
 
         VH(@NonNull View itemView) {
             super(itemView);
+            tile = itemView.findViewById(R.id.launcher_app_tile);
             icon = itemView.findViewById(R.id.launcher_app_icon);
             title = itemView.findViewById(R.id.launcher_app_title);
             subtitle = itemView.findViewById(R.id.launcher_app_subtitle);
             banner = itemView.findViewById(R.id.launcher_app_banner);
             contentGroup = itemView.findViewById(R.id.launcher_app_content);
+            centerIcon = itemView.findViewById(R.id.launcher_app_center_icon);
+            bottomTitle = itemView.findViewById(R.id.launcher_app_bottom_title);
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 final int radius = dp(itemView.getContext(), 14);
@@ -243,27 +255,34 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
                         }
                     }
                 };
-                itemView.setOutlineProvider(roundOutline);
-                itemView.setClipToOutline(true);
+                if (tile != null) {
+                    tile.setOutlineProvider(roundOutline);
+                    tile.setClipToOutline(true);
+                }
 
                 if (banner != null) {
                     banner.setOutlineProvider(roundOutline);
                     banner.setClipToOutline(true);
                 }
 
-                if (icon != null) {
-                    final int iconRadius = dp(itemView.getContext(), 10);
-                    icon.setOutlineProvider(new ViewOutlineProvider() {
-                        @Override
-                        public void getOutline(View view, Outline outline) {
-                            if (view.getWidth() > 0 && view.getHeight() > 0) {
-                                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), iconRadius);
-                            } else {
-                                outline.setEmpty();
-                            }
+                final int iconRadius = dp(itemView.getContext(), 10);
+                ViewOutlineProvider iconOutline = new ViewOutlineProvider() {
+                    @Override
+                    public void getOutline(View view, Outline outline) {
+                        if (view.getWidth() > 0 && view.getHeight() > 0) {
+                            outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), iconRadius);
+                        } else {
+                            outline.setEmpty();
                         }
-                    });
+                    }
+                };
+                if (icon != null) {
+                    icon.setOutlineProvider(iconOutline);
                     icon.setClipToOutline(true);
+                }
+                if (centerIcon != null) {
+                    centerIcon.setOutlineProvider(iconOutline);
+                    centerIcon.setClipToOutline(true);
                 }
             }
         }

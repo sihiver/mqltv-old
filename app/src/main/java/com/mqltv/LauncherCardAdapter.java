@@ -236,7 +236,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
         if (needsStyle) {
             if (isRadio) {
                 if (cardStyle != null) {
-                    StateListDrawable bg = createCardBackground(holder.itemView.getContext(), cardStyle, 18);
+                    StateListDrawable bg = createCardBackground(holder.itemView.getContext(), cardStyle, 20);
                     bg.setAlpha(204); // ~80% opacity
                     holder.itemView.setBackground(bg);
                 } else {
@@ -244,7 +244,7 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
                 }
             } else {
                 if (cardStyle != null) {
-                    holder.itemView.setBackground(createCardBackground(holder.itemView.getContext(), cardStyle, isLiveTv ? 0 : 18));
+                    holder.itemView.setBackground(createCardBackground(holder.itemView.getContext(), cardStyle, 20));
                 } else {
                     holder.itemView.setBackgroundResource(isLiveTv ? R.drawable.launcher_card_bg_square : R.drawable.launcher_card_bg);
                 }
@@ -572,18 +572,21 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
                 new int[] { style.focusTop, style.focusBottom }
         );
         focused.setCornerRadius(radius);
+        focused.setStroke(dp(context, 2), 0xF5FFFFFF);
 
         GradientDrawable activated = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[] { style.focusTop, style.focusBottom }
         );
         activated.setCornerRadius(radius);
+        activated.setStroke(dp(context, 1), 0x80FFFFFF);
 
         GradientDrawable normal = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[] { style.normalTop, style.normalBottom }
         );
         normal.setCornerRadius(radius);
+        normal.setStroke(dp(context, 1), 0x26FFFFFF);
 
         StateListDrawable s = new StateListDrawable();
         s.addState(new int[] { android.R.attr.state_activated }, activated);

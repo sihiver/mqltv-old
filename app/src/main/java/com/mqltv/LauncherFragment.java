@@ -116,6 +116,15 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
     private TextView headerTime;
     private ImageView headerNet;
+    private TextView greetingText;
+    private TextView headerDate;
+    private TextView headerNetLabel;
+
+    private LauncherAmbientHelper ambientHelper;
+    private TextView heroKicker;
+    private View heroKickerBar;
+    private TextView heroTitle;
+    private TextView heroSubtitle;
 
     private final Runnable headerTicker = new Runnable() {
         @Override
@@ -149,6 +158,22 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_launcher, container, false);
         Context appContext = v.getContext().getApplicationContext();
+
+        ImageView ambientGlowView = v.findViewById(R.id.launcher_ambient_glow);
+        if (ambientGlowView != null) {
+            ambientHelper = new LauncherAmbientHelper(ambientGlowView);
+        }
+
+        greetingText = v.findViewById(R.id.launcher_greeting);
+        headerDate = v.findViewById(R.id.launcher_header_date);
+        headerNetLabel = v.findViewById(R.id.launcher_header_net_label);
+
+        heroKicker = v.findViewById(R.id.launcher_hero_kicker);
+        heroKickerBar = v.findViewById(R.id.launcher_hero_kicker_bar);
+        heroTitle = v.findViewById(R.id.launcher_hero_title);
+        heroSubtitle = v.findViewById(R.id.launcher_hero_subtitle);
+
+        updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV", "+5000 Saluran TV Lokal & Internasional", 0xFF8B5CF6);
 
         headerTime = v.findViewById(R.id.launcher_header_time);
         headerNet = v.findViewById(R.id.launcher_header_net);
@@ -203,45 +228,31 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         }
 
         searchButton = v.findViewById(R.id.launcher_search);
-        if (searchButton != null) {
-            // Enable search bar functionality
-            searchButton.setVisibility(View.VISIBLE);
-            searchButton.setOnClickListener(v1 -> {
-                Intent i = new Intent(appContext, SearchActivity.class);
-                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                appContext.startActivity(i);
-            });
-        }
+        setupPillFocus(searchButton, () -> {
+            Intent i = new Intent(appContext, SearchActivity.class);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            appContext.startActivity(i);
+        }, null);
 
         settingsButton = v.findViewById(R.id.launcher_settings);
-        if (settingsButton != null) settingsButton.setOnClickListener(view -> {
+        setupPillFocus(settingsButton, () -> {
             syncHomeFocusState(SETTINGS_BUTTON_POSITION);
             if (getActivity() instanceof MainActivity) {
                 ((MainActivity) getActivity()).openSettings();
             }
-        });
-        if (settingsButton != null) {
-            settingsButton.setOnFocusChangeListener((view, hasFocus) -> {
-                if (hasFocus) syncHomeFocusState(SETTINGS_BUTTON_POSITION);
-            });
-        }
+        }, () -> syncHomeFocusState(SETTINGS_BUTTON_POSITION));
 
         nativeSettingsButton = v.findViewById(R.id.launcher_native_settings);
-        if (nativeSettingsButton != null) nativeSettingsButton.setOnClickListener(view -> {
+        setupPillFocus(nativeSettingsButton, () -> {
             syncHomeFocusState(NATIVE_SETTINGS_BUTTON_POSITION);
             Intent intent = new Intent(android.provider.Settings.ACTION_SETTINGS);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             appContext.startActivity(intent);
-        });
-        if (nativeSettingsButton != null) {
-            nativeSettingsButton.setOnFocusChangeListener((view, hasFocus) -> {
-                if (hasFocus) syncHomeFocusState(NATIVE_SETTINGS_BUTTON_POSITION);
-            });
-        }
+        }, () -> syncHomeFocusState(NATIVE_SETTINGS_BUTTON_POSITION));
 
         notificationsButton = v.findViewById(R.id.launcher_notifications);
         notificationsBadge = v.findViewById(R.id.launcher_notifications_badge);
-        if (notificationsButton != null) notificationsButton.setOnClickListener(view -> {
+        setupPillFocus(notificationsButton, () -> {
             syncHomeFocusState(NOTIFICATIONS_BUTTON_POSITION);
             boolean isNotificationAccessGranted = NotificationManagerCompat.getEnabledListenerPackages(appContext).contains(appContext.getPackageName());
             if (!isNotificationAccessGranted) {
@@ -277,12 +288,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     }
                 }
             }
-        });
-        if (notificationsButton != null) {
-            notificationsButton.setOnFocusChangeListener((view, hasFocus) -> {
-                if (hasFocus) syncHomeFocusState(NOTIFICATIONS_BUTTON_POSITION);
-            });
-        }
+        }, () -> syncHomeFocusState(NOTIFICATIONS_BUTTON_POSITION));
 
         profileButton = v.findViewById(R.id.launcher_profile);
         TextView profileLetter = v.findViewById(R.id.launcher_profile_letter);
@@ -296,22 +302,16 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             }
             profileLetter.setText(letter);
         }
-        if (profileButton != null) {
-            profileButton.setOnClickListener(view -> {
-                syncHomeFocusState(PROFILE_BUTTON_POSITION);
-                if (AuthPrefs.isLoggedIn(appContext)) {
-                    Intent i = new Intent(appContext, AccountActivity.class);
-                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    appContext.startActivity(i);
-                } else {
-                    // For launcher: use profile icon as login entry.
-                    LoginGuard.ensureLoggedIn(appContext);
-                }
-            });
-            profileButton.setOnFocusChangeListener((view, hasFocus) -> {
-                if (hasFocus) syncHomeFocusState(PROFILE_BUTTON_POSITION);
-            });
-        }
+        setupPillFocus(profileButton, () -> {
+            syncHomeFocusState(PROFILE_BUTTON_POSITION);
+            if (AuthPrefs.isLoggedIn(appContext)) {
+                Intent i = new Intent(appContext, AccountActivity.class);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                appContext.startActivity(i);
+            } else {
+                LoginGuard.ensureLoggedIn(appContext);
+            }
+        }, () -> syncHomeFocusState(PROFILE_BUTTON_POSITION));
 
         cardsList = v.findViewById(R.id.launcher_cards);
         cardsList.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
@@ -375,6 +375,27 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 @Override
                 public void onAppFocused(LauncherAppEntry entry, int position) {
                     syncAppsFocusState(position);
+                    if (entry != null) {
+                        if (entry.isAddButton) {
+                            updateHero("APLIKASI", "TAMBAH APLIKASI", "Sematkan aplikasi favorit ke beranda", 0xFF3B82F6);
+                        } else {
+                            String sub = entry.component != null ? entry.component.getPackageName() : "Aplikasi TV";
+                            int color = 0xFF3B82F6;
+                            if (entry.label != null) {
+                                String lbl = entry.label.toLowerCase(Locale.ROOT);
+                                if (lbl.contains("youtube") || lbl.contains("smarttube") || lbl.contains("netflix")) {
+                                    color = 0xFFEF4444; // Red
+                                } else if (lbl.contains("spotify") || lbl.contains("music") || lbl.contains("audio") || lbl.contains("radio")) {
+                                    color = 0xFF10B981; // Green
+                                } else if (lbl.contains("disney") || lbl.contains("prime") || lbl.contains("vidio")) {
+                                    color = 0xFF0284C7; // Blue
+                                } else if (lbl.contains("game") || lbl.contains("play")) {
+                                    color = 0xFFF59E0B; // Amber
+                                }
+                            }
+                            updateHero("APLIKASI", entry.label, sub, color);
+                        }
+                    }
                 }
             });
             appsList.setAdapter(appsAdapter);
@@ -386,7 +407,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             recentList.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
             recentList.setHasFixedSize(false);
             recentList.setItemViewCacheSize(16);
-        recentList.setClipToPadding(false);
+            recentList.setClipToPadding(false);
             recentList.setClipChildren(false);
             androidx.recyclerview.widget.RecyclerView.ItemAnimator animator3 = recentList.getItemAnimator();
             if (animator3 instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
@@ -404,6 +425,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 public void onChannelFocused(Channel channel, int position) {
                     if (channel == null) return;
                     syncRecentFocusState(channel.getUrl(), position);
+                    String grp = channel.getGroupTitle() != null && !channel.getGroupTitle().trim().isEmpty() ? channel.getGroupTitle() : "Saluran TV";
+                    updateHero("TERAKHIR DITONTON", channel.getTitle(), grp, 0xFF6366F1);
                 }
             });
             recentList.setAdapter(recentAdapter);
@@ -575,13 +598,75 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (adapter != null) adapter.setHostActive(false);
     }
 
+    private void setupPillFocus(View view, Runnable onClick, Runnable onFocus) {
+        if (view == null) return;
+        if (onClick != null) {
+            view.setOnClickListener(v -> onClick.run());
+        }
+        view.setOnFocusChangeListener((v, hasFocus) -> {
+            float s = hasFocus ? 1.08f : 1.0f;
+            float z = hasFocus ? 8f : 0f;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(120).start();
+            } else {
+                v.animate().scaleX(s).scaleY(s).setDuration(120).start();
+            }
+            if (hasFocus && onFocus != null) {
+                onFocus.run();
+            }
+        });
+    }
+
+    public void updateHero(String kicker, String title, String subtitle, int accentColor) {
+        if (heroTitle != null && title != null) {
+            heroTitle.setText(title);
+        }
+        if (heroSubtitle != null && subtitle != null) {
+            heroSubtitle.setText(subtitle);
+        }
+        if (heroKicker != null && kicker != null) {
+            heroKicker.setText(kicker);
+        }
+        if (heroKickerBar != null) {
+            try {
+                heroKickerBar.getBackground().setColorFilter(accentColor, android.graphics.PorterDuff.Mode.SRC_IN);
+            } catch (Exception ignored) {
+            }
+        }
+        if (ambientHelper != null) {
+            ambientHelper.setGlowColor(accentColor);
+        }
+    }
+
     private void updateHeaderTime() {
         if (headerTime == null) return;
         try {
-            // 24-hour clock for TV header.
+            Date now = new Date();
             SimpleDateFormat fmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
-            String s = fmt.format(new Date());
+            String s = fmt.format(now);
             headerTime.setText(s != null ? s : "");
+
+            if (headerDate != null) {
+                SimpleDateFormat dateFmt = new SimpleDateFormat("EEEE, d MMMM", Locale.getDefault());
+                String dateStr = dateFmt.format(now);
+                headerDate.setText(dateStr != null ? dateStr.toUpperCase(Locale.getDefault()) : "");
+            }
+
+            if (greetingText != null) {
+                java.util.Calendar cal = java.util.Calendar.getInstance();
+                int hour = cal.get(java.util.Calendar.HOUR_OF_DAY);
+                String greeting;
+                if (hour >= 4 && hour < 11) {
+                    greeting = "SELAMAT PAGI";
+                } else if (hour >= 11 && hour < 15) {
+                    greeting = "SELAMAT SIANG";
+                } else if (hour >= 15 && hour < 18) {
+                    greeting = "SELAMAT SORE";
+                } else {
+                    greeting = "SELAMAT MALAM";
+                }
+                greetingText.setText(greeting);
+            }
         } catch (Exception ignored) {
         }
     }
@@ -598,6 +683,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
         if (ni == null || !ni.isConnected()) {
             headerNet.setVisibility(View.GONE);
+            if (headerNetLabel != null) headerNetLabel.setText("OFFLINE");
             return;
         }
 
@@ -605,12 +691,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (type == ConnectivityManager.TYPE_ETHERNET) {
             headerNet.setVisibility(View.VISIBLE);
             headerNet.setImageResource(R.drawable.ic_mql_ethernet);
+            if (headerNetLabel != null) headerNetLabel.setText("ETHERNET");
         } else if (type == ConnectivityManager.TYPE_WIFI) {
             headerNet.setVisibility(View.VISIBLE);
             headerNet.setImageResource(R.drawable.ic_mql_wifi);
+            if (headerNetLabel != null) headerNetLabel.setText("WI-FI");
         } else {
-            // Connected but not WiFi/Ethernet (e.g., cellular). Hide for TV-like UX.
             headerNet.setVisibility(View.GONE);
+            if (headerNetLabel != null) headerNetLabel.setText("CONNECTED");
         }
     }
 
@@ -1206,8 +1294,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (card == null) return;
         if (card.getDestination() == NavDestination.LIVE_TV) {
             syncHomeFocusState(LIVE_TV_CARD_POSITION);
+            updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV", card.getSubtitle() != null ? card.getSubtitle() : "+5000 Saluran TV Lokal & Internasional", 0xFF8B5CF6);
         } else if (card.getDestination() == NavDestination.SHOWS) {
             syncHomeFocusState(RADIO_CARD_POSITION);
+            updateHero("MQLTV · DIGITAL AUDIO", "INTERNET RADIOS", card.getSubtitle() != null ? card.getSubtitle() : "Radio Streaming Saluran Lokal & Global", 0xFF06B6D4);
         }
     }
 }

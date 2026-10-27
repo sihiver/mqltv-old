@@ -14,6 +14,7 @@
         android:focusable="true"
         android:focusableInTouchMode="true"
         android:clickable="true"
+        android:clipToOutline="true"
         android:padding="12dp">
 
         <ImageView
@@ -30,10 +31,11 @@
         android:id="@+id/channel_name"
         android:layout_width="@dimen/home_card_width"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="6dp"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textColor="@color/mql_text_secondary"
+        android:fontFamily="sans-serif-medium"
+        android:textColor="@color/mql_text_primary"
         android:textSize="13sp" />
 
 </LinearLayout>

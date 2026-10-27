@@ -239,28 +239,36 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
     }
 
     private static Drawable createTileBackground(Context ctx, int baseColor) {
-        int radius = dp(ctx, 14);
-        GradientDrawable normal = new GradientDrawable();
-        normal.setColor(baseColor);
+        int radius = dp(ctx, 16);
+        int darkTop = blend(0xFF242F40, baseColor, 0.25f);
+        int darkBottom = blend(0xFF131924, baseColor, 0.15f);
+        GradientDrawable normal = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{darkTop, darkBottom});
         normal.setCornerRadius(radius);
+        normal.setStroke(dp(ctx, 1), 0x30FFFFFF);
         return normal;
     }
 
     private static Drawable createTileForeground(Context ctx) {
-        int radius = dp(ctx, 14);
-        int stroke = dp(ctx, 3);
-        int accent = ContextCompat.getColor(ctx, R.color.mql_accent);
+        int radius = dp(ctx, 16);
+        int stroke = Math.round(dp(ctx, 2));
 
         GradientDrawable focused = new GradientDrawable();
         focused.setColor(Color.TRANSPARENT);
         focused.setCornerRadius(radius);
-        focused.setStroke(stroke, accent);
+        focused.setStroke(stroke, 0xF5FFFFFF);
 
         StateListDrawable s = new StateListDrawable();
         s.addState(new int[] { android.R.attr.state_focused }, focused);
         s.addState(new int[] { android.R.attr.state_activated }, focused);
         s.addState(new int[] {}, new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         return s;
+    }
+
+    private static int blend(int bg, int fg, float ratio) {
+        int r = (int) (Color.red(bg) * (1f - ratio) + Color.red(fg) * ratio);
+        int g = (int) (Color.green(bg) * (1f - ratio) + Color.green(fg) * ratio);
+        int b = (int) (Color.blue(bg) * (1f - ratio) + Color.blue(fg) * ratio);
+        return Color.rgb(Math.max(0, Math.min(255, r)), Math.max(0, Math.min(255, g)), Math.max(0, Math.min(255, b)));
     }
 
     private static int colorFromEntry(LauncherAppEntry e) {

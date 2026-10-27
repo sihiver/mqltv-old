@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="171dp"
-    android:layout_height="96dp"
+    android:layout_width="176dp"
+    android:layout_height="98dp"
     android:layout_marginEnd="14dp"
     android:focusable="true"
     android:focusableInTouchMode="true"
@@ -25,13 +25,13 @@
         android:layout_height="match_parent"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
 
         <ImageView
             android:id="@+id/launcher_app_icon"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:contentDescription="App" />
 
         <LinearLayout
@@ -48,7 +48,8 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textColor="@color/mql_text_primary"
-                android:textSize="16sp"
+                android:textSize="15sp"
+                android:fontFamily="sans-serif-medium"
                 android:textStyle="bold" />
 
             <TextView
@@ -58,9 +59,10 @@
                 android:layout_marginTop="2dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="#D9E2F2"
-                android:textSize="12sp" />
+                android:textColor="#B0C0D4"
+                android:textSize="11sp" />
 
         </LinearLayout>
     </LinearLayout>
+
 </FrameLayout>

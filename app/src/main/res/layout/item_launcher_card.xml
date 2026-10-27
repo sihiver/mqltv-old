@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="210dp"
-    android:layout_height="230dp"
-    android:layout_marginEnd="16dp"
+    android:layout_height="220dp"
+    android:layout_marginEnd="18dp"
     android:background="@drawable/launcher_card_bg"
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:clickable="true"
+    android:clipToOutline="true"
     android:descendantFocusability="blocksDescendants">
 
     <TextureView
@@ -29,10 +30,33 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:paddingStart="18dp"
-        android:paddingEnd="18dp"
-        android:paddingTop="14dp"
-        android:paddingBottom="14dp">
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="18dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <View
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/badge_bg"
+                android:backgroundTint="#06B6D4" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="AUDIO"
+                android:textColor="#CCFFFFFF"
+                android:textSize="11sp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.14" />
+        </LinearLayout>
 
         <View
             android:layout_width="match_parent"
@@ -41,44 +65,45 @@
 
         <ImageView
             android:id="@+id/launcher_card_icon"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:layout_gravity="start"
-            android:src="@drawable/tv_play_icon"
-            android:tint="@color/mql_text_secondary"
+            android:src="@drawable/internet_radio_icon"
+            android:tint="@color/mql_text_primary"
             android:duplicateParentState="true"
             android:contentDescription="Icon" />
 
         <View
             android:layout_width="match_parent"
-            android:layout_height="10dp" />
+            android:layout_height="8dp" />
 
         <TextView
             android:id="@+id/launcher_card_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Live TV's"
+            android:text="Radios"
             android:textColor="@color/mql_text_primary"
-            android:textSize="19sp"
+            android:textSize="20sp"
             android:duplicateParentState="true"
+            android:fontFamily="sans-serif-medium"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/launcher_card_subtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="+5000 Channels"
+            android:layout_marginTop="4dp"
+            android:text="Radio Streaming"
             android:textColor="@color/mql_text_secondary"
             android:duplicateParentState="true"
-            android:textSize="14sp" />
+            android:textSize="13sp" />
 
         <View
             android:id="@+id/launcher_card_indicator"
-            android:layout_width="56dp"
+            android:layout_width="48dp"
             android:layout_height="3dp"
-            android:layout_marginTop="12dp"
-            android:background="@color/mql_accent"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/hero_kicker_bar"
             android:duplicateParentState="true"
             android:visibility="invisible" />
 

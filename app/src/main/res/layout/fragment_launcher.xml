@@ -223,6 +223,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
                             android:padding="10dp"
+                            android:duplicateParentState="true"
                             android:src="@android:drawable/ic_menu_search"
                             android:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
@@ -241,6 +242,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
                             android:padding="10dp"
+                            android:duplicateParentState="true"
                             android:src="@drawable/ic_bell_outline"
                             android:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
@@ -275,6 +277,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
                             android:padding="10dp"
+                            android:duplicateParentState="true"
                             android:src="@android:drawable/ic_menu_manage"
                             android:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
@@ -293,6 +296,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
                             android:padding="10dp"
+                            android:duplicateParentState="true"
                             android:src="@drawable/ic_gear_outline"
                             android:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
@@ -311,6 +315,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
                             android:gravity="center"
+                            android:duplicateParentState="true"
                             android:text="?"
                             android:textStyle="bold"
                             android:textSize="15sp"

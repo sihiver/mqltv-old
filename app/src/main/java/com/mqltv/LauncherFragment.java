@@ -570,6 +570,17 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             } else {
                 v.animate().scaleX(s).scaleY(s).setDuration(120).start();
             }
+            if (v instanceof ViewGroup) {
+                ViewGroup vg = (ViewGroup) v;
+                for (int i = 0; i < vg.getChildCount(); i++) {
+                    View child = vg.getChildAt(i);
+                    if (child instanceof ImageView) {
+                        ((ImageView) child).setColorFilter(hasFocus ? 0xFF121212 : 0xFFFFFFFF, android.graphics.PorterDuff.Mode.SRC_IN);
+                    } else if (child instanceof TextView) {
+                        ((TextView) child).setTextColor(hasFocus ? 0xFF121212 : 0xFFFFFFFF);
+                    }
+                }
+            }
             if (hasFocus && onFocus != null) {
                 onFocus.run();
             }

@@ -52,7 +52,11 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
                 LauncherAppEntry newItem = list.get(i);
                 String oldLabel = oldItem != null ? oldItem.label : "";
                 String newLabel = newItem != null ? newItem.label : "";
-                if (!oldLabel.equals(newLabel)) {
+                String oldSub = oldItem != null ? oldItem.customSubtitle : "";
+                String newSub = newItem != null ? newItem.customSubtitle : "";
+                boolean oldLive = oldItem != null && oldItem.isLiveTv;
+                boolean newLive = newItem != null && newItem.isLiveTv;
+                if (!oldLabel.equals(newLabel) || oldLive != newLive || (oldSub != null && !oldSub.equals(newSub))) {
                     same = false;
                     break;
                 }
@@ -97,6 +101,31 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
             if (holder.title != null) holder.title.setTextColor(Color.WHITE);
             if (holder.subtitle != null) holder.subtitle.setTextColor(0xFFD9E2F2);
             holder.itemView.setBackground(createTileBackground(ctx, 0xFF4D5B6A));
+        } else if (e.isLiveTv) {
+            if (holder.banner != null) holder.banner.setVisibility(View.GONE);
+            if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.VISIBLE);
+
+            if (holder.icon != null) {
+                if (e.icon != null) {
+                    holder.icon.setImageDrawable(e.icon);
+                } else {
+                    holder.icon.setImageResource(R.mipmap.ic_launcher);
+                }
+                holder.icon.clearColorFilter();
+            }
+
+            if (holder.title != null) {
+                holder.title.setText(e.label != null ? e.label : "Live TV");
+                holder.title.setTextColor(Color.WHITE);
+            }
+
+            if (holder.subtitle != null) {
+                holder.subtitle.setText(e.customSubtitle != null ? e.customSubtitle : "+5000 Saluran");
+                holder.subtitle.setVisibility(View.VISIBLE);
+                holder.subtitle.setTextColor(0xFFD9E2F2);
+            }
+
+            holder.itemView.setBackground(createTileBackground(ctx, 0xFF7C3AED));
         } else {
             if (e.banner != null) {
                 if (holder.banner != null) {
@@ -151,7 +180,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         });
 
         holder.itemView.setOnLongClickListener(v -> {
-            if (e.isAddButton) return true;
+            if (e.isAddButton || e.isLiveTv) return true;
             if (listener != null) listener.onAppLongPressed(e);
             return true;
         });
@@ -272,6 +301,9 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
     }
 
     private static int colorFromEntry(LauncherAppEntry e) {
+        if (e != null && e.isLiveTv) {
+            return 0xFF7C3AED; // tvOS purple / violet accent
+        }
         String key = null;
         if (e != null && e.component != null) {
             key = e.component.getPackageName();
@@ -312,6 +344,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
     }
 
     private static String resolveSubtitle(Context ctx, LauncherAppEntry e) {
+        if (e != null && e.customSubtitle != null) return e.customSubtitle;
         if (e == null || e.component == null) return null;
         String pkg = e.component.getPackageName();
 

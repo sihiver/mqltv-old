@@ -14,13 +14,30 @@ public final class LauncherAppEntry {
     public final Drawable banner;
     public final ComponentName component;
     public final boolean isAddButton;
+    public final boolean isLiveTv;
+    public final String customSubtitle;
 
     public LauncherAppEntry(String label, Drawable icon, Drawable banner, ComponentName component, boolean isAddButton) {
+        this(label, icon, banner, component, isAddButton, false, null);
+    }
+
+    public LauncherAppEntry(String label, Drawable icon, Drawable banner, ComponentName component, boolean isAddButton, boolean isLiveTv, String customSubtitle) {
         this.label = label;
         this.icon = icon;
         this.banner = banner;
         this.component = component;
         this.isAddButton = isAddButton;
+        this.isLiveTv = isLiveTv;
+        this.customSubtitle = customSubtitle;
+    }
+
+    public static LauncherAppEntry createLiveTvEntry(android.content.Context context, String subtitle) {
+        Drawable icon = null;
+        try {
+            icon = androidx.core.content.ContextCompat.getDrawable(context, R.mipmap.ic_launcher);
+        } catch (Exception ignored) {
+        }
+        return new LauncherAppEntry("Live TV", icon, null, null, false, true, subtitle != null ? subtitle : "+5000 Saluran");
     }
 
     public static LauncherAppEntry fromResolveInfo(ResolveInfo ri, android.content.pm.PackageManager pm) {

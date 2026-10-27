@@ -58,13 +58,13 @@ public final class LauncherAmbientHelper {
             Canvas canvas = new Canvas(bmp);
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
 
-            // CleanYourTV radial spotlight originating from top-right / hero area
-            float cx = GLOW_WIDTH * 0.72f;
-            float cy = GLOW_HEIGHT * 0.18f;
-            float radius = GLOW_WIDTH * 0.70f;
+            // CleanYourTV radial spotlight originating from center-upper screen
+            float cx = GLOW_WIDTH * 0.50f;
+            float cy = GLOW_HEIGHT * 0.35f;
+            float radius = GLOW_WIDTH * 0.65f;
 
-            int cCore = (color & 0x00FFFFFF) | (0x70 << 24); // ~44% alpha
-            int cMid  = (color & 0x00FFFFFF) | (0x28 << 24); // ~16% alpha
+            int cCore = (color & 0x00FFFFFF) | (0x75 << 24); // ~46% alpha
+            int cMid  = (color & 0x00FFFFFF) | (0x25 << 24); // ~15% alpha
             int cEdge = (color & 0x00FFFFFF) | (0x00 << 24); // 0% alpha
 
             paint.setShader(new RadialGradient(

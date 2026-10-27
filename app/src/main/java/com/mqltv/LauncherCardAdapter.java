@@ -621,6 +621,22 @@ public class LauncherCardAdapter extends RecyclerView.Adapter<LauncherCardAdapte
             indicator = itemView.findViewById(R.id.launcher_card_indicator);
             video = itemView.findViewById(R.id.launcher_card_video);
             videoScrim = itemView.findViewById(R.id.launcher_card_video_scrim);
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                final int cr = dp(itemView.getContext(), 20);
+                android.view.ViewOutlineProvider op = new android.view.ViewOutlineProvider() {
+                    @Override
+                    public void getOutline(View view, android.graphics.Outline outline) {
+                        outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), cr);
+                    }
+                };
+                itemView.setOutlineProvider(op);
+                itemView.setClipToOutline(true);
+                if (video != null) {
+                    video.setOutlineProvider(op);
+                    video.setClipToOutline(true);
+                }
+            }
         }
     }
 }

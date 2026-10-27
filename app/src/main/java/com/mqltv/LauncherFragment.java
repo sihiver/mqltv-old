@@ -87,13 +87,15 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             }
         }
     }
-    private int lastSelectedCardPosition = LIVE_TV_CARD_POSITION;
+    private int lastSelectedCardPosition = APPS_ROW_POSITION;
     private int lastSelectedAppIndex = 0;
+    private String latestLiveSubtitle = "+5000 Saluran";
 
     private int lastSelectedRecentIndex = 0;
     @Nullable
     private String lastSelectedRecentUrl;
 
+    private androidx.core.widget.NestedScrollView scrollContainer;
     private RecyclerView appsList;
 
     static LauncherFragment newInstance(int initialFocusPosition, int initialAppsIndex, @Nullable String initialRecentUrl, int initialRecentIndex) {
@@ -146,8 +148,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         super.onCreate(savedInstanceState);
         Bundle args = getArguments();
         if (args != null) {
-            lastSelectedCardPosition = args.getInt(ARG_INITIAL_FOCUS_POSITION, LIVE_TV_CARD_POSITION);
-            lastSelectedAppIndex = Math.max(0, args.getInt(ARG_INITIAL_APPS_INDEX, 0));
+            int pos = args.getInt(ARG_INITIAL_FOCUS_POSITION, APPS_ROW_POSITION);
+            if (pos == LIVE_TV_CARD_POSITION || pos == RADIO_CARD_POSITION) {
+                lastSelectedCardPosition = APPS_ROW_POSITION;
+                lastSelectedAppIndex = 0;
+            } else {
+                lastSelectedCardPosition = pos;
+                lastSelectedAppIndex = Math.max(0, args.getInt(ARG_INITIAL_APPS_INDEX, 0));
+            }
             lastSelectedRecentUrl = args.getString(ARG_INITIAL_RECENT_URL, null);
             lastSelectedRecentIndex = Math.max(0, args.getInt(ARG_INITIAL_RECENT_INDEX, 0));
         }
@@ -159,6 +167,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         View v = inflater.inflate(R.layout.fragment_launcher, container, false);
         Context appContext = v.getContext().getApplicationContext();
 
+        scrollContainer = v.findViewById(R.id.launcher_scroll);
         ImageView ambientGlowView = v.findViewById(R.id.launcher_ambient_glow);
         if (ambientGlowView != null) {
             ambientHelper = new LauncherAmbientHelper(ambientGlowView);
@@ -313,36 +322,17 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             }
         }, () -> syncHomeFocusState(PROFILE_BUTTON_POSITION));
 
-        cardsList = v.findViewById(R.id.launcher_cards);
-        cardsList.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
-        cardsList.setHasFixedSize(false);
-        cardsList.setItemViewCacheSize(8);
-        cardsList.setClipToPadding(false);
-        cardsList.setClipChildren(false);
-        cardsList.setPreserveFocusAfterLayout(true);
-        androidx.recyclerview.widget.RecyclerView.ItemAnimator animator1 = cardsList.getItemAnimator();
-        if (animator1 instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
-            ((androidx.recyclerview.widget.SimpleItemAnimator) animator1).setSupportsChangeAnimations(false);
-        }
 
-        try {
-            new StartSnapHelper().attachToRecyclerView(cardsList);
-        } catch (Exception ignored) {
-        }
-
-        adapter = new LauncherCardAdapter(this);
-        cardsList.setAdapter(adapter);
-        // Pre-warm SSL client + ExoPlayer in background so video is ready by the time
-        // the user scrolls to the Live TV card (no blocking on first bind).
-        adapter.preWarm(v.getContext());
 
         appsList = v.findViewById(R.id.launcher_apps);
         if (appsList != null) {
-            appsList.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
-            appsList.setHasFixedSize(false);
-            appsList.setItemViewCacheSize(16);
-        appsList.setClipToPadding(false);
+            appsList.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(v.getContext(), 4, RecyclerView.VERTICAL, false));
+            appsList.setHasFixedSize(true);
+            appsList.setItemViewCacheSize(24);
+            appsList.setClipToPadding(false);
             appsList.setClipChildren(false);
+            appsList.setNestedScrollingEnabled(false);
+            appsList.addItemDecoration(new DockDecoration(4, getResources().getDisplayMetrics().density));
             androidx.recyclerview.widget.RecyclerView.ItemAnimator animator2 = appsList.getItemAnimator();
             if (animator2 instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
                 ((androidx.recyclerview.widget.SimpleItemAnimator) animator2).setSupportsChangeAnimations(false);
@@ -352,6 +342,13 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 @Override
                 public void onAppClicked(LauncherAppEntry entry) {
                     if (entry == null) return;
+                    if (entry.isLiveTv) {
+                        syncAppsFocusState(0);
+                        if (getActivity() instanceof MainActivity) {
+                            ((MainActivity) getActivity()).navigateTo(NavDestination.LIVE_TV);
+                        }
+                        return;
+                    }
                     Intent intent = entry.buildLaunchIntent();
                     if (intent == null) return;
                     try {
@@ -363,7 +360,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
                 @Override
                 public void onAppLongPressed(LauncherAppEntry entry) {
-                    if (entry == null || entry.component == null) return;
+                    if (entry == null || entry.component == null || entry.isLiveTv) return;
                     showPinnedAppActions(appContext, entry);
                 }
 
@@ -375,8 +372,15 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 @Override
                 public void onAppFocused(LauncherAppEntry entry, int position) {
                     syncAppsFocusState(position);
+                    if (position < 4 && scrollContainer != null && scrollContainer.getScrollY() != 0) {
+                        scrollContainer.smoothScrollTo(0, 0);
+                    }
                     if (entry != null) {
-                        if (entry.isAddButton) {
+                        if (entry.isLiveTv) {
+                            updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV",
+                                    latestLiveSubtitle != null ? latestLiveSubtitle + " TV Lokal & Internasional" : "+5000 Saluran TV Lokal & Internasional",
+                                    0xFF8B5CF6);
+                        } else if (entry.isAddButton) {
                             updateHero("APLIKASI", "TAMBAH APLIKASI", "Sematkan aplikasi favorit ke beranda", 0xFF3B82F6);
                         } else {
                             String sub = entry.component != null ? entry.component.getPackageName() : "Aplikasi TV";
@@ -401,52 +405,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             appsList.setAdapter(appsAdapter);
         }
 
-        recentTitle = v.findViewById(R.id.launcher_recent_title);
-        recentList = v.findViewById(R.id.launcher_recent_live);
-        if (recentList != null) {
-            recentList.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
-            recentList.setHasFixedSize(false);
-            recentList.setItemViewCacheSize(16);
-            recentList.setClipToPadding(false);
-            recentList.setClipChildren(false);
-            androidx.recyclerview.widget.RecyclerView.ItemAnimator animator3 = recentList.getItemAnimator();
-            if (animator3 instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
-                ((androidx.recyclerview.widget.SimpleItemAnimator) animator3).setSupportsChangeAnimations(false);
-            }
-            recentAdapter = new ChannelCardAdapter();
-            recentAdapter.setListener(new ChannelCardAdapter.Listener() {
-                @Override
-                public void onChannelClicked(Channel channel, int position) {
-                    if (channel == null) return;
-                    syncRecentFocusState(channel.getUrl(), position);
-                }
-
-                @Override
-                public void onChannelFocused(Channel channel, int position) {
-                    if (channel == null) return;
-                    syncRecentFocusState(channel.getUrl(), position);
-                    String grp = channel.getGroupTitle() != null && !channel.getGroupTitle().trim().isEmpty() ? channel.getGroupTitle() : "Saluran TV";
-                    updateHero("TERAKHIR DITONTON", channel.getTitle(), grp, 0xFF6366F1);
-                }
-            });
-            recentList.setAdapter(recentAdapter);
-
-            // Prevent layout jumping by predicting visibility synchronously.
-            List<Channel> cachedRecent = RecentChannelsStore.load(appContext);
-            boolean hasRecent = cachedRecent != null && !cachedRecent.isEmpty();
-            if (recentTitle != null) recentTitle.setVisibility(hasRecent ? View.VISIBLE : View.GONE);
-            recentList.setVisibility(hasRecent ? View.VISIBLE : View.GONE);
-        }
-
-        // Seed cards with placeholders; subtitles will be updated after loading.
-        List<LauncherCard> cards = new ArrayList<>();
-        cards.add(new LauncherCard("Live TV's", "+0 Channels", R.drawable.tv_play_icon, NavDestination.LIVE_TV));
-        cards.add(new LauncherCard("Radios", "+0 Stations", R.drawable.internet_radio_icon, NavDestination.SHOWS));
-        adapter.submit(cards);
+        // Initial Hero state for Live TV
+        updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV", "+5000 Saluran TV Lokal & Internasional", 0xFF8B5CF6);
 
         loadCounts(appContext);
         loadLauncherApps(appContext);
-        loadRecentLive(appContext);
         return v;
     }
 
@@ -508,16 +471,12 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                         profileButton.requestFocus();
                     });
                 }
-            } else if (lastSelectedCardPosition == APPS_ROW_POSITION) {
-                lockFocusForRestoration(lastSelectedCardPosition);
-                requestFocusToApp(lastSelectedAppIndex);
             } else if (lastSelectedCardPosition == RECENT_ROW_POSITION) {
                 lockFocusForRestoration(lastSelectedCardPosition);
                 requestFocusToRecent(lastSelectedRecentUrl, lastSelectedRecentIndex);
             } else {
-                // Lock header focus while card focus is being restored to prevent bouncing.
-                lockFocusForRestoration(lastSelectedCardPosition);
-                requestFocusToCard(lastSelectedCardPosition);
+                lockFocusForRestoration(APPS_ROW_POSITION);
+                requestFocusToApp(lastSelectedAppIndex);
             }
         }
     }
@@ -721,29 +680,22 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             }
             
             final int finalLiveCount = liveCount;
-            final int finalRadioCount = radioCount;
+            latestLiveSubtitle = "+" + finalLiveCount + " Saluran";
 
             mainHandler.post(() -> {
-                if (adapter == null) return;
-                List<LauncherCard> cards = new ArrayList<>();
-                cards.add(new LauncherCard("Live TV's", "+" + finalLiveCount + " Channels", R.drawable.tv_play_icon, NavDestination.LIVE_TV));
-                cards.add(new LauncherCard("Radios", "+" + finalRadioCount + " Stations", R.drawable.internet_radio_icon, NavDestination.SHOWS));
-                adapter.submit(cards);
+                loadLauncherApps(appContext);
+
+                if (appsList != null && appsList.hasFocus() && lastSelectedAppIndex == 0) {
+                    updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV", "+" + finalLiveCount + " Saluran TV Tersedia", 0xFF8B5CF6);
+                }
 
                 // If channel count is 0 (load failed or network delayed), schedule auto-retry in 4 seconds
-                if (finalLiveCount == 0 && finalRadioCount == 0) {
+                if (finalLiveCount == 0) {
                     mainHandler.postDelayed(() -> {
                         if (isAdded()) {
                             loadCounts(appContext);
                         }
                     }, 4000);
-                }
-
-                // After async card refresh, restore card focus.
-                if (lastSelectedCardPosition == LIVE_TV_CARD_POSITION || lastSelectedCardPosition == RADIO_CARD_POSITION) {
-                    if (cardsList != null && !cardsList.hasFocus() && (getView() == null || getView().findFocus() == null || getView().findFocus().getParent() == cardsList)) {
-                        requestFocusToCard(lastSelectedCardPosition);
-                    }
                 }
             });
         });
@@ -945,9 +897,13 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             }
 
             List<LauncherAppEntry> row = new ArrayList<>();
+            // Live TV as #1 App Tile
+            row.add(LauncherAppEntry.createLiveTvEntry(appContext, latestLiveSubtitle));
+
             for (String flat : pinned) {
                 ComponentName cn = ComponentName.unflattenFromString(flat);
                 if (cn == null) continue;
+                if (cn.getPackageName() != null && cn.getPackageName().equals(appContext.getPackageName())) continue;
                 LauncherAppEntry e = findByComponent(all, cn);
                 if (e != null) row.add(e);
             }

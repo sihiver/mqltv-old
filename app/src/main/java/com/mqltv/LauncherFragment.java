@@ -27,6 +27,10 @@ import android.graphics.Bitmap;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.widget.NestedScrollView;
+import androidx.dynamicanimation.animation.DynamicAnimation;
+import androidx.dynamicanimation.animation.SpringAnimation;
+import androidx.dynamicanimation.animation.SpringForce;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -97,6 +101,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
     private androidx.core.widget.NestedScrollView scrollContainer;
     private RecyclerView appsList;
+    private View rootLayout;
+    private GlassView glass;
+    private SpringAnimation springX;
+    private SpringAnimation springY;
+    private boolean glassShown = false;
 
     static LauncherFragment newInstance(int initialFocusPosition, int initialAppsIndex, @Nullable String initialRecentUrl, int initialRecentIndex) {
         LauncherFragment fragment = new LauncherFragment();
@@ -166,8 +175,36 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_launcher, container, false);
         Context appContext = v.getContext().getApplicationContext();
+        rootLayout = v;
+
+        glass = v.findViewById(R.id.launcher_glass);
+        if (glass != null) {
+            springX = new SpringAnimation(glass, DynamicAnimation.TRANSLATION_X);
+            SpringForce forceX = new SpringForce();
+            forceX.setDampingRatio(0.76f);
+            forceX.setStiffness(320f);
+            springX.setSpring(forceX);
+
+            springY = new SpringAnimation(glass, DynamicAnimation.TRANSLATION_Y);
+            SpringForce forceY = new SpringForce();
+            forceY.setDampingRatio(0.76f);
+            forceY.setStiffness(320f);
+            springY.setSpring(forceY);
+        }
 
         scrollContainer = v.findViewById(R.id.launcher_scroll);
+        if (scrollContainer != null) {
+            scrollContainer.setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener) (sv, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+                int dy = scrollY - oldScrollY;
+                if (glassShown && glass != null && glass.getAlpha() > 0.05f) {
+                    glass.setTranslationY(glass.getTranslationY() - dy);
+                    if (springY != null && springY.getSpring() != null) {
+                        springY.getSpring().setFinalPosition(springY.getSpring().getFinalPosition() - dy);
+                    }
+                }
+            });
+        }
+
         ImageView ambientGlowView = v.findViewById(R.id.launcher_ambient_glow);
         if (ambientGlowView != null) {
             ambientHelper = new LauncherAmbientHelper(ambientGlowView);
@@ -370,36 +407,26 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 }
 
                 @Override
-                public void onAppFocused(LauncherAppEntry entry, int position) {
+                public void onAppFocused(LauncherAppEntry entry, int position, View cardView) {
                     syncAppsFocusState(position);
                     if (position < 4 && scrollContainer != null && scrollContainer.getScrollY() != 0) {
                         scrollContainer.smoothScrollTo(0, 0);
                     }
+                    int color = 0xFF3B82F6;
                     if (entry != null) {
+                        color = LauncherAppsAdapter.colorFromEntry(entry);
                         if (entry.isLiveTv) {
                             updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV",
                                     latestLiveSubtitle != null ? latestLiveSubtitle + " TV Lokal & Internasional" : "+5000 Saluran TV Lokal & Internasional",
-                                    0xFF8B5CF6);
+                                    color);
                         } else if (entry.isAddButton) {
-                            updateHero("APLIKASI", "TAMBAH APLIKASI", "Sematkan aplikasi favorit ke beranda", 0xFF3B82F6);
+                            updateHero("APLIKASI", "TAMBAH APLIKASI", "Sematkan aplikasi favorit ke beranda", color);
                         } else {
                             String sub = entry.component != null ? entry.component.getPackageName() : "Aplikasi TV";
-                            int color = 0xFF3B82F6;
-                            if (entry.label != null) {
-                                String lbl = entry.label.toLowerCase(Locale.ROOT);
-                                if (lbl.contains("youtube") || lbl.contains("smarttube") || lbl.contains("netflix")) {
-                                    color = 0xFFEF4444; // Red
-                                } else if (lbl.contains("spotify") || lbl.contains("music") || lbl.contains("audio") || lbl.contains("radio")) {
-                                    color = 0xFF10B981; // Green
-                                } else if (lbl.contains("disney") || lbl.contains("prime") || lbl.contains("vidio")) {
-                                    color = 0xFF0284C7; // Blue
-                                } else if (lbl.contains("game") || lbl.contains("play")) {
-                                    color = 0xFFF59E0B; // Amber
-                                }
-                            }
                             updateHero("APLIKASI", entry.label, sub, color);
                         }
                     }
+                    moveGlassToCard(cardView, color);
                 }
             });
             appsList.setAdapter(appsAdapter);
@@ -581,10 +608,66 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     }
                 }
             }
-            if (hasFocus && onFocus != null) {
-                onFocus.run();
+            if (hasFocus) {
+                if (glass != null && glassShown) {
+                    glass.animate().alpha(0f).setDuration(120).start();
+                    glassShown = false;
+                }
+                if (onFocus != null) {
+                    onFocus.run();
+                }
             }
         });
+    }
+
+    private void moveGlassToCard(View cardView, int accentColor) {
+        if (cardView == null || glass == null || rootLayout == null) return;
+        if (cardView.getWidth() == 0 || cardView.getHeight() == 0) {
+            cardView.post(() -> moveGlassToCard(cardView, accentColor));
+            return;
+        }
+
+        int[] rootLoc = new int[2];
+        rootLayout.getLocationOnScreen(rootLoc);
+        int[] cardLoc = new int[2];
+        cardView.getLocationOnScreen(cardLoc);
+
+        float cardX = cardLoc[0] - rootLoc[0];
+        float cardY = cardLoc[1] - rootLoc[1];
+        float cardW = cardView.getWidth();
+        float cardH = cardView.getHeight();
+
+        float centerX = cardX + cardW / 2f;
+        float centerY = cardY + cardH / 2f;
+
+        float density = getResources().getDisplayMetrics().density;
+        float pad = 6f * density;
+        float scale = 1.10f;
+        float targetW = cardW * scale + 2 * pad;
+        float targetH = cardH * scale + 2 * pad;
+        float targetX = centerX - targetW / 2f;
+        float targetY = centerY - targetH / 2f;
+
+        ViewGroup.LayoutParams lp = glass.getLayoutParams();
+        if (lp.width != Math.round(targetW) || lp.height != Math.round(targetH)) {
+            lp.width = Math.round(targetW);
+            lp.height = Math.round(targetH);
+            glass.setLayoutParams(lp);
+        }
+
+        glass.setAccent(accentColor);
+
+        if (!glassShown || glass.getAlpha() < 0.05f) {
+            if (springX != null) springX.cancel();
+            if (springY != null) springY.cancel();
+            glass.setTranslationX(targetX);
+            glass.setTranslationY(targetY);
+            glass.animate().alpha(1f).setDuration(180).start();
+            glassShown = true;
+        } else {
+            if (springX != null) springX.animateToFinalPosition(targetX);
+            if (springY != null) springY.animateToFinalPosition(targetY);
+        }
     }
 
     public void updateHero(String kicker, String title, String subtitle, int accentColor) {
@@ -1038,7 +1121,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     }
 
                     @Override
-                    public void onAppFocused(LauncherAppEntry entry, int position) {
+                    public void onAppFocused(LauncherAppEntry entry, int position, View cardView) {
                     }
                 });
                 

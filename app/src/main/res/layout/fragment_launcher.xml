@@ -434,4 +434,14 @@
 
     </androidx.core.widget.NestedScrollView>
 
+    <!-- Single floating tvOS / CleanYourTV glass highlight that springs between tiles -->
+    <com.mqltv.GlassView
+        android:id="@+id/launcher_glass"
+        android:layout_width="10dp"
+        android:layout_height="10dp"
+        android:alpha="0"
+        android:importantForAccessibility="no"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

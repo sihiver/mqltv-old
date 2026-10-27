@@ -30,7 +30,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         void onAppClicked(LauncherAppEntry entry);
         void onAppLongPressed(LauncherAppEntry entry);
         void onAddClicked();
-        void onAppFocused(LauncherAppEntry entry, int position);
+        default void onAppFocused(LauncherAppEntry entry, int position, View cardView) {}
     }
 
     private final List<LauncherAppEntry> items = new ArrayList<>();
@@ -205,7 +205,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
             if (hasFocus && listener != null) {
                 int pos = holder.getBindingAdapterPosition();
                 if (pos != RecyclerView.NO_POSITION) {
-                    listener.onAppFocused(e, pos);
+                    listener.onAppFocused(e, pos, holder.itemView);
                 }
             }
         });
@@ -280,19 +280,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
     }
 
     private static Drawable createTileForeground(Context ctx) {
-        int radius = dp(ctx, 16);
-        int stroke = Math.round(dp(ctx, 2));
-
-        GradientDrawable focused = new GradientDrawable();
-        focused.setColor(Color.TRANSPARENT);
-        focused.setCornerRadius(radius);
-        focused.setStroke(stroke, 0xF5FFFFFF);
-
-        StateListDrawable s = new StateListDrawable();
-        s.addState(new int[] { android.R.attr.state_focused }, focused);
-        s.addState(new int[] { android.R.attr.state_activated }, focused);
-        s.addState(new int[] {}, new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-        return s;
+        return new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT);
     }
 
     private static int blend(int bg, int fg, float ratio) {
@@ -302,9 +290,24 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
         return Color.rgb(Math.max(0, Math.min(255, r)), Math.max(0, Math.min(255, g)), Math.max(0, Math.min(255, b)));
     }
 
-    private static int colorFromEntry(LauncherAppEntry e) {
+    public static int colorFromEntry(LauncherAppEntry e) {
         if (e != null && e.isLiveTv) {
             return 0xFF7C3AED; // tvOS purple / violet accent
+        }
+        if (e != null && e.isAddButton) {
+            return 0xFF3B82F6; // Clean blue
+        }
+        if (e != null && e.label != null) {
+            String lbl = e.label.toLowerCase(java.util.Locale.ROOT);
+            if (lbl.contains("youtube") || lbl.contains("smarttube") || lbl.contains("netflix")) {
+                return 0xFFEF4444; // Red
+            } else if (lbl.contains("spotify") || lbl.contains("music") || lbl.contains("audio") || lbl.contains("radio")) {
+                return 0xFF10B981; // Green
+            } else if (lbl.contains("disney") || lbl.contains("prime") || lbl.contains("vidio")) {
+                return 0xFF0284C7; // Blue
+            } else if (lbl.contains("game") || lbl.contains("play")) {
+                return 0xFFF59E0B; // Amber
+            }
         }
         String key = null;
         if (e != null && e.component != null) {

@@ -75,36 +75,17 @@
         android:orientation="vertical"
         app:layout_constraintGuide_percent="0.96" />
 
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/launcher_scroll"
+    <!-- CleanYourTV / tvOS Minimalist Header Bar (PINNED AT TOP, NEVER MOVES) -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/launcher_header"
         android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:fillViewport="true"
-        android:overScrollMode="never"
-        android:clipToPadding="false"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
         android:clipChildren="false"
-        android:paddingBottom="16dp"
+        android:clipToPadding="false"
         app:layout_constraintStart_toStartOf="@id/launcher_safe_left"
         app:layout_constraintEnd_toEndOf="@id/launcher_safe_right"
-        app:layout_constraintTop_toTopOf="@id/launcher_safe_top"
-        app:layout_constraintBottom_toTopOf="@id/launcher_safe_bottom">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:clipChildren="false"
-            android:clipToPadding="false"
-            android:orientation="vertical">
-
-            <!-- CleanYourTV / tvOS Minimalist Header Bar -->
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/launcher_header"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:layout_marginBottom="14dp"
-                android:clipChildren="false"
-                android:clipToPadding="false">
+        app:layout_constraintTop_toTopOf="@id/launcher_safe_top">
 
                 <!-- Left Block: Greeting + Clock + Date -->
                 <LinearLayout
@@ -338,7 +319,29 @@
 
                 </LinearLayout>
 
-            </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Scrollable content area BELOW the pinned header (Header stays 100% static) -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/launcher_scroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        android:overScrollMode="never"
+        android:clipToPadding="false"
+        android:clipChildren="false"
+        android:paddingBottom="24dp"
+        app:layout_constraintStart_toStartOf="@id/launcher_safe_left"
+        app:layout_constraintEnd_toEndOf="@id/launcher_safe_right"
+        app:layout_constraintTop_toBottomOf="@id/launcher_header"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:orientation="vertical">
 
             <!-- CleanYourTV Cinematic Top Shelf (Hero Section) -->
             <LinearLayout

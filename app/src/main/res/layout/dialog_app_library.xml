@@ -1,92 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#660A0D14"
-    android:clipChildren="false"
+    android:orientation="vertical"
+    android:clipChildren="true"
     android:clipToPadding="false"
-    android:paddingStart="48dp"
-    android:paddingEnd="48dp"
-    android:paddingTop="36dp"
-    android:paddingBottom="24dp">
+    android:paddingStart="44dp"
+    android:paddingEnd="44dp"
+    android:paddingTop="32dp"
+    android:paddingBottom="16dp">
 
+    <!-- Top Header: Sticky at top, pinned, CleanYourTV style -->
     <LinearLayout
+        android:id="@+id/dialog_library_header"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="14dp"
         android:clipChildren="false"
         android:clipToPadding="false">
 
-        <!-- Top Header -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="24dp">
+        <ImageView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_apps"
+            android:tint="#FFFFFFFF"
+            android:layout_marginEnd="14dp"
+            android:contentDescription="Apps Icon" />
 
-            <ImageView
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:src="@drawable/ic_apps"
-                android:tint="#FFFFFFFF"
-                android:layout_marginEnd="14dp"
-                android:contentDescription="Apps Icon" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:id="@+id/dialog_library_title"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="App library"
-                        android:textColor="#FFFFFFFF"
-                        android:textSize="22sp"
-                        android:fontFamily="sans-serif-medium" />
-
-                    <TextView
-                        android:id="@+id/dialog_library_count"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:text="· 0 Aplikasi"
-                        android:textColor="#88FFFFFF"
-                        android:textSize="14sp"
-                        android:fontFamily="sans-serif" />
-                </LinearLayout>
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
                 <TextView
-                    android:id="@+id/dialog_library_hint"
+                    android:id="@+id/dialog_library_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="Tekan OK untuk membuka · Tahan OK untuk opsi Beranda"
-                    android:textColor="#77FFFFFF"
-                    android:textSize="12sp"
+                    android:text="App library"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="22sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <TextView
+                    android:id="@+id/dialog_library_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:text="· 0 Aplikasi"
+                    android:textColor="#88FFFFFF"
+                    android:textSize="14sp"
                     android:fontFamily="sans-serif" />
             </LinearLayout>
 
+            <TextView
+                android:id="@+id/dialog_library_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Tekan OK untuk membuka · Tahan OK untuk opsi Beranda"
+                android:textColor="#77FFFFFF"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif" />
         </LinearLayout>
 
-        <!-- Apps Grid -->
+    </LinearLayout>
+
+    <!-- The wrapper clips at the grid's top edge (CleanYourTV style) so rows don't draw over header; the grid inside has clipChildren=false so scaled tiles don't clip -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipChildren="true"
+        android:clipToPadding="false">
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/dialog_library_grid"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="match_parent"
             android:clipChildren="false"
             android:clipToPadding="false"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="40dp"
+            android:overScrollMode="never"
+            android:scrollbars="none"
             android:descendantFocusability="afterDescendants" />
+    </FrameLayout>
 
-    </LinearLayout>
-</FrameLayout>
+</LinearLayout>

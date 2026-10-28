@@ -89,6 +89,10 @@ public final class AppLibraryDialog {
         if (window != null) {
             window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
             window.setGravity(Gravity.CENTER);
+            if (window.getDecorView() instanceof ViewGroup) {
+                ((ViewGroup) window.getDecorView()).setClipChildren(false);
+                ((ViewGroup) window.getDecorView()).setClipToPadding(false);
+            }
         }
 
         TextView countText = dialog.findViewById(R.id.dialog_library_count);
@@ -97,10 +101,27 @@ public final class AppLibraryDialog {
         float density = activity.getResources().getDisplayMetrics().density;
         int spacing = Math.round(18 * density);
 
-        grid.setLayoutManager(new GridLayoutManager(activity, 4));
+        grid.setLayoutManager(new GridLayoutManager(activity, 4) {
+            @Override
+            public boolean requestChildRectangleOnScreen(@NonNull RecyclerView parent, @NonNull View child,
+                                                         @NonNull Rect rect, boolean immediate,
+                                                         boolean focusedChildVisible) {
+                int top = child.getTop() + rect.top;
+                int bottom = top + rect.height();
+                int limitBottom = getHeight() - getPaddingBottom();
+                int dy;
+                if (top < getPaddingTop()) dy = top - getPaddingTop();
+                else if (bottom <= getHeight() - getPaddingBottom()) dy = 0;
+                else dy = Math.min(top - getPaddingTop(), bottom - limitBottom);
+                if (dy == 0) return false;
+                parent.smoothScrollBy(0, dy);
+                return true;
+            }
+        });
         grid.setHasFixedSize(true);
         grid.setClipChildren(false);
         grid.setClipToPadding(false);
+        TopFade.attach(grid, 44 * density);
         grid.addItemDecoration(new RecyclerView.ItemDecoration() {
             @Override
             public void getItemOffsets(@NonNull Rect outRect, @NonNull View view,

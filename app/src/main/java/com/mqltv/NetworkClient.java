@@ -16,6 +16,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -167,19 +168,30 @@ public final class NetworkClient {
 
         builder.addInterceptor(chain -> {
             okhttp3.Request original = chain.request();
+            okhttp3.Request request = original;
             if (APP_CONTEXT != null) {
                 String token = AuthPrefs.getAccessToken(APP_CONTEXT);
                 if (!token.trim().isEmpty()) {
                     // Jangan timpa header Authorization jika request sudah memilikinya (misalnya saat request stream info dengan token tersendiri)
                     if (original.header("Authorization") == null) {
-                        okhttp3.Request request = original.newBuilder()
+                        request = original.newBuilder()
                                 .header("Authorization", "Bearer " + token)
                                 .build();
-                        return chain.proceed(request);
                     }
                 }
             }
-            return chain.proceed(original);
+            Response response = chain.proceed(request);
+            try {
+                String dateHdr = response.header("Date");
+                if (dateHdr != null && !dateHdr.trim().isEmpty()) {
+                    Date d = okhttp3.internal.http.HttpDate.parse(dateHdr.trim());
+                    if (d != null && d.getTime() > 0) {
+                        TimeSync.updateServerTime(d.getTime());
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+            return response;
         });
 
         builder.authenticator((route, response) -> {

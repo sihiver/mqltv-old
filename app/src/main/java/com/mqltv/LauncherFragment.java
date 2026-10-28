@@ -720,7 +720,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private void updateHeaderTime() {
         if (headerTime == null) return;
         try {
-            Date now = new Date();
+            Date now = TimeSync.getDate();
             SimpleDateFormat fmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
             String s = fmt.format(now);
             headerTime.setText(s != null ? s : "");
@@ -733,6 +733,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
             if (greetingText != null) {
                 java.util.Calendar cal = java.util.Calendar.getInstance();
+                cal.setTime(now);
                 int hour = cal.get(java.util.Calendar.HOUR_OF_DAY);
                 String greeting;
                 if (hour >= 4 && hour < 11) {

@@ -7,5 +7,6 @@ public class MqlTvApp extends MultiDexApplication {
 	public void onCreate() {
 		super.onCreate();
 		NetworkClient.init(this);
+		TimeSync.syncAsync(this);
 	}
 }

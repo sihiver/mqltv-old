@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:clickable="true"
+    android:longClickable="true"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:descendantFocusability="blocksDescendants">
+
+    <com.mqltv.RatioFrameLayout
+        android:id="@+id/library_app_tile"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipToOutline="true">
+
+        <ImageView
+            android:id="@+id/library_app_banner"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            android:clipToOutline="true"
+            android:contentDescription="Banner" />
+
+        <ImageView
+            android:id="@+id/library_app_icon"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_gravity="center"
+            android:contentDescription="Icon" />
+
+        <!-- Pinned on Home Badge -->
+        <TextView
+            android:id="@+id/library_app_home_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_marginTop="6dp"
+            android:layout_marginEnd="6dp"
+            android:paddingStart="7dp"
+            android:paddingEnd="7dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:background="@drawable/library_badge_bg"
+            android:text="DI BERANDA"
+            android:textColor="#FF34D399"
+            android:textSize="9.5sp"
+            android:fontFamily="sans-serif-medium"
+            android:visibility="gone" />
+
+    </com.mqltv.RatioFrameLayout>
+
+    <TextView
+        android:id="@+id/library_app_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:textAlignment="center"
+        android:maxLines="1"
+        android:ellipsize="marquee"
+        android:singleLine="true"
+        android:textSize="12.5sp"
+        android:fontFamily="sans-serif-medium"
+        android:textColor="#FFFFFFFF" />
+
+</LinearLayout>

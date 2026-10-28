@@ -69,4 +69,12 @@ public final class PinnedAppsStore {
             save(context, list);
         }
     }
+
+    public static void remove(Context context, String component) {
+        if (context == null || component == null || component.trim().isEmpty()) return;
+        List<String> list = load(context);
+        if (list.remove(component)) {
+            save(context, list);
+        }
+    }
 }

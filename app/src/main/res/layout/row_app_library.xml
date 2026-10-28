@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="72dp"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <TextView
+        android:id="@+id/btnLibrary"
+        style="@style/TopButton"
+        android:layout_marginStart="0dp"
+        android:layout_gravity="center"
+        android:text="APP LIBRARY"
+        android:drawableStart="@drawable/ic_apps"
+        android:drawableTint="@color/pill_text"
+        android:drawablePadding="10dp" />
+
+</FrameLayout>

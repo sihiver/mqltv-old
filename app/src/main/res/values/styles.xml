@@ -32,6 +32,7 @@
         <item name="android:textSize">13sp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
         <item name="android:letterSpacing">0.02</item>
+        <item name="android:drawableTint">@color/pill_text</item>
         <item name="android:focusable">true</item>
         <item name="android:clickable">true</item>
     </style>

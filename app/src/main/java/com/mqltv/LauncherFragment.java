@@ -396,7 +396,17 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
         appsList = v.findViewById(R.id.launcher_apps);
         if (appsList != null) {
-            appsList.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(v.getContext(), 4, RecyclerView.VERTICAL, false));
+            androidx.recyclerview.widget.GridLayoutManager glm = new androidx.recyclerview.widget.GridLayoutManager(v.getContext(), 4, RecyclerView.VERTICAL, false);
+            glm.setSpanSizeLookup(new androidx.recyclerview.widget.GridLayoutManager.SpanSizeLookup() {
+                @Override
+                public int getSpanSize(int position) {
+                    if (appsAdapter != null && appsAdapter.isLibraryAt(position)) {
+                        return 4;
+                    }
+                    return 1;
+                }
+            });
+            appsList.setLayoutManager(glm);
             appsList.setHasFixedSize(true);
             appsList.setItemViewCacheSize(24);
             appsList.setClipToPadding(false);
@@ -436,7 +446,33 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
                 @Override
                 public void onAddClicked() {
-                    showAddAppDialog(appContext);
+                    showAppLibrary(appContext);
+                }
+
+                @Override
+                public void onLibraryClicked() {
+                    showAppLibrary(appContext);
+                }
+
+                @Override
+                public void onLibraryFocused(View view) {
+                    if (glass != null && glassShown) {
+                        glass.animate().alpha(0f).setDuration(120).start();
+                        glassShown = false;
+                    }
+                    if (appsAdapter != null) {
+                        syncAppsFocusState(appsAdapter.getItemCount() - 1);
+                    }
+                }
+
+                @Override
+                public void onLibraryUp() {
+                    onAppLibraryUp();
+                }
+
+                @Override
+                public void onFocusLibraryRequested() {
+                    focusLibrary();
                 }
 
                 @Override
@@ -1048,9 +1084,6 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 if (e != null) row.add(e);
             }
 
-            // Add the plus button.
-            row.add(new LauncherAppEntry("Tambah", null, null, null, true));
-
             mainHandler.post(() -> {
                 if (appsAdapter != null) appsAdapter.submit(row);
                 // Jika terakhir user berada di baris Apps, pastikan fokus dikembalikan
@@ -1088,6 +1121,60 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 }
             });
         });
+    }
+
+    private void showAppLibrary(Context appContext) {
+        if (getActivity() == null) return;
+        View header = getView() != null ? getView().findViewById(R.id.launcher_header) : null;
+        View scroll = getView() != null ? getView().findViewById(R.id.launcher_scroll) : null;
+
+        if (glass != null) {
+            glass.setAlpha(0f);
+            glassShown = false;
+        }
+        if (header != null) header.setVisibility(View.INVISIBLE);
+        if (scroll != null) scroll.setVisibility(View.INVISIBLE);
+
+        AppLibraryDialog dialog = new AppLibraryDialog(getActivity(), () -> {
+            loadLauncherApps(appContext);
+        }, () -> {
+            if (header != null) header.setVisibility(View.VISIBLE);
+            if (scroll != null) scroll.setVisibility(View.VISIBLE);
+            focusLibrary();
+        });
+        dialog.show();
+    }
+
+    private void focusLibrary() {
+        if (appsAdapter == null || appsList == null) return;
+        if (scrollContainer != null) {
+            scrollContainer.smoothScrollTo(0, appsList.getBottom() + 300);
+        }
+        int position = appsAdapter.getItemCount() - 1;
+        RecyclerView.ViewHolder holder = appsList.findViewHolderForAdapterPosition(position);
+        if (holder != null && holder.itemView != null) {
+            View btn = holder.itemView.findViewById(R.id.btnLibrary);
+            if (btn != null) {
+                btn.requestFocus();
+                return;
+            }
+        }
+        appsList.postDelayed(() -> {
+            if (appsList == null || appsAdapter == null) return;
+            RecyclerView.ViewHolder h = appsList.findViewHolderForAdapterPosition(appsAdapter.getItemCount() - 1);
+            if (h != null && h.itemView != null) {
+                View btn = h.itemView.findViewById(R.id.btnLibrary);
+                if (btn != null) btn.requestFocus();
+            }
+        }, 120);
+    }
+
+    private void onAppLibraryUp() {
+        int count = appsAdapter != null ? appsAdapter.getAppsCount() : 0;
+        if (count == 0) return;
+        int lastRowStart = ((count - 1) / 4) * 4;
+        int target = Math.min(lastRowStart + (lastSelectedAppIndex % 4), count - 1);
+        requestFocusToApp(target);
     }
 
     private void showAddAppDialog(Context appContext) {

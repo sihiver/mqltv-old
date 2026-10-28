@@ -24,13 +24,20 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapter.VH> {
+public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+
+    public static final int VIEW_TYPE_APP = 0;
+    public static final int VIEW_TYPE_LIBRARY = 1;
 
     public interface Listener {
         void onAppClicked(LauncherAppEntry entry);
         void onAppLongPressed(LauncherAppEntry entry);
         void onAddClicked();
         default void onAppFocused(LauncherAppEntry entry, int position, View cardView) {}
+        default void onLibraryClicked() {}
+        default void onLibraryFocused(View view) {}
+        default void onLibraryUp() {}
+        default void onFocusLibraryRequested() {}
     }
 
     private final List<LauncherAppEntry> items = new ArrayList<>();
@@ -38,6 +45,24 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
 
     public LauncherAppsAdapter(Listener listener) {
         this.listener = listener;
+    }
+
+    public int getAppsCount() {
+        return items.size();
+    }
+
+    public boolean isLibraryAt(int position) {
+        return position >= items.size();
+    }
+
+    @Override
+    public int getItemCount() {
+        return items.size() + 1;
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return isLibraryAt(position) ? VIEW_TYPE_LIBRARY : VIEW_TYPE_APP;
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -71,14 +96,56 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
 
     @NonNull
     @Override
-    public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        if (viewType == VIEW_TYPE_LIBRARY) {
+            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.row_app_library, parent, false);
+            return new LibraryVH(v);
+        }
         View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_launcher_app, parent, false);
         return new VH(v);
     }
 
     @SuppressLint("SetTextI18n")
     @Override
-    public void onBindViewHolder(@NonNull VH holder, int position) {
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder rawHolder, int position) {
+        if (getItemViewType(position) == VIEW_TYPE_LIBRARY) {
+            LibraryVH holder = (LibraryVH) rawHolder;
+            if (holder.btnLibrary != null) {
+                holder.btnLibrary.setOnClickListener(v -> {
+                    if (listener != null) listener.onLibraryClicked();
+                });
+                holder.btnLibrary.setOnFocusChangeListener((v, hasFocus) -> {
+                    float density = v.getResources().getDisplayMetrics().density;
+                    if (hasFocus) {
+                        v.animate().scaleX(1.08f).scaleY(1.08f).translationZ(6 * density).setDuration(160).start();
+                        if (listener != null) listener.onLibraryFocused(v);
+                    } else {
+                        v.animate().scaleX(1.0f).scaleY(1.0f).translationZ(0f).setDuration(160).start();
+                    }
+                    if (v instanceof TextView) {
+                        int tintColor = hasFocus ? 0xFF111111 : 0xFFFFFFFF;
+                        for (Drawable d : ((TextView) v).getCompoundDrawables()) {
+                            if (d != null) {
+                                androidx.core.graphics.drawable.DrawableCompat.setTint(d.mutate(), tintColor);
+                            }
+                        }
+                    }
+                });
+                holder.btnLibrary.setOnKeyListener((v, keyCode, event) -> {
+                    if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
+                    if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP) {
+                        if (listener != null) listener.onLibraryUp();
+                        return true;
+                    }
+                    return keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN
+                            || keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT
+                            || keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT;
+                });
+            }
+            return;
+        }
+
+        VH holder = (VH) rawHolder;
         LauncherAppEntry e = items.get(position);
         Context ctx = holder.itemView.getContext();
         View targetCard = holder.tile != null ? holder.tile : holder.itemView;
@@ -215,11 +282,28 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<LauncherAppsAdapte
                 }
             }
         });
+
+        holder.itemView.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
+            int pos = holder.getBindingAdapterPosition();
+            if (pos == RecyclerView.NO_POSITION) return false;
+            int count = items.size();
+            int lastRowStart = ((count - 1) / 4) * 4;
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN && pos >= lastRowStart) {
+                if (listener != null) listener.onFocusLibraryRequested();
+                return true;
+            }
+            return false;
+        });
     }
 
-    @Override
-    public int getItemCount() {
-        return items.size();
+    static class LibraryVH extends RecyclerView.ViewHolder {
+        final View btnLibrary;
+
+        LibraryVH(@NonNull View itemView) {
+            super(itemView);
+            btnLibrary = itemView.findViewById(R.id.btnLibrary);
+        }
     }
 
     static class VH extends RecyclerView.ViewHolder {

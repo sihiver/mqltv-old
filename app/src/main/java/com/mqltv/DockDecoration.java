@@ -36,6 +36,15 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         int pos = parent.getChildAdapterPosition(view);
         if (pos == RecyclerView.NO_POSITION) return;
 
+        RecyclerView.Adapter<?> adapter = parent.getAdapter();
+        if (adapter instanceof LauncherAppsAdapter) {
+            LauncherAppsAdapter la = (LauncherAppsAdapter) adapter;
+            if (la.isLibraryAt(pos)) {
+                outRect.set(0, (int) (16 * density), 0, (int) (24 * density));
+                return;
+            }
+        }
+
         int spanCount = dockSize; // 4 columns
         int column = pos % spanCount;
         int spacing = Math.round(20 * density);

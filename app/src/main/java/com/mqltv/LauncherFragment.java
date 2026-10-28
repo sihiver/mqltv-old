@@ -137,6 +137,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private TextView heroTitle;
     private TextView heroSubtitle;
     private View launcherHero;
+    private View launcherHeader;
     private LauncherWallpaper.WallpaperListener wallpaperListener;
 
     private final Runnable headerTicker = new Runnable() {
@@ -194,6 +195,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             springY.setSpring(forceY);
         }
 
+        launcherHeader = v.findViewById(R.id.launcher_header);
         scrollContainer = v.findViewById(R.id.launcher_scroll);
         if (scrollContainer != null) {
             scrollContainer.setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener) (sv, scrollX, scrollY, oldScrollX, oldScrollY) -> {
@@ -203,6 +205,17 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     if (springY != null && springY.getSpring() != null) {
                         springY.getSpring().setFinalPosition(springY.getSpring().getFinalPosition() - dy);
                     }
+                }
+            });
+        }
+
+        View safeLeft = v.findViewById(R.id.launcher_safe_left);
+        View scrollContent = v.findViewById(R.id.launcher_scroll_content);
+        if (safeLeft != null && scrollContent != null) {
+            v.post(() -> {
+                int left = safeLeft.getLeft();
+                if (left > 0 && scrollContent.getPaddingLeft() != left) {
+                    scrollContent.setPadding(left, scrollContent.getPaddingTop(), left, scrollContent.getPaddingBottom());
                 }
             });
         }
@@ -429,8 +442,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 @Override
                 public void onAppFocused(LauncherAppEntry entry, int position, View cardView) {
                     syncAppsFocusState(position);
-                    if (position < 4 && scrollContainer != null && scrollContainer.getScrollY() != 0) {
-                        scrollContainer.smoothScrollTo(0, 0);
+                    if (position < 4) {
+                        if (scrollContainer != null && scrollContainer.getScrollY() != 0) {
+                            scrollContainer.smoothScrollTo(0, 0);
+                        }
                     }
                     int color = 0xFF3B82F6;
                     if (entry != null) {

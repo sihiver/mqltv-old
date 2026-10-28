@@ -137,6 +137,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private TextView heroTitle;
     private TextView heroSubtitle;
     private View launcherHero;
+    private LauncherWallpaper.WallpaperListener wallpaperListener;
 
     private final Runnable headerTicker = new Runnable() {
         @Override
@@ -273,6 +274,23 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     }
                 }
             });
+
+            wallpaperListener = newBmp -> {
+                if (isAdded() && wallpaper != null && newBmp != null) {
+                    mainHandler.post(() -> {
+                        try {
+                            wallpaper.setImageBitmap(newBmp);
+                            wallpaper.animate().alpha(1f).setDuration(400).start();
+                        } catch (Exception ignored) {
+                        }
+                        LauncherCardStyle style = LauncherCardStyle.fromWallpaper(appContext, newBmp);
+                        if (style != null && adapter != null) {
+                            adapter.setCardStyle(style);
+                        }
+                    });
+                }
+            };
+            LauncherWallpaper.addListener(wallpaperListener);
         }
 
         searchButton = v.findViewById(R.id.launcher_search);
@@ -978,6 +996,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (wallpaperListener != null) {
+            LauncherWallpaper.removeListener(wallpaperListener);
+            wallpaperListener = null;
+        }
         if (adapter != null) adapter.release();
         mainHandler.removeCallbacks(headerTicker);
         headerTime = null;

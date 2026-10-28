@@ -115,6 +115,21 @@ public final class NetworkClient {
         return UNSAFE_LOGO_CLIENT;
     }
 
+    /**
+     * For public wallpaper downloads (Bing daily / CDNs) that may fail CA verification
+     * on older Android TV builds.
+     */
+    public static OkHttpClient getWallpaperClient() {
+        if (UNSAFE_LOGO_CLIENT == null) {
+            synchronized (NetworkClient.class) {
+                if (UNSAFE_LOGO_CLIENT == null) {
+                    UNSAFE_LOGO_CLIENT = buildUnsafeLogoClient();
+                }
+            }
+        }
+        return UNSAFE_LOGO_CLIENT;
+    }
+
     private static volatile OkHttpClient RAW_CLIENT;
 
     private static OkHttpClient getRawClient() {

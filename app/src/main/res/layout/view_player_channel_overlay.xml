@@ -12,58 +12,69 @@
         android:id="@+id/player_channel_overlay_scrim"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#33000000" />
+        android:background="#4D050810" />
 
-    <!-- Left panel (channel list) -->
+    <!-- Left Glass Panel (Channel List) -->
     <LinearLayout
         android:id="@+id/player_channel_overlay_panel"
-        android:layout_width="360dp"
+        android:layout_width="368dp"
         android:layout_height="match_parent"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="18dp"
+        android:layout_marginBottom="18dp"
         android:orientation="vertical"
         android:background="@drawable/player_channel_panel_bg"
-        android:paddingTop="18dp"
-        android:paddingBottom="18dp">
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp">
 
+        <!-- Category Selector Pill -->
         <LinearLayout
             android:id="@+id/player_channel_overlay_header"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
             android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
+            android:background="@drawable/settings_group_card_bg"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
             android:gravity="center_vertical"
             android:focusable="true"
             android:focusableInTouchMode="true">
 
             <TextView
                 android:id="@+id/player_channel_overlay_arrow_left"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:gravity="center"
                 android:text="‹"
-                android:textColor="#FFFFFFFF"
-                android:textSize="22sp" />
+                android:textColor="#CCFFFFFF"
+                android:textSize="20sp" />
 
             <TextView
                 android:id="@+id/player_channel_overlay_category"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:text="Category"
+                android:gravity="center"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:text="ALL CHANNELS"
                 android:textColor="#FFFFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:textSize="13sp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.05"
+                android:singleLine="true"
+                android:ellipsize="end" />
 
             <TextView
                 android:id="@+id/player_channel_overlay_arrow_right"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:gravity="center"
                 android:text="›"
-                android:textColor="#FFFFFFFF"
-                android:textSize="22sp" />
+                android:textColor="#CCFFFFFF"
+                android:textSize="20sp" />
 
         </LinearLayout>
 
@@ -72,7 +83,7 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:paddingTop="14dp"
+            android:paddingTop="10dp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
             android:clipToPadding="false"
@@ -80,21 +91,20 @@
 
     </LinearLayout>
 
-    <!-- Program/info card (bottom-right) -->
+    <!-- Program / Info Glass Card (Bottom-Right) -->
     <LinearLayout
         android:id="@+id/player_channel_overlay_info"
-        android:layout_width="540dp"
+        android:layout_width="510dp"
         android:layout_height="wrap_content"
-        android:minHeight="160dp"
         android:layout_gravity="bottom|end"
-        android:layout_marginEnd="26dp"
-        android:layout_marginBottom="22dp"
+        android:layout_marginEnd="22dp"
+        android:layout_marginBottom="18dp"
         android:orientation="vertical"
         android:background="@drawable/player_info_card_bg"
         android:paddingStart="18dp"
         android:paddingEnd="18dp"
-        android:paddingTop="14dp"
-        android:paddingBottom="14dp">
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -104,9 +114,10 @@
 
             <FrameLayout
                 android:id="@+id/player_channel_overlay_info_logo"
-                android:layout_width="44dp"
-                android:layout_height="34dp"
-                android:background="#10FFFFFF">
+                android:layout_width="52dp"
+                android:layout_height="38dp"
+                android:padding="5dp"
+                android:background="@drawable/live_tv_channel_logo_bg">
 
                 <ImageView
                     android:id="@+id/player_channel_overlay_info_logo_img"
@@ -121,10 +132,11 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:gravity="center"
-                    android:text="CHANNEL\nLOGO"
+                    android:text="TV"
+                    android:fontFamily="sans-serif-medium"
                     android:textStyle="bold"
-                    android:textSize="8sp"
-                    android:textColor="@color/mql_accent"
+                    android:textSize="11sp"
+                    android:textColor="#FF1E293B"
                     android:importantForAccessibility="no" />
 
             </FrameLayout>
@@ -133,98 +145,132 @@
                 android:id="@+id/player_channel_overlay_info_number"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
+                android:layout_marginStart="12dp"
+                android:background="@drawable/account_badge_active"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
                 android:text="1"
-                android:textColor="@color/mql_accent"
-                android:textSize="32sp"
-                android:textStyle="bold" />
+                android:textColor="#34D399"
+                android:textSize="15sp"
+                android:fontFamily="sans-serif-medium" />
 
             <TextView
                 android:id="@+id/player_channel_overlay_info_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="12dp"
+                android:layout_marginStart="10dp"
                 android:text="Channel"
                 android:textColor="#FFFFFFFF"
-                android:textSize="22sp"
-                android:textStyle="bold"
+                android:textSize="19sp"
+                android:fontFamily="sans-serif-medium"
                 android:maxLines="1"
                 android:ellipsize="end" />
 
-        </LinearLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/account_badge_active"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:text="LIVE"
+                android:textColor="#34D399"
+                android:textSize="10sp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.06" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="10dp" />
+        </LinearLayout>
 
         <ProgressBar
             android:id="@+id/player_channel_overlay_info_progress"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
-            android:layout_height="5dp"
+            android:layout_height="4dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp"
             android:max="1000"
             android:progress="0"
             android:progressDrawable="@drawable/player_info_progress_bg" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="10dp" />
-
+        <!-- EPG Schedule Inner Glass Card -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:background="@drawable/settings_group_card_bg"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/player_channel_overlay_info_now_time"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="00:00 - 00:30"
-                android:textColor="#CCFFFFFF"
-                android:textSize="16sp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/player_channel_overlay_info_now_title"
-                android:layout_width="0dp"
+                <TextView
+                    android:id="@+id/player_channel_overlay_info_now_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="00:00 - 00:30"
+                    android:textColor="#34D399"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <TextView
+                    android:id="@+id/player_channel_overlay_info_now_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Now Playing Program"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="14sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="6dp"
+                android:background="#14FFFFFF" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="18dp"
-                android:text="Now Playing Program"
-                android:textColor="#FFFFFFFF"
-                android:textSize="16sp"
-                android:maxLines="1"
-                android:ellipsize="end" />
-        </LinearLayout>
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="6dp" />
+                <TextView
+                    android:id="@+id/player_channel_overlay_info_next_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="00:30 - 01:00"
+                    android:textColor="#88FFFFFF"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/player_channel_overlay_info_next_time"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="00:30 - 01:00"
-                android:textColor="#CCFFFFFF"
-                android:textSize="16sp" />
-
-            <TextView
-                android:id="@+id/player_channel_overlay_info_next_title"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="18dp"
-                android:text="Next Program"
-                android:textColor="#FFFFFFFF"
-                android:textSize="16sp"
-                android:maxLines="1"
-                android:ellipsize="end" />
+                <TextView
+                    android:id="@+id/player_channel_overlay_info_next_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Next Program"
+                    android:textColor="#AAFFFFFF"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
         </LinearLayout>
 
     </LinearLayout>

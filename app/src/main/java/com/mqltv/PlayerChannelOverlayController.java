@@ -804,7 +804,7 @@ public final class PlayerChannelOverlayController {
     private void bindInfo(Channel c, int absoluteIndex) {
         if (c == null) return;
 
-        if (infoNumber != null) infoNumber.setText(String.valueOf(Math.max(1, absoluteIndex + 1)));
+        if (infoNumber != null) infoNumber.setText(String.format(Locale.US, "%03d", Math.max(1, absoluteIndex + 1)));
         if (infoTitle != null) infoTitle.setText(c.getTitle() != null ? c.getTitle() : "Channel");
 
         // Simple schedule placeholders: 30-minute blocks based on local time.
@@ -822,8 +822,8 @@ public final class PlayerChannelOverlayController {
 
         String group = c.getGroupTitle();
         String sub = (group == null || group.trim().isEmpty()) ? "LIVE TV" : group.trim();
-        if (infoNowTitle != null) infoNowTitle.setText("Now Playing Program");
-        if (infoNextTitle != null) infoNextTitle.setText("Next Program");
+        if (infoNowTitle != null) infoNowTitle.setText("Siaran Berlangsung · " + sub);
+        if (infoNextTitle != null) infoNextTitle.setText("Program Berikutnya");
 
         if (infoProgress != null) {
             float p = (now - start) / (float) block;
@@ -1128,13 +1128,13 @@ public final class PlayerChannelOverlayController {
         public void onBindViewHolder(@NonNull VH holder, int position) {
             Channel c = position < items.size() ? items.get(position) : null;
 
-            holder.number.setText(String.valueOf(position + 1));
+            holder.number.setText(String.format(Locale.US, "%03d", position + 1));
             holder.title.setText(c != null && c.getTitle() != null ? c.getTitle() : "Channel");
 
             String group = c != null ? c.getGroupTitle() : null;
             group = group == null ? "" : group.trim();
             if (group.isEmpty()) group = "LIVE TV";
-            holder.subtitle.setText("Program info " + group);
+            holder.subtitle.setText("Siaran Langsung · " + group);
 
             boolean isCurrent = c != null && currentId != 0 && currentId == c.getId();
             holder.itemView.setActivated(isCurrent);

@@ -148,6 +148,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     Context appContext = getContext().getApplicationContext();
                     updateHeaderTime();
                     updateNetworkIcon(appContext);
+                    LauncherWallpaper.checkBingUpdateInBackground(appContext);
                 }
             } finally {
                 mainHandler.postDelayed(this, 10_000);
@@ -536,11 +537,13 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         }
         if (adapter != null) adapter.setHostActive(true);
         if (getContext() != null) {
-            loadLauncherApps(getContext().getApplicationContext());
-            loadRecentLive(getContext().getApplicationContext());
+            Context appContext = getContext().getApplicationContext();
+            LauncherWallpaper.checkBingUpdateInBackground(appContext);
+            loadLauncherApps(appContext);
+            loadRecentLive(appContext);
 
             updateHeaderTime();
-            updateNetworkIcon(getContext().getApplicationContext());
+            updateNetworkIcon(appContext);
             mainHandler.removeCallbacks(headerTicker);
             mainHandler.post(headerTicker);
 

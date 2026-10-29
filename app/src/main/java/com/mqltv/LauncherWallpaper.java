@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 import android.util.DisplayMetrics;
 
@@ -21,6 +22,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -40,10 +42,17 @@ public final class LauncherWallpaper {
     public static final String SOURCE_BING = "bing";
 
     private static final String[] BING_API_URLS = {
+            "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=en-IN",
+            "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=zh-CN",
+            "https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1",
+            "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=ja-JP",
             "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=id-ID",
-            "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=en-US",
-            "https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1"
+            "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=en-US"
     };
+
+    private static final long CHECK_INTERVAL_MS = 15 * 60 * 1000L;
+    private static final AtomicBoolean sChecking = new AtomicBoolean(false);
+    private static volatile long sLastCheckTime = 0L;
 
     public interface WallpaperListener {
         void onWallpaperChanged(Bitmap newWallpaper);
@@ -116,10 +125,25 @@ public final class LauncherWallpaper {
     private static long sCachedTime;
 
     public static Bitmap getCachedBitmap() {
-        if (sCachedBitmap != null && System.currentTimeMillis() - sCachedTime < 3600_000) {
+        long now = SystemClock.elapsedRealtime();
+        if (sCachedBitmap != null && sCachedTime > 0 && (now - sCachedTime) < 3600_000L) {
             return sCachedBitmap;
         }
         return null;
+    }
+
+    public static void checkBingUpdateInBackground(Context context) {
+        if (context == null) return;
+        try {
+            if (SOURCE_CUSTOM.equals(getSource(context))) return;
+        } catch (Exception ignored) {
+        }
+        long now = SystemClock.elapsedRealtime();
+        if (sLastCheckTime > 0 && (now - sLastCheckTime) < CHECK_INTERVAL_MS) {
+            return;
+        }
+        final Context appContext = context.getApplicationContext();
+        new Thread(() -> ensureBingUpToDate(appContext)).start();
     }
 
     public static boolean clear(Context context) {
@@ -202,14 +226,17 @@ public final class LauncherWallpaper {
 
     public static Bitmap tryLoad(Context context) {
         if (context == null) return null;
-        
+
         Bitmap cached = getCachedBitmap();
-        if (cached != null) return cached;
+        if (cached != null) {
+            checkBingUpdateInBackground(context);
+            return cached;
+        }
 
         Bitmap decoded = doLoad(context);
         if (decoded != null) {
             sCachedBitmap = decoded;
-            sCachedTime = System.currentTimeMillis();
+            sCachedTime = SystemClock.elapsedRealtime();
         }
         return decoded;
     }
@@ -290,11 +317,16 @@ public final class LauncherWallpaper {
         if (context == null) return;
         new Thread(() -> {
             try {
+                sLastCheckTime = 0L;
                 File cached = getBingFile(context);
                 if (cached != null && cached.exists()) {
                     cached.delete();
                 }
-                prefs(context).edit().remove(KEY_BING_DATE).putString(KEY_SOURCE, SOURCE_BING).apply();
+                prefs(context).edit()
+                        .remove(KEY_BING_DATE)
+                        .remove(KEY_BING_URL)
+                        .putString(KEY_SOURCE, SOURCE_BING)
+                        .apply();
             } catch (Exception ignored) {
             }
             ensureBingUpToDate(context);
@@ -303,144 +335,158 @@ public final class LauncherWallpaper {
 
     private static void ensureBingUpToDate(Context context) {
         if (context == null) return;
+        if (!sChecking.compareAndSet(false, true)) return;
 
         try {
-            // Only run in auto mode if user hasn't set custom.
-            String src = getSource(context);
-            if (SOURCE_CUSTOM.equals(src)) return;
-        } catch (Exception ignored) {
-        }
-
-        File cached = getBingFile(context);
-        String lastDate = getBingDate(context);
-
-        String ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-
-        OkHttpClient client = NetworkClient.getWallpaperClient();
-        if (client == null) {
-            client = NetworkClient.getClient();
-        }
-
-        String targetUrl = null;
-        String targetDate = null;
-
-        for (String apiUrl : BING_API_URLS) {
-            Response resp = null;
             try {
-                Log.d(TAG, "Bing: fetch json from " + apiUrl);
-                Request req = new Request.Builder()
-                        .url(apiUrl)
-                        .header("User-Agent", ua)
-                        .header("Accept", "application/json")
-                        .header("Accept-Language", "id-ID,id;q=0.9,en;q=0.8")
-                        .get()
-                        .build();
-                resp = client.newCall(req).execute();
-                if (!resp.isSuccessful() || resp.body() == null) {
-                    Log.w(TAG, "Bing JSON HTTP failed (" + apiUrl + "): " + (resp != null ? resp.code() : "null"));
-                    continue;
-                }
-
-                String json = resp.body().string();
-                if (json == null || json.trim().isEmpty()) continue;
-
-                JSONObject obj = new JSONObject(json);
-                // Check official Bing schema: images[0]
-                JSONArray images = obj.optJSONArray("images");
-                if (images != null && images.length() > 0) {
-                    JSONObject first = images.getJSONObject(0);
-                    targetDate = first.optString("startdate", first.optString("enddate", ""));
-                    String urlbase = first.optString("urlbase", "");
-                    if (!urlbase.isEmpty()) {
-                        targetUrl = urlbase + "_1920x1080.jpg";
-                    } else {
-                        targetUrl = first.optString("url", "");
-                    }
-                } else if (obj.has("url")) {
-                    targetUrl = obj.optString("url", "");
-                    targetDate = obj.optString("start_date", "");
-                }
-
-                if (targetUrl != null && !targetUrl.trim().isEmpty()) {
-                    targetUrl = targetUrl.trim();
-                    if (targetUrl.startsWith("//")) targetUrl = "https:" + targetUrl;
-                    if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
-                        String host = apiUrl.contains("cn.bing.com") ? "https://cn.bing.com" : "https://www.bing.com";
-                        targetUrl = host + (targetUrl.startsWith("/") ? "" : "/") + targetUrl;
-                    }
-                    Log.d(TAG, "Bing JSON parsed ok: date=" + targetDate + " url=" + targetUrl);
-                    break;
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "Bing JSON attempt failed for " + apiUrl + ": " + e.getMessage());
-            } finally {
-                if (resp != null) {
-                    try { resp.close(); } catch (Exception ignored) {}
-                }
-            }
-        }
-
-        if (targetUrl == null || targetUrl.isEmpty()) {
-            Log.w(TAG, "Bing: unable to retrieve wallpaper URL from all endpoints");
-            return;
-        }
-
-        boolean upToDate = cached.exists() && cached.length() > 0 && targetDate != null && targetDate.equals(lastDate);
-        if (upToDate) {
-            try {
-                prefs(context).edit().putString(KEY_SOURCE, SOURCE_BING).putString(KEY_BING_URL, targetUrl).apply();
+                // Only run in auto mode if user hasn't set custom.
+                String src = getSource(context);
+                if (SOURCE_CUSTOM.equals(src)) return;
             } catch (Exception ignored) {
             }
-            Log.d(TAG, "Bing wallpaper up-to-date (cached)");
-            return;
-        }
 
-        // Download image and cache.
-        Response imgResp = null;
-        try {
-            Log.d(TAG, "Bing: download image from " + targetUrl);
-            Request imgReq = new Request.Builder()
-                    .url(targetUrl)
-                    .header("User-Agent", ua)
-                    .header("Accept", "image/jpeg,image/webp,image/*,*/*;q=0.8")
-                    .get()
-                    .build();
-            imgResp = client.newCall(imgReq).execute();
-            if (!imgResp.isSuccessful() || imgResp.body() == null) {
-                Log.w(TAG, "Bing image failed: http=" + imgResp.code());
+            sLastCheckTime = SystemClock.elapsedRealtime();
+
+            File cached = getBingFile(context);
+            String lastDate = getBingDate(context);
+            String lastUrl = null;
+            try {
+                lastUrl = prefs(context).getString(KEY_BING_URL, null);
+            } catch (Exception ignored) {
+            }
+
+            String ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+            OkHttpClient client = NetworkClient.getWallpaperClient();
+            if (client == null) {
+                client = NetworkClient.getClient();
+            }
+
+            String targetUrl = null;
+            String targetDate = null;
+
+            for (String apiUrl : BING_API_URLS) {
+                Response resp = null;
+                try {
+                    Log.d(TAG, "Bing: fetch json from " + apiUrl);
+                    Request req = new Request.Builder()
+                            .url(apiUrl)
+                            .header("User-Agent", ua)
+                            .header("Accept", "application/json")
+                            .header("Accept-Language", "id-ID,id;q=0.9,en;q=0.8")
+                            .get()
+                            .build();
+                    resp = client.newCall(req).execute();
+                    if (!resp.isSuccessful() || resp.body() == null) {
+                        Log.w(TAG, "Bing JSON HTTP failed (" + apiUrl + "): " + (resp != null ? resp.code() : "null"));
+                        continue;
+                    }
+
+                    String json = resp.body().string();
+                    if (json == null || json.trim().isEmpty()) continue;
+
+                    JSONObject obj = new JSONObject(json);
+                    // Check official Bing schema: images[0]
+                    JSONArray images = obj.optJSONArray("images");
+                    if (images != null && images.length() > 0) {
+                        JSONObject first = images.getJSONObject(0);
+                        targetDate = first.optString("enddate", first.optString("fullstartdate", first.optString("startdate", "")));
+                        String urlbase = first.optString("urlbase", "");
+                        if (!urlbase.isEmpty()) {
+                            targetUrl = urlbase + "_1920x1080.jpg";
+                        } else {
+                            targetUrl = first.optString("url", "");
+                        }
+                    } else if (obj.has("url")) {
+                        targetUrl = obj.optString("url", "");
+                        targetDate = obj.optString("end_date", obj.optString("start_date", ""));
+                    }
+
+                    if (targetUrl != null && !targetUrl.trim().isEmpty()) {
+                        targetUrl = targetUrl.trim();
+                        if (targetUrl.startsWith("//")) targetUrl = "https:" + targetUrl;
+                        if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+                            String host = apiUrl.contains("cn.bing.com") ? "https://cn.bing.com" : "https://www.bing.com";
+                            targetUrl = host + (targetUrl.startsWith("/") ? "" : "/") + targetUrl;
+                        }
+                        Log.d(TAG, "Bing JSON parsed ok: date=" + targetDate + " url=" + targetUrl);
+                        break;
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Bing JSON attempt failed for " + apiUrl + ": " + e.getMessage());
+                } finally {
+                    if (resp != null) {
+                        try { resp.close(); } catch (Exception ignored) {}
+                    }
+                }
+            }
+
+            if (targetUrl == null || targetUrl.isEmpty()) {
+                Log.w(TAG, "Bing: unable to retrieve wallpaper URL from all endpoints");
                 return;
             }
 
-            long len = imgResp.body().contentLength();
-            if (len > 25L * 1024L * 1024L) return;
-
-            boolean ok;
-            try (InputStream is = imgResp.body().byteStream()) {
-                ok = saveToFile(context, is, BING_FILE_NAME, false);
+            boolean sameDate = targetDate != null && !targetDate.isEmpty() && targetDate.equals(lastDate);
+            boolean sameUrl = lastUrl != null && targetUrl.equals(lastUrl);
+            boolean upToDate = cached.exists() && cached.length() > 0 && sameDate && sameUrl;
+            if (upToDate) {
+                try {
+                    prefs(context).edit().putString(KEY_SOURCE, SOURCE_BING).putString(KEY_BING_URL, targetUrl).apply();
+                } catch (Exception ignored) {
+                }
+                Log.d(TAG, "Bing wallpaper up-to-date (cached)");
+                return;
             }
-            if (!ok) return;
 
-            File out = getBingFile(context);
-            long written = out.exists() ? out.length() : -1;
-            Log.d(TAG, "Bing wallpaper saved: bytes=" + len + " written=" + written);
-
+            // Download image and cache.
+            Response imgResp = null;
             try {
-                SharedPreferences.Editor e = prefs(context).edit();
-                e.putString(KEY_SOURCE, SOURCE_BING);
-                if (targetDate != null && !targetDate.trim().isEmpty()) e.putString(KEY_BING_DATE, targetDate.trim());
-                e.putString(KEY_BING_URL, targetUrl);
-                e.apply();
-            } catch (Exception ignored) {
-            }
+                Log.d(TAG, "Bing: download image from " + targetUrl);
+                Request imgReq = new Request.Builder()
+                        .url(targetUrl)
+                        .header("User-Agent", ua)
+                        .header("Accept", "image/jpeg,image/webp,image/*,*/*;q=0.8")
+                        .get()
+                        .build();
+                imgResp = client.newCall(imgReq).execute();
+                if (!imgResp.isSuccessful() || imgResp.body() == null) {
+                    Log.w(TAG, "Bing image failed: http=" + imgResp.code());
+                    return;
+                }
 
-            // Notify UI listener that Bing wallpaper has been downloaded
-            notifyChanged(context);
-        } catch (Exception ignored) {
-            Log.w(TAG, "Bing image download failed: " + ignored.getClass().getSimpleName() + ": " + ignored.getMessage());
-        } finally {
-            if (imgResp != null) {
-                try { imgResp.close(); } catch (Exception ignored) {}
+                long len = imgResp.body().contentLength();
+                if (len > 25L * 1024L * 1024L) return;
+
+                boolean ok;
+                try (InputStream is = imgResp.body().byteStream()) {
+                    ok = saveToFile(context, is, BING_FILE_NAME, false);
+                }
+                if (!ok) return;
+
+                File out = getBingFile(context);
+                long written = out.exists() ? out.length() : -1;
+                Log.d(TAG, "Bing wallpaper saved: bytes=" + len + " written=" + written);
+
+                try {
+                    SharedPreferences.Editor e = prefs(context).edit();
+                    e.putString(KEY_SOURCE, SOURCE_BING);
+                    if (targetDate != null && !targetDate.trim().isEmpty()) e.putString(KEY_BING_DATE, targetDate.trim());
+                    e.putString(KEY_BING_URL, targetUrl);
+                    e.apply();
+                } catch (Exception ignored) {
+                }
+
+                // Notify UI listener that Bing wallpaper has been downloaded
+                notifyChanged(context);
+            } catch (Exception ignored) {
+                Log.w(TAG, "Bing image download failed: " + ignored.getClass().getSimpleName() + ": " + ignored.getMessage());
+            } finally {
+                if (imgResp != null) {
+                    try { imgResp.close(); } catch (Exception ignored) {}
+                }
             }
+        } finally {
+            sChecking.set(false);
         }
     }
 

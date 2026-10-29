@@ -64,6 +64,18 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private View settingsButton;
     private View profileButton;
     private android.widget.PopupWindow quickSettingsPopup;
+    private android.widget.PopupWindow tileMenuPopup;
+
+    private static final int REORDER_ACCENT = 0xFFFFB400;
+    private boolean reordering = false;
+    @Nullable
+    private String movingKey = null;
+    private boolean dockEditing = false;
+    private int dockEditSlot = -1;
+    @Nullable
+    private String dockEditAppKey = null;
+    private long ignoreClickUntilMs = 0L;
+
     private int lastSelectedCardPosition = APPS_ROW_POSITION;
     private int lastSelectedAppIndex = 0;
     private String latestLiveSubtitle = "+5000 Saluran";
@@ -345,6 +357,9 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 @Override
                 public void onAppClicked(LauncherAppEntry entry) {
                     if (entry == null) return;
+                    if (reordering || dockEditing || android.os.SystemClock.uptimeMillis() < ignoreClickUntilMs) {
+                        return;
+                    }
                     if (entry.isLiveTv) {
                         syncAppsFocusState(0);
                         if (getActivity() instanceof MainActivity) {
@@ -362,9 +377,15 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 }
 
                 @Override
-                public void onAppLongPressed(LauncherAppEntry entry) {
+                public void onAppLongPressed(LauncherAppEntry entry, int position, View cardView) {
                     if (entry == null || entry.component == null || entry.isLiveTv) return;
-                    showPinnedAppActions(appContext, entry);
+                    if (reordering || dockEditing) return;
+                    showTileMenu(appContext, entry, position, cardView);
+                }
+
+                @Override
+                public boolean onTileKey(int position, int keyCode, android.view.KeyEvent event) {
+                    return handleTileKeyInEditMode(appContext, position, keyCode, event);
                 }
 
                 @Override
@@ -432,7 +453,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                             }
                         }
                     }
-                    moveGlassToCard(cardView, color);
+                    moveGlassToCard(cardView, reordering ? REORDER_ACCENT : color);
                 }
             });
             appsList.setAdapter(appsAdapter);
@@ -651,7 +672,13 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         addQuickSettingRow(rows, popup, anchor, R.drawable.ic_apps, "Aplikasi", false, "Kelola",
                 () -> startSystemSettingsIntent(appContext, android.provider.Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS));
 
-        // 5. Setelan Antarmuka (MQLTV)
+        // 5. Setel Dock (Baris 1) & Tata Ulang App
+        addQuickSettingRow(rows, popup, anchor, R.drawable.ic_apps, "Setel Dock (Baris 1)", false, "Tukar",
+                () -> startDockEdit(appContext));
+        addQuickSettingRow(rows, popup, anchor, R.drawable.ic_apps, "Tata Ulang App", false, "Pindah",
+                () -> toggleReorder(appContext));
+
+        // 6. Setelan Antarmuka (MQLTV)
         addQuickSettingRow(rows, popup, anchor, R.drawable.ic_home_settings, "Setelan Antarmuka", false, "MQLTV", () -> {
             if (getActivity() instanceof MainActivity) {
                 ((MainActivity) getActivity()).openSettings();
@@ -1328,7 +1355,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     }
 
                     @Override
-                    public void onAppLongPressed(LauncherAppEntry entry) {
+                    public void onAppLongPressed(LauncherAppEntry entry, int position, View cardView) {
                     }
 
                     @Override
@@ -1348,102 +1375,465 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         });
     }
 
-    private void showPinnedAppActions(Context appContext, LauncherAppEntry entry) {
-        if (getActivity() == null || entry == null || entry.component == null) return;
+    private void showTileMenu(Context appContext, LauncherAppEntry entry, int position, View cardView) {
+        if (getContext() == null || entry == null || entry.component == null || cardView == null) return;
+        if (tileMenuPopup != null && tileMenuPopup.isShowing()) {
+            tileMenuPopup.dismiss();
+            return;
+        }
 
-        executor.execute(() -> {
-            List<String> pinned = PinnedAppsStore.load(appContext);
-            String key = entry.component.flattenToString();
-            int idx = pinned.indexOf(key);
+        if (glass != null && glassShown) {
+            glass.animate().cancel();
+            glass.animate().alpha(0f).setDuration(120).start();
+            glassShown = false;
+        }
 
-            mainHandler.post(() -> {
-                if (idx < 0) {
-                    Toast.makeText(getContext(), "App tidak ada di pinned list", Toast.LENGTH_SHORT).show();
-                    return;
-                }
+        float density = getResources().getDisplayMetrics().density;
+        ViewGroup root = (rootLayout instanceof ViewGroup) ? (ViewGroup) rootLayout : null;
+        View panel = LayoutInflater.from(getContext()).inflate(R.layout.popup_inputs, root, false);
+        android.widget.LinearLayout rows = panel.findViewById(R.id.rows);
 
-                android.app.Dialog dialog = new android.app.Dialog(getActivity(), android.R.style.Theme_Translucent_NoTitleBar);
-                dialog.setContentView(R.layout.dialog_app_actions);
+        int minWidth = Math.round(220f * density);
+        final android.widget.PopupWindow popup = new android.widget.PopupWindow(
+                panel, minWidth, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        popup.setOutsideTouchable(true);
+        popup.setAnimationStyle(0);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            popup.setElevation(12f * density);
+        }
+        popup.setOnDismissListener(() -> {
+            if (tileMenuPopup == popup) {
+                tileMenuPopup = null;
+            }
+            if (!reordering && !dockEditing) {
+                focusTileAfterEdit(position);
+            }
+        });
+        tileMenuPopup = popup;
 
-                ImageView icon = dialog.findViewById(R.id.dialog_app_action_icon);
-                TextView title = dialog.findViewById(R.id.dialog_app_action_title);
-                View btnLeft = dialog.findViewById(R.id.btn_move_left);
-                View btnRemove = dialog.findViewById(R.id.btn_remove);
-                View btnRight = dialog.findViewById(R.id.btn_move_right);
+        final String key = entry.component.flattenToString();
+        final String pkg = entry.component.getPackageName();
+        final boolean inDock = position < 4;
 
-                if (entry.icon != null) icon.setImageDrawable(entry.icon);
-                title.setText(entry.label != null ? entry.label : "App");
-
-                View.OnFocusChangeListener focusListener = (v, hasFocus) -> {
-                    float s = hasFocus ? 1.10f : 1.0f;
-                    float z = hasFocus ? 10f : 0f;
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                        v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(120).start();
-                    } else {
-                        v.animate().scaleX(s).scaleY(s).setDuration(120).start();
+        addTileMenuRow(rows, popup,
+                inDock ? "Ganti dengan aplikasi lain" : "Tambah ke dock",
+                () -> startDockEditFor(appContext, key, inDock));
+        addTileMenuRow(rows, popup, "Pindahkan",
+                () -> startMoveFor(appContext, key));
+        addTileMenuRow(rows, popup, "Hapus dari Beranda",
+                () -> removeAppFromHome(appContext, key, position));
+        addTileMenuRow(rows, popup, "Info aplikasi",
+                () -> {
+                    if (getContext() != null && pkg != null) {
+                        SystemSettings.appInfo(getContext(), pkg);
                     }
-                };
-
-                btnLeft.setOnFocusChangeListener(focusListener);
-                btnRemove.setOnFocusChangeListener(focusListener);
-                btnRight.setOnFocusChangeListener(focusListener);
-
-                if (idx == 0) {
-                    btnLeft.setVisibility(View.GONE);
-                } else {
-                    btnLeft.setOnClickListener(v -> {
-                        executor.execute(() -> {
-                            List<String> list = PinnedAppsStore.load(appContext);
-                            int pos = list.indexOf(key);
-                            if (pos > 0) {
-                                String tmp = list.get(pos - 1);
-                                list.set(pos - 1, list.get(pos));
-                                list.set(pos, tmp);
-                                PinnedAppsStore.save(appContext, list);
-                                mainHandler.post(() -> loadLauncherApps(appContext));
-                            }
-                        });
-                        dialog.dismiss();
-                    });
-                }
-
-                if (idx == pinned.size() - 1) {
-                    btnRight.setVisibility(View.GONE);
-                } else {
-                    btnRight.setOnClickListener(v -> {
-                        executor.execute(() -> {
-                            List<String> list = PinnedAppsStore.load(appContext);
-                            int pos = list.indexOf(key);
-                            if (pos >= 0 && pos < list.size() - 1) {
-                                String tmp = list.get(pos + 1);
-                                list.set(pos + 1, list.get(pos));
-                                list.set(pos, tmp);
-                                PinnedAppsStore.save(appContext, list);
-                                mainHandler.post(() -> loadLauncherApps(appContext));
-                            }
-                        });
-                        dialog.dismiss();
-                    });
-                }
-
-                btnRemove.setOnClickListener(v -> {
-                    executor.execute(() -> {
-                        List<String> list = PinnedAppsStore.load(appContext);
-                        int pos = list.indexOf(key);
-                        if (pos >= 0) {
-                            list.remove(pos);
-                            PinnedAppsStore.save(appContext, list);
-                            mainHandler.post(() -> loadLauncherApps(appContext));
-                        }
-                    });
-                    dialog.dismiss();
                 });
 
-                // Set focus back to default (remove gets focus first since it's the main action)
-                btnRemove.requestFocus();
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int w = Math.max(minWidth, panel.getMeasuredWidth());
+        int h = panel.getMeasuredHeight();
+        popup.setWidth(w);
 
-                dialog.show();
-            });
+        int[] loc = new int[2];
+        cardView.getLocationOnScreen(loc);
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int screenH = getResources().getDisplayMetrics().heightPixels;
+        int pad24 = Math.round(24f * density);
+        int pad10 = Math.round(10f * density);
+
+        int x = loc[0] + (cardView.getWidth() - w) / 2;
+        x = Math.max(pad24, Math.min(x, screenW - w - pad24));
+        int yBelow = loc[1] + cardView.getHeight() + pad10;
+        int yAbove = loc[1] - h - pad10;
+        boolean above = yBelow + h > screenH - pad24 && yAbove >= pad24;
+        int y = above ? yAbove : yBelow;
+
+        panel.setAlpha(0f);
+        panel.setPivotY(above ? h : 0f);
+        panel.setScaleY(0.92f);
+        panel.setTranslationY(above ? Math.round(8f * density) : -Math.round(8f * density));
+        if (rootLayout != null) {
+            popup.showAtLocation(rootLayout, android.view.Gravity.NO_GRAVITY, x, y);
+        } else {
+            popup.showAsDropDown(cardView);
+        }
+        panel.animate()
+                .alpha(1f)
+                .scaleY(1f)
+                .translationY(0f)
+                .setDuration(200)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f))
+                .start();
+
+        rows.post(() -> {
+            if (rows.getChildCount() > 0) {
+                rows.getChildAt(0).requestFocus();
+            }
+        });
+    }
+
+    private View addTileMenuRow(
+            android.widget.LinearLayout rows,
+            android.widget.PopupWindow popup,
+            String title,
+            Runnable action) {
+        View row = LayoutInflater.from(rows.getContext()).inflate(R.layout.item_input, rows, false);
+        View icon = row.findViewById(R.id.icon);
+        View dot = row.findViewById(R.id.dot);
+        View status = row.findViewById(R.id.status);
+        if (icon != null) icon.setVisibility(View.GONE);
+        if (dot != null) dot.setVisibility(View.GONE);
+        if (status != null) status.setVisibility(View.GONE);
+
+        TextView titleView = row.findViewById(R.id.title);
+        if (titleView != null) titleView.setText(title);
+
+        row.setOnClickListener(v -> {
+            popup.dismiss();
+            if (action != null) action.run();
+        });
+
+        final boolean[] pressed = {false};
+        row.setOnKeyListener((v, keyCode, event) -> {
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER
+                    || keyCode == android.view.KeyEvent.KEYCODE_ENTER
+                    || keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER) {
+                if (event.getAction() == android.view.KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                    pressed[0] = true;
+                } else if (event.getAction() == android.view.KeyEvent.ACTION_UP && !pressed[0]) {
+                    return true;
+                }
+            }
+            if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
+            int idx = rows.indexOfChild(v);
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP && idx == 0) return true;
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN && idx == rows.getChildCount() - 1) return true;
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT || keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) return true;
+            return false;
+        });
+
+        rows.addView(row);
+        return row;
+    }
+
+    private void removeAppFromHome(Context appContext, String key, int position) {
+        executor.execute(() -> {
+            List<String> list = PinnedAppsStore.load(appContext);
+            int idx = list.indexOf(key);
+            if (idx >= 0) {
+                list.remove(idx);
+                PinnedAppsStore.save(appContext, list);
+                mainHandler.post(() -> {
+                    lastSelectedAppIndex = Math.max(0, position - 1);
+                    loadLauncherApps(appContext);
+                });
+            }
+        });
+    }
+
+    private void saveCurrentPinnedOrder(Context appContext) {
+        if (appsAdapter == null) return;
+        final List<String> pinned = appsAdapter.getPinnedKeys();
+        executor.execute(() -> PinnedAppsStore.save(appContext, pinned));
+    }
+
+    private void startDockEdit(Context appContext) {
+        if (appsAdapter == null) return;
+        if (appsAdapter.getAppsCount() <= 4) {
+            Toast.makeText(getContext(), "Tambahkan aplikasi di baris ke-2 terlebih dahulu", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (reordering) endReorder(appContext, false);
+        dockEditing = true;
+        dockEditSlot = -1;
+        dockEditAppKey = null;
+        appsAdapter.setEditVisualState(null, true, -1, null);
+        if (scrollContainer != null) scrollContainer.smoothScrollTo(0, 0);
+        focusTileAfterEdit(1);
+        Toast.makeText(getContext(),
+                "Pilih posisi di baris 1 yang ingin diganti lalu tekan OK. Kembali untuk keluar.",
+                Toast.LENGTH_LONG).show();
+    }
+
+    private void startDockEditFor(Context appContext, String key, boolean inDock) {
+        if (appsAdapter == null) return;
+        int pos = appsAdapter.positionOfKey(key);
+        if (pos < 1) return;
+        if (inDock && appsAdapter.getAppsCount() <= 4) {
+            Toast.makeText(getContext(), "Tambahkan aplikasi di baris ke-2 terlebih dahulu", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (reordering) endReorder(appContext, false);
+        dockEditing = true;
+        if (inDock) {
+            dockEditSlot = pos;
+            dockEditAppKey = null;
+            appsAdapter.setEditVisualState(null, true, dockEditSlot, null);
+            focusTileAfterEdit(4);
+            Toast.makeText(getContext(),
+                    "Sekarang pilih aplikasi untuk ditempatkan di sana lalu tekan OK. Kembali untuk membatalkan.",
+                    Toast.LENGTH_LONG).show();
+        } else {
+            dockEditSlot = -1;
+            dockEditAppKey = key;
+            appsAdapter.setEditVisualState(null, true, -1, dockEditAppKey);
+            if (scrollContainer != null) scrollContainer.smoothScrollTo(0, 0);
+            focusTileAfterEdit(1);
+            Toast.makeText(getContext(),
+                    "Pilih posisi dock (baris 1) untuk aplikasi ini lalu tekan OK. Kembali untuk membatalkan.",
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void endDockEdit() {
+        if (!dockEditing) return;
+        dockEditing = false;
+        dockEditSlot = -1;
+        dockEditAppKey = null;
+        if (appsAdapter != null) {
+            appsAdapter.setEditVisualState(null, false, -1, null);
+        }
+    }
+
+    private void swapIntoDock(Context appContext, int slot, int pos) {
+        if (appsAdapter == null) return;
+        if (slot < 1 || slot >= 4) return;
+        if (pos < 1 || pos >= appsAdapter.getAppsCount() || pos == slot) return;
+        appsAdapter.swap(slot, pos);
+        saveCurrentPinnedOrder(appContext);
+    }
+
+    private void toggleReorder(Context appContext) {
+        if (reordering) {
+            endReorder(appContext, true);
+        } else {
+            if (dockEditing) endDockEdit();
+            if (appsAdapter == null || appsAdapter.getAppsCount() <= 1) return;
+            int target = Math.max(1, lastSelectedAppIndex);
+            if (target >= appsAdapter.getAppsCount()) target = 1;
+            String key = appsAdapter.keyAt(target);
+            if (key != null && !"__livetv__".equals(key)) {
+                startMoveFor(appContext, key);
+            }
+        }
+    }
+
+    private void startMoveFor(Context appContext, String key) {
+        if (appsAdapter == null || key == null) return;
+        if (dockEditing) endDockEdit();
+        int pos = appsAdapter.positionOfKey(key);
+        if (pos < 1) return;
+        reordering = true;
+        movingKey = key;
+        appsAdapter.setEditVisualState(movingKey, false, -1, null);
+        if (glass != null) {
+            glass.setAccent(REORDER_ACCENT);
+        }
+        focusTileAfterEdit(pos);
+        Toast.makeText(getContext(),
+                "Gunakan arah panah untuk memindahkan aplikasi. Tekan OK untuk selesai.",
+                Toast.LENGTH_LONG).show();
+    }
+
+    private void endReorder(Context appContext, boolean save) {
+        if (!reordering) return;
+        int currentPos = (appsAdapter != null && movingKey != null)
+                ? appsAdapter.positionOfKey(movingKey) : lastSelectedAppIndex;
+        reordering = false;
+        movingKey = null;
+        if (appsAdapter != null) {
+            appsAdapter.setEditVisualState(null, false, -1, null);
+        }
+        if (save) {
+            saveCurrentPinnedOrder(appContext);
+        }
+        if (currentPos >= 0) {
+            focusTileAfterEdit(currentPos);
+        }
+    }
+
+    private boolean moveBy(int keyCode) {
+        if (appsAdapter == null || movingKey == null) return false;
+        int from = appsAdapter.positionOfKey(movingKey);
+        if (from < 1) return false;
+        int count = appsAdapter.getAppsCount();
+        int to = from;
+        switch (keyCode) {
+            case android.view.KeyEvent.KEYCODE_DPAD_LEFT:
+                to = from - 1;
+                break;
+            case android.view.KeyEvent.KEYCODE_DPAD_RIGHT:
+                to = from + 1;
+                break;
+            case android.view.KeyEvent.KEYCODE_DPAD_UP:
+                to = from - 4;
+                if (from == 4 && to == 0) {
+                    to = 1; // Kolom pertama baris 2 naik ke slot dock pertama setelah Live TV
+                }
+                break;
+            case android.view.KeyEvent.KEYCODE_DPAD_DOWN:
+                to = from + 4;
+                if (to >= count && from < ((count - 1) / 4) * 4) {
+                    to = count - 1;
+                }
+                break;
+            default:
+                return false;
+        }
+        if (to < 1 || to >= count || to == from) {
+            return true;
+        }
+        appsAdapter.move(from, to);
+        focusTileAfterEdit(to);
+        return true;
+    }
+
+    private boolean handleTileKeyInEditMode(Context appContext, int position, int keyCode, android.view.KeyEvent event) {
+        if (!reordering && !dockEditing) return false;
+        boolean isOk = keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER
+                || keyCode == android.view.KeyEvent.KEYCODE_ENTER
+                || keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER;
+        boolean isBack = keyCode == android.view.KeyEvent.KEYCODE_BACK
+                || keyCode == android.view.KeyEvent.KEYCODE_ESCAPE;
+        boolean isDpad = keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT
+                || keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT
+                || keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP
+                || keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN;
+
+        if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
+            return isOk || isBack || (reordering && isDpad);
+        }
+
+        if (dockEditing) {
+            // Jangan biarkan fokus naik ke header atau turun ke Library saat mode edit dock
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP && position < 4) {
+                return true;
+            }
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT && position == 1) {
+                return true;
+            }
+            if (dockEditAppKey != null && keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN && position < 4) {
+                return true;
+            }
+            if (isOk) {
+                ignoreClickUntilMs = android.os.SystemClock.uptimeMillis() + 350L;
+                if (position == 0) {
+                    Toast.makeText(getContext(), "Posisi Live TV terkunci, pilih posisi di sebelahnya", Toast.LENGTH_SHORT).show();
+                    focusTileAfterEdit(1);
+                    return true;
+                }
+                if (dockEditAppKey != null) {
+                    if (position >= 1 && position < 4) {
+                        int appPos = appsAdapter != null ? appsAdapter.positionOfKey(dockEditAppKey) : -1;
+                        endDockEdit();
+                        if (appPos >= 4) {
+                            swapIntoDock(appContext, position, appPos);
+                        }
+                        focusTileAfterEdit(position);
+                    }
+                    return true;
+                }
+                if (dockEditSlot < 0) {
+                    if (position >= 1 && position < 4) {
+                        dockEditSlot = position;
+                        if (appsAdapter != null) {
+                            appsAdapter.setEditVisualState(null, true, dockEditSlot, null);
+                        }
+                        focusTileAfterEdit(4);
+                        Toast.makeText(getContext(),
+                                "Sekarang pilih aplikasi untuk ditempatkan di sana lalu tekan OK.",
+                                Toast.LENGTH_LONG).show();
+                    }
+                    return true;
+                } else {
+                    int slot = dockEditSlot;
+                    endDockEdit();
+                    if (position != slot && position >= 1) {
+                        swapIntoDock(appContext, slot, position);
+                    }
+                    focusTileAfterEdit(slot);
+                    return true;
+                }
+            }
+            if (isBack) {
+                if (dockEditAppKey != null) {
+                    int appPos = appsAdapter != null ? appsAdapter.positionOfKey(dockEditAppKey) : 1;
+                    endDockEdit();
+                    focusTileAfterEdit(appPos >= 0 ? appPos : 1);
+                } else if (dockEditSlot >= 0) {
+                    int slot = dockEditSlot;
+                    endDockEdit();
+                    focusTileAfterEdit(slot);
+                } else {
+                    endDockEdit();
+                    focusTileAfterEdit(1);
+                }
+                return true;
+            }
+            return false;
+        }
+
+        if (reordering) {
+            if (isDpad && movingKey != null) {
+                return moveBy(keyCode);
+            }
+            if (isOk || isBack) {
+                ignoreClickUntilMs = android.os.SystemClock.uptimeMillis() + 350L;
+                endReorder(appContext, true);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean handleBackPressed() {
+        if (getContext() == null) return false;
+        Context appContext = getContext().getApplicationContext();
+        if (dockEditing) {
+            int target = 1;
+            if (dockEditAppKey != null && appsAdapter != null) {
+                int p = appsAdapter.positionOfKey(dockEditAppKey);
+                if (p >= 0) target = p;
+            } else if (dockEditSlot >= 0) {
+                target = dockEditSlot;
+            }
+            endDockEdit();
+            focusTileAfterEdit(target);
+            return true;
+        }
+        if (reordering) {
+            endReorder(appContext, true);
+            return true;
+        }
+        return false;
+    }
+
+    private void focusTileAfterEdit(int index) {
+        if (appsList == null || appsAdapter == null) return;
+        final int count = appsAdapter.getAppsCount();
+        if (count <= 0) return;
+        final int target = Math.max(0, Math.min(index, count - 1));
+        syncAppsFocusState(target);
+        if (target < 4 && scrollContainer != null) {
+            scrollContainer.smoothScrollTo(0, 0);
+        }
+        appsList.post(() -> {
+            if (appsList == null || appsAdapter == null) return;
+            appsList.scrollToPosition(target);
+            RecyclerView.ViewHolder vh = appsList.findViewHolderForAdapterPosition(target);
+            if (vh != null && vh.itemView != null) {
+                vh.itemView.requestFocus();
+                View card = vh.itemView.findViewById(R.id.launcher_app_tile);
+                if (card == null) card = vh.itemView;
+                final View finalCard = card;
+                LauncherAppEntry entry = appsAdapter.getEntryAt(target);
+                final int color = reordering ? REORDER_ACCENT
+                        : (entry != null ? LauncherAppsAdapter.colorFromEntry(entry) : 0xFF3B82F6);
+                finalCard.post(() -> moveGlassToCard(finalCard, color));
+            } else {
+                requestFocusToApp(target);
+            }
         });
     }
 

@@ -31,8 +31,9 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
     public interface Listener {
         void onAppClicked(LauncherAppEntry entry);
-        void onAppLongPressed(LauncherAppEntry entry);
+        void onAppLongPressed(LauncherAppEntry entry, int position, View cardView);
         void onAddClicked();
+        default boolean onTileKey(int position, int keyCode, android.view.KeyEvent event) { return false; }
         default void onAppFocused(LauncherAppEntry entry, int position, View cardView) {}
         default void onLibraryClicked() {}
         default void onLibraryFocused(View view) {}
@@ -43,12 +44,94 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
     private final List<LauncherAppEntry> items = new ArrayList<>();
     private final Listener listener;
 
+    private String movingKey = null;
+    private boolean dockEditing = false;
+    private int dockEditSlot = -1;
+    private String dockEditAppKey = null;
+
     public LauncherAppsAdapter(Listener listener) {
         this.listener = listener;
     }
 
     public int getAppsCount() {
         return items.size();
+    }
+
+    public LauncherAppEntry getEntryAt(int position) {
+        if (position < 0 || position >= items.size()) return null;
+        return items.get(position);
+    }
+
+    public String keyAt(int position) {
+        if (position < 0 || position >= items.size()) return null;
+        LauncherAppEntry e = items.get(position);
+        if (e == null) return null;
+        if (e.isLiveTv) return "__livetv__";
+        return e.component != null ? e.component.flattenToString() : null;
+    }
+
+    public int positionOfKey(String key) {
+        if (key == null) return -1;
+        for (int i = 0; i < items.size(); i++) {
+            if (key.equals(keyAt(i))) return i;
+        }
+        return -1;
+    }
+
+    public List<String> getPinnedKeys() {
+        List<String> out = new ArrayList<>();
+        for (LauncherAppEntry e : items) {
+            if (e != null && !e.isLiveTv && !e.isAddButton && e.component != null) {
+                out.add(e.component.flattenToString());
+            }
+        }
+        return out;
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    public void move(int from, int to) {
+        if (from < 1 || to < 1 || from >= items.size() || to >= items.size() || from == to) return;
+        LauncherAppEntry item = items.remove(from);
+        items.add(to, item);
+        notifyDataSetChanged();
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    public void swap(int posA, int posB) {
+        if (posA < 1 || posB < 1 || posA >= items.size() || posB >= items.size() || posA == posB) return;
+        LauncherAppEntry tmp = items.get(posA);
+        items.set(posA, items.get(posB));
+        items.set(posB, tmp);
+        notifyDataSetChanged();
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    public void setEditVisualState(String movingKey, boolean dockEditing, int dockEditSlot, String dockEditAppKey) {
+        this.movingKey = movingKey;
+        this.dockEditing = dockEditing;
+        this.dockEditSlot = dockEditSlot;
+        this.dockEditAppKey = dockEditAppKey;
+        notifyDataSetChanged();
+    }
+
+    private float tileAlpha(int position) {
+        if (position == 0) {
+            if (movingKey != null || dockEditing) return 0.45f;
+            return 1f;
+        }
+        String k = keyAt(position);
+        if (movingKey != null) {
+            return movingKey.equals(k) ? 1f : 0.45f;
+        }
+        if (dockEditing) {
+            if (dockEditSlot >= 0 && position < 4 && position != dockEditSlot) {
+                return 0.45f;
+            }
+            if (dockEditAppKey != null && position >= 4 && !dockEditAppKey.equals(k)) {
+                return 0.45f;
+            }
+        }
+        return 1f;
     }
 
     public boolean isLibraryAt(int position) {
@@ -81,7 +164,9 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 String newSub = newItem != null ? newItem.customSubtitle : "";
                 boolean oldLive = oldItem != null && oldItem.isLiveTv;
                 boolean newLive = newItem != null && newItem.isLiveTv;
-                if (!oldLabel.equals(newLabel) || oldLive != newLive || (oldSub != null && !oldSub.equals(newSub))) {
+                String oldComp = (oldItem != null && oldItem.component != null) ? oldItem.component.flattenToString() : "";
+                String newComp = (newItem != null && newItem.component != null) ? newItem.component.flattenToString() : "";
+                if (!oldLabel.equals(newLabel) || oldLive != newLive || !oldComp.equals(newComp) || (oldSub != null && !oldSub.equals(newSub))) {
                     same = false;
                     break;
                 }
@@ -249,6 +334,8 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             ((android.widget.FrameLayout) targetCard).setForeground(createTileForeground(ctx));
         }
 
+        holder.itemView.setAlpha(tileAlpha(position));
+
         holder.itemView.setOnClickListener(v -> {
             if (e.isAddButton) {
                 if (listener != null) listener.onAddClicked();
@@ -259,7 +346,9 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
         holder.itemView.setOnLongClickListener(v -> {
             if (e.isAddButton || e.isLiveTv) return true;
-            if (listener != null) listener.onAppLongPressed(e);
+            int pos = holder.getBindingAdapterPosition();
+            if (pos == RecyclerView.NO_POSITION) pos = position;
+            if (listener != null) listener.onAppLongPressed(e, pos, targetCard);
             return true;
         });
 
@@ -288,9 +377,12 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         });
 
         holder.itemView.setOnKeyListener((v, keyCode, event) -> {
-            if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
             int pos = holder.getBindingAdapterPosition();
             if (pos == RecyclerView.NO_POSITION) return false;
+            if (listener != null && listener.onTileKey(pos, keyCode, event)) {
+                return true;
+            }
+            if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
             int count = items.size();
             int lastRowStart = ((count - 1) / 4) * 4;
             if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN && pos >= lastRowStart) {

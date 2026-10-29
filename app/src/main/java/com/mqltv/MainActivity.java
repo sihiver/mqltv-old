@@ -191,6 +191,12 @@ public class MainActivity extends FragmentActivity {
 
     @Override
     public void onBackPressed() {
+        if (currentDestination == NavDestination.HOME) {
+            androidx.fragment.app.Fragment f = getSupportFragmentManager().findFragmentById(R.id.content_container);
+            if (f instanceof LauncherFragment && ((LauncherFragment) f).handleBackPressed()) {
+                return;
+            }
+        }
         // Launcher-style behavior: don't finish the Home activity.
         if (currentDestination != NavDestination.HOME) {
             showDestination(NavDestination.HOME);

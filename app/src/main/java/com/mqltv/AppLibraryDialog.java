@@ -3,22 +3,18 @@ package com.mqltv;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Dialog;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.Rect;
-import android.graphics.drawable.Drawable;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.Settings;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -27,7 +23,10 @@ import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -46,9 +45,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * CleanYourTV-style App Library Dialog.
+ * App Library Dialog.
  * Shows all launchable applications in a full-screen translucent overlay with 16:9 cards,
- * "DI BERANDA" status badges, direct launch, and pin/unpin options.
+ * "DI BERANDA" status badges, direct launch, and CleanYourTV-style glass popup menu on long-press.
  */
 public final class AppLibraryDialog {
 
@@ -63,6 +62,7 @@ public final class AppLibraryDialog {
     private final Runnable onDismissListener;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Dialog dialog;
+    private PopupWindow actionPopup;
 
     public AppLibraryDialog(@NonNull Activity activity, OnPinnedChangeListener pinnedListener) {
         this(activity, pinnedListener, null);
@@ -74,11 +74,25 @@ public final class AppLibraryDialog {
         this.onDismissListener = onDismissListener;
     }
 
+    public void close() {
+        if (actionPopup != null && actionPopup.isShowing()) {
+            actionPopup.dismiss();
+            actionPopup = null;
+        }
+        if (dialog != null && dialog.isShowing()) {
+            dialog.dismiss();
+        }
+    }
+
     public void show() {
         if (activity == null || activity.isFinishing()) return;
 
         dialog = new Dialog(activity, android.R.style.Theme_Translucent_NoTitleBar);
         dialog.setOnDismissListener(d -> {
+            if (actionPopup != null && actionPopup.isShowing()) {
+                actionPopup.dismiss();
+                actionPopup = null;
+            }
             if (onDismissListener != null) {
                 onDismissListener.run();
             }
@@ -136,7 +150,7 @@ public final class AppLibraryDialog {
             }
         });
 
-        LibraryAdapter adapter = new LibraryAdapter();
+        LibraryAdapter adapter = new LibraryAdapter(grid);
         grid.setAdapter(adapter);
 
         dialog.show();
@@ -206,8 +220,13 @@ public final class AppLibraryDialog {
 
     private final class LibraryAdapter extends RecyclerView.Adapter<LibraryVH> {
 
+        private final RecyclerView grid;
         private final List<LauncherAppEntry> items = new ArrayList<>();
         private final Set<String> pinnedKeys = new HashSet<>();
+
+        LibraryAdapter(RecyclerView grid) {
+            this.grid = grid;
+        }
 
         @SuppressLint("NotifyDataSetChanged")
         public void setData(List<LauncherAppEntry> newItems, Set<String> pinned) {
@@ -240,7 +259,7 @@ public final class AppLibraryDialog {
             float density = holder.itemView.getResources().getDisplayMetrics().density;
             int radius = Math.round(14 * density);
 
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 holder.tile.setOutlineProvider(new ViewOutlineProvider() {
                     @Override
                     public void getOutline(View view, Outline outline) {
@@ -285,9 +304,12 @@ public final class AppLibraryDialog {
                 }
             });
 
-            // Long click -> Show action options (Pin / Unpin / App info)
+            // Long click -> Show CleanYourTV glass popup menu next to card
             holder.itemView.setOnLongClickListener(v -> {
-                showAppOptions(entry, holder.getBindingAdapterPosition());
+                int pos = holder.getBindingAdapterPosition();
+                if (pos == RecyclerView.NO_POSITION) pos = position;
+                View card = holder.tile != null ? holder.tile : holder.itemView;
+                showAppOptions(entry, pos, card);
                 return true;
             });
 
@@ -303,7 +325,7 @@ public final class AppLibraryDialog {
             holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
                 float s = hasFocus ? 1.08f : 1.0f;
                 float z = hasFocus ? 8 * density : 0f;
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(160).start();
                 } else {
                     v.animate().scaleX(s).scaleY(s).setDuration(160).start();
@@ -333,98 +355,155 @@ public final class AppLibraryDialog {
             return items.size();
         }
 
-        private void showAppOptions(LauncherAppEntry entry, int position) {
-            if (entry == null || entry.component == null) return;
-            String key = entry.component.flattenToString();
-            boolean isPinned = pinnedKeys.contains(key);
-
-            Dialog actionDialog = new Dialog(activity, android.R.style.Theme_Translucent_NoTitleBar);
-            actionDialog.setContentView(R.layout.dialog_app_actions);
-
-            ImageView icon = actionDialog.findViewById(R.id.dialog_app_action_icon);
-            TextView title = actionDialog.findViewById(R.id.dialog_app_action_title);
-
-            if (title != null) title.setText(entry.label != null ? entry.label : "Aplikasi");
-            if (icon != null) {
-                if (entry.icon != null) icon.setImageDrawable(entry.icon);
-                else icon.setImageResource(R.mipmap.ic_launcher);
+        private void showAppOptions(LauncherAppEntry entry, int position, View cardView) {
+            if (entry == null || entry.component == null || cardView == null || dialog == null) return;
+            if (actionPopup != null && actionPopup.isShowing()) {
+                actionPopup.dismiss();
+                return;
             }
 
-            View btnLeft = actionDialog.findViewById(R.id.btn_move_left);
-            View btnRemove = actionDialog.findViewById(R.id.btn_remove);
-            View btnRight = actionDialog.findViewById(R.id.btn_move_right);
+            final String key = entry.component.flattenToString();
+            final String pkg = entry.component.getPackageName();
+            final boolean isPinned = pinnedKeys.contains(key);
 
-            // Re-purpose action buttons:
-            // btnLeft -> "Buka" (Open)
-            if (btnLeft instanceof ViewGroup) {
-                ViewGroup vg = (ViewGroup) btnLeft;
-                ImageView iv = vg.getChildAt(0) instanceof ImageView ? (ImageView) vg.getChildAt(0) : null;
-                TextView tv = vg.getChildAt(1) instanceof TextView ? (TextView) vg.getChildAt(1) : null;
-                if (iv != null) iv.setImageResource(android.R.drawable.ic_media_play);
-                if (tv != null) tv.setText("Buka");
-                btnLeft.setOnClickListener(v -> {
-                    actionDialog.dismiss();
-                    Intent launch = entry.buildLaunchIntent();
-                    if (launch != null) {
-                        try {
-                            activity.startActivity(launch);
-                            if (dialog != null) dialog.dismiss();
-                        } catch (Exception ignored) {}
-                    }
-                });
+            float density = activity.getResources().getDisplayMetrics().density;
+            View decor = dialog.getWindow() != null ? dialog.getWindow().getDecorView() : cardView.getRootView();
+            ViewGroup root = (decor instanceof ViewGroup) ? (ViewGroup) decor : null;
+            View panel = LayoutInflater.from(activity).inflate(R.layout.popup_inputs, root, false);
+            LinearLayout rows = panel.findViewById(R.id.rows);
+
+            int minWidth = Math.round(220f * density);
+            final PopupWindow popup = new PopupWindow(panel, minWidth, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+            popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            popup.setOutsideTouchable(true);
+            popup.setAnimationStyle(0);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                popup.setElevation(12f * density);
             }
-
-            // btnRemove -> "Sematkan" or "Lepas" (Pin / Unpin)
-            if (btnRemove instanceof ViewGroup) {
-                ViewGroup vg = (ViewGroup) btnRemove;
-                ImageView iv = vg.getChildAt(0) instanceof ImageView ? (ImageView) vg.getChildAt(0) : null;
-                TextView tv = vg.getChildAt(1) instanceof TextView ? (TextView) vg.getChildAt(1) : null;
-                if (iv != null) {
-                    iv.setImageResource(isPinned ? android.R.drawable.ic_menu_delete : android.R.drawable.ic_input_add);
-                    iv.setColorFilter(isPinned ? 0xFFFF5252 : 0xFF10B981);
+            popup.setOnDismissListener(() -> {
+                if (actionPopup == popup) {
+                    actionPopup = null;
                 }
-                if (tv != null) {
-                    tv.setText(isPinned ? "Lepas" : "Sematkan");
-                    tv.setTextColor(isPinned ? 0xFFFF5252 : 0xFF10B981);
+                if (grid != null && dialog != null && dialog.isShowing()) {
+                    grid.post(() -> {
+                        RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(position);
+                        if (vh != null && vh.itemView != null) {
+                            vh.itemView.requestFocus();
+                        }
+                    });
                 }
-                btnRemove.setOnClickListener(v -> {
-                    actionDialog.dismiss();
-                    if (isPinned) {
-                        PinnedAppsStore.remove(activity, key);
-                        pinnedKeys.remove(key);
-                        Toast.makeText(activity, "Dihapus dari Beranda", Toast.LENGTH_SHORT).show();
-                    } else {
-                        PinnedAppsStore.add(activity, key);
-                        pinnedKeys.add(key);
-                        Toast.makeText(activity, "Disematkan ke Beranda", Toast.LENGTH_SHORT).show();
-                    }
-                    notifyItemChanged(position);
-                    if (pinnedListener != null) pinnedListener.onPinnedChanged();
-                });
-            }
+            });
+            actionPopup = popup;
 
-            // btnRight -> "Info" (App details settings)
-            if (btnRight instanceof ViewGroup) {
-                ViewGroup vg = (ViewGroup) btnRight;
-                ImageView iv = vg.getChildAt(0) instanceof ImageView ? (ImageView) vg.getChildAt(0) : null;
-                TextView tv = vg.getChildAt(1) instanceof TextView ? (TextView) vg.getChildAt(1) : null;
-                if (iv != null) iv.setImageResource(android.R.drawable.ic_menu_info_details);
-                if (tv != null) tv.setText("Info");
-                btnRight.setOnClickListener(v -> {
-                    actionDialog.dismiss();
+            // 1. Buka
+            addOptionRow(rows, popup, "Buka", () -> {
+                Intent launch = entry.buildLaunchIntent();
+                if (launch != null) {
                     try {
-                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                        intent.setData(Uri.parse("package:" + entry.component.getPackageName()));
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        activity.startActivity(intent);
+                        activity.startActivity(launch);
+                        if (dialog != null) dialog.dismiss();
                     } catch (Exception e) {
-                        Toast.makeText(activity, "Gagal membuka info aplikasi", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(activity, "Gagal membuka aplikasi", Toast.LENGTH_SHORT).show();
                     }
-                });
-            }
+                }
+            });
 
-            actionDialog.show();
-            if (btnRemove != null) btnRemove.requestFocus();
+            // 2. Tambah ke Beranda / Hapus dari Beranda
+            addOptionRow(rows, popup, isPinned ? "Hapus dari Beranda" : "Tambah ke Beranda", () -> {
+                if (isPinned) {
+                    PinnedAppsStore.remove(activity, key);
+                    pinnedKeys.remove(key);
+                } else {
+                    PinnedAppsStore.add(activity, key);
+                    pinnedKeys.add(key);
+                }
+                notifyItemChanged(position);
+                if (pinnedListener != null) pinnedListener.onPinnedChanged();
+            });
+
+            // 3. Info aplikasi
+            addOptionRow(rows, popup, "Info aplikasi", () -> {
+                if (pkg != null) {
+                    SystemSettings.appInfo(activity, pkg);
+                }
+            });
+
+            panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+            int w = Math.max(minWidth, panel.getMeasuredWidth());
+            int h = panel.getMeasuredHeight();
+            popup.setWidth(w);
+
+            int[] loc = new int[2];
+            cardView.getLocationOnScreen(loc);
+            int screenW = activity.getResources().getDisplayMetrics().widthPixels;
+            int screenH = activity.getResources().getDisplayMetrics().heightPixels;
+            int pad24 = Math.round(24f * density);
+            int pad10 = Math.round(10f * density);
+
+            int x = loc[0] + (cardView.getWidth() - w) / 2;
+            x = Math.max(pad24, Math.min(x, screenW - w - pad24));
+            int yBelow = loc[1] + cardView.getHeight() + pad10;
+            int yAbove = loc[1] - h - pad10;
+            boolean above = yBelow + h > screenH - pad24 && yAbove >= pad24;
+            int y = above ? yAbove : yBelow;
+
+            panel.setAlpha(0f);
+            panel.setPivotY(above ? h : 0f);
+            panel.setScaleY(0.92f);
+            panel.setTranslationY(above ? Math.round(8f * density) : -Math.round(8f * density));
+            popup.showAtLocation(decor, Gravity.NO_GRAVITY, x, y);
+            panel.animate()
+                    .alpha(1f)
+                    .scaleY(1f)
+                    .translationY(0f)
+                    .setDuration(200)
+                    .setInterpolator(new DecelerateInterpolator(1.6f))
+                    .start();
+
+            rows.post(() -> {
+                if (rows.getChildCount() > 0) {
+                    rows.getChildAt(0).requestFocus();
+                }
+            });
+        }
+
+        private void addOptionRow(LinearLayout rows, PopupWindow popup, String labelText, Runnable action) {
+            View row = LayoutInflater.from(rows.getContext()).inflate(R.layout.item_input, rows, false);
+            View icon = row.findViewById(R.id.icon);
+            View dot = row.findViewById(R.id.dot);
+            View status = row.findViewById(R.id.status);
+            if (icon != null) icon.setVisibility(View.GONE);
+            if (dot != null) dot.setVisibility(View.GONE);
+            if (status != null) status.setVisibility(View.GONE);
+
+            TextView titleView = row.findViewById(R.id.title);
+            if (titleView != null) titleView.setText(labelText);
+
+            row.setOnClickListener(v -> {
+                popup.dismiss();
+                if (action != null) action.run();
+            });
+
+            final boolean[] pressed = {false};
+            row.setOnKeyListener((v, keyCode, event) -> {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER
+                        || keyCode == KeyEvent.KEYCODE_ENTER
+                        || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+                    if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                        pressed[0] = true;
+                    } else if (event.getAction() == KeyEvent.ACTION_UP && !pressed[0]) {
+                        return true;
+                    }
+                }
+                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                int idx = rows.indexOfChild(v);
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP && idx == 0) return true;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && idx == rows.getChildCount() - 1) return true;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) return true;
+                return false;
+            });
+
+            rows.addView(row);
         }
     }
 

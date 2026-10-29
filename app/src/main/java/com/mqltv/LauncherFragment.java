@@ -65,6 +65,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private View profileButton;
     private android.widget.PopupWindow quickSettingsPopup;
     private android.widget.PopupWindow tileMenuPopup;
+    private AppLibraryDialog appLibraryDialog;
 
     private static final int REORDER_ACCENT = 0xFFFFB400;
     private boolean reordering = false;
@@ -1184,8 +1185,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             mainHandler.post(() -> {
                 boolean wasEmpty = appsAdapter != null && appsAdapter.getAppsCount() == 0;
                 if (appsAdapter != null) appsAdapter.submit(row);
-                // Jika terakhir user berada di baris Apps, pastikan fokus dikembalikan
-                if (lastSelectedCardPosition == APPS_ROW_POSITION) {
+                // Jika terakhir user berada di baris Apps, pastikan fokus dikembalikan (kecuali sedang membuka App Library)
+                if (lastSelectedCardPosition == APPS_ROW_POSITION && appLibraryDialog == null) {
                     int targetIdx = lastSelectedAppIndex;
                     if (targetIdx < 0 || targetIdx >= row.size()) targetIdx = 0;
                     if (wasEmpty || appsList == null || !appsList.hasFocus() || (getView() == null || getView().findFocus() == null || getView().findFocus().getParent() == appsList)) {
@@ -1225,6 +1226,17 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
     private void showAppLibrary(Context appContext) {
         if (getActivity() == null) return;
+        if (appLibraryDialog != null) {
+            appLibraryDialog.close();
+            appLibraryDialog = null;
+        }
+        if (quickSettingsPopup != null && quickSettingsPopup.isShowing()) {
+            quickSettingsPopup.dismiss();
+        }
+        if (tileMenuPopup != null && tileMenuPopup.isShowing()) {
+            tileMenuPopup.dismiss();
+        }
+
         View header = getView() != null ? getView().findViewById(R.id.launcher_header) : null;
         View scroll = getView() != null ? getView().findViewById(R.id.launcher_scroll) : null;
 
@@ -1239,9 +1251,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (header != null) header.setVisibility(View.INVISIBLE);
         if (scroll != null) scroll.setVisibility(View.INVISIBLE);
 
-        AppLibraryDialog dialog = new AppLibraryDialog(getActivity(), () -> {
+        appLibraryDialog = new AppLibraryDialog(getActivity(), () -> {
             loadLauncherApps(appContext);
         }, () -> {
+            appLibraryDialog = null;
             if (header != null) header.setVisibility(View.VISIBLE);
             if (scroll != null) scroll.setVisibility(View.VISIBLE);
             if (glass != null) {
@@ -1251,7 +1264,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             }
             focusLibrary();
         });
-        dialog.show();
+        appLibraryDialog.show();
     }
 
     private void focusLibrary() {

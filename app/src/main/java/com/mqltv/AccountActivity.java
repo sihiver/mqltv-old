@@ -1,10 +1,12 @@
 package com.mqltv;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.fragment.app.FragmentActivity;
@@ -25,8 +27,29 @@ public class AccountActivity extends FragmentActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        normalizeTvDensity();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_account);
+
+        ImageView wpView = findViewById(R.id.bg_wallpaper);
+        if (wpView != null) {
+            Bitmap cached = LauncherWallpaper.getCachedBitmap();
+            if (cached != null) {
+                wpView.setImageBitmap(cached);
+            } else {
+                final android.content.Context appCtx = getApplicationContext();
+                new Thread(() -> {
+                    final Bitmap loaded = LauncherWallpaper.tryLoad(appCtx);
+                    if (loaded != null) {
+                        runOnUiThread(() -> {
+                            if (!isFinishing()) {
+                                wpView.setImageBitmap(loaded);
+                            }
+                        });
+                    }
+                }).start();
+            }
+        }
 
         if (!AuthPrefs.isLoggedIn(this)) {
             // If opened without a session, bounce to Login.
@@ -101,12 +124,29 @@ public class AccountActivity extends FragmentActivity {
         if (status != null) {
             status.setText(isExpired ? "EXPIRED" : "AKTIF");
             if (isExpired) {
-                status.setTextColor(android.graphics.Color.parseColor("#FF5252"));
+                status.setTextColor(android.graphics.Color.parseColor("#FF6B6B"));
                 status.setBackgroundResource(R.drawable.account_badge_expired);
             } else {
-                status.setTextColor(android.graphics.Color.parseColor("#00E676"));
+                status.setTextColor(android.graphics.Color.parseColor("#34D399"));
                 status.setBackgroundResource(R.drawable.account_badge_active);
             }
+        }
+    }
+
+    private void normalizeTvDensity() {
+        try {
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            int sh = Math.min(dm.widthPixels, dm.heightPixels);
+            if (sh > 0) {
+                float targetDensity = sh / 540f;
+                if (Math.abs(dm.density - targetDensity) > 0.05f) {
+                    float scaleFactor = dm.scaledDensity / dm.density;
+                    dm.density = targetDensity;
+                    dm.scaledDensity = targetDensity * (scaleFactor > 0 ? scaleFactor : 1f);
+                    dm.densityDpi = Math.round(targetDensity * 160f);
+                }
+            }
+        } catch (Throwable ignored) {
         }
     }
 

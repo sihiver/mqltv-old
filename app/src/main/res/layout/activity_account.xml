@@ -2,19 +2,45 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/account_page_bg">
+    android:background="#090D16">
 
-    <!-- Centered Card -->
+    <!-- Wallpaper Background -->
+    <ImageView
+        android:id="@+id/bg_wallpaper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/launcher_wallpaper_fallback"
+        android:contentDescription="@null" />
+
+    <!-- Dark Translucent Backdrop (Consistent with App Library & Setelan Antarmuka) -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#CC0A0E17" />
+
+    <!-- Centered Glass Panel -->
     <LinearLayout
         android:layout_width="500dp"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:orientation="vertical"
-        android:background="@drawable/account_card_bg"
-        android:padding="32dp"
-        android:elevation="8dp">
+        android:background="@drawable/glass_panel"
+        android:padding="28dp">
 
-        <!-- Header: Avatar & Info -->
+        <!-- Top Kicker -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="PROFIL PELANGGAN · MQLTV"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Header: Avatar & Identity -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -22,10 +48,10 @@
             android:gravity="center_horizontal">
 
             <FrameLayout
-                android:layout_width="80dp"
-                android:layout_height="80dp"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
                 android:background="@drawable/account_avatar_bg"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="12dp">
 
                 <TextView
                     android:id="@+id/account_profile_letter"
@@ -33,9 +59,10 @@
                     android:layout_height="match_parent"
                     android:gravity="center"
                     android:text="?"
+                    android:fontFamily="sans-serif-medium"
                     android:textStyle="bold"
-                    android:textSize="36sp"
-                    android:textColor="#FFFFFF" />
+                    android:textSize="30sp"
+                    android:textColor="#FFFFFFFF" />
             </FrameLayout>
 
             <TextView
@@ -43,47 +70,49 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Nama Pengguna"
-                android:textSize="24sp"
-                android:textStyle="bold"
-                android:textColor="@color/mql_text_primary" />
+                android:textSize="22sp"
+                android:fontFamily="sans-serif-medium"
+                android:textColor="#FFFFFFFF" />
 
             <TextView
                 android:id="@+id/account_username"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="2dp"
                 android:text="@username"
-                android:textSize="16sp"
-                android:textColor="@color/mql_text_secondary" />
+                android:textSize="14sp"
+                android:fontFamily="sans-serif"
+                android:textColor="#88FFFFFF" />
 
             <TextView
                 android:id="@+id/account_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:text="AKTIF"
-                android:textStyle="bold"
-                android:textSize="14sp"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp"
-                android:textColor="#00E676"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.06"
+                android:textSize="11sp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:textColor="#34D399"
                 android:background="@drawable/account_badge_active" />
 
         </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#33FFFFFF"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="24dp" />
-
-        <!-- Info Grid -->
+        <!-- Subscription Details Glass Card -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="22dp"
+            android:background="@drawable/settings_group_card_bg"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="14dp"
             android:orientation="horizontal">
 
             <!-- Paket -->
@@ -96,21 +125,30 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Paket"
-                    android:textSize="14sp"
-                    android:textColor="@color/mql_text_secondary" />
+                    android:text="PAKET LANGGANAN"
+                    android:textSize="11sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.06"
+                    android:textColor="#77FFFFFF" />
 
                 <TextView
                     android:id="@+id/account_packages"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="VIP Premium"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/mql_text_primary" />
+                    android:text="Premium"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:textColor="#FFFFFFFF" />
 
             </LinearLayout>
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:background="#1FFFFFFF" />
 
             <!-- Expired -->
             <LinearLayout
@@ -123,29 +161,27 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Berakhir Pada"
-                    android:textSize="14sp"
-                    android:textColor="@color/mql_text_secondary" />
+                    android:text="BERAKHIR PADA"
+                    android:textSize="11sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.06"
+                    android:textColor="#77FFFFFF" />
 
                 <TextView
                     android:id="@+id/account_expires"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="12 Des 2024"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/mql_text_primary" />
+                    android:text="-"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:textColor="#FFFFFFFF" />
 
             </LinearLayout>
 
         </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="32dp" />
-
-        <!-- Buttons -->
+        <!-- Action Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -155,27 +191,33 @@
             <Button
                 android:id="@+id/account_close"
                 android:layout_width="0dp"
-                android:layout_height="50dp"
+                android:layout_height="44dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="8dp"
-                android:background="@drawable/account_btn_bg"
-                android:textColor="@color/mql_text_primary"
+                android:background="@drawable/settings_action_bg"
+                android:textColor="@color/settings_item_text"
+                android:fontFamily="sans-serif-medium"
+                android:textSize="14sp"
                 android:textAllCaps="false"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
+                android:nextFocusRight="@+id/account_logout"
                 android:text="Tutup" />
 
             <Button
                 android:id="@+id/account_logout"
                 android:layout_width="0dp"
-                android:layout_height="50dp"
+                android:layout_height="44dp"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
-                android:background="@drawable/account_btn_bg"
-                android:textColor="#FF5252"
+                android:background="@drawable/account_logout_btn_bg"
+                android:textColor="@color/account_logout_text"
+                android:fontFamily="sans-serif-medium"
+                android:textSize="14sp"
                 android:textAllCaps="false"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
+                android:nextFocusLeft="@+id/account_close"
                 android:text="Keluar (Logout)" />
 
         </LinearLayout>

@@ -1,118 +1,158 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0B0F19">
+    android:background="#090D16">
+
+    <!-- Wallpaper Background -->
+    <ImageView
+        android:id="@+id/bg_wallpaper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/launcher_wallpaper_fallback"
+        android:contentDescription="@null" />
+
+    <!-- Dark Translucent Backdrop -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#CC0A0E17" />
 
     <!-- Card Container centered on screen -->
     <LinearLayout
-        android:layout_width="400dp"
+        android:layout_width="420dp"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:background="@drawable/bg_login_card"
+        android:layout_gravity="center"
+        android:background="@drawable/glass_panel"
         android:orientation="vertical"
-        android:padding="32dp">
+        android:padding="28dp">
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="MQLTV"
+            android:text="AUTENTIKASI · MQLTV"
             android:gravity="center"
-            android:textColor="#FFFFFF"
-            android:textSize="32sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="6dp" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Silakan masuk untuk melanjutkan"
+            android:text="Masuk ke Akun Anda"
             android:gravity="center"
-            android:textColor="#888888"
-            android:textSize="14sp"
-            android:layout_marginBottom="24dp" />
+            android:textColor="#FFFFFFFF"
+            android:textSize="22sp"
+            android:fontFamily="sans-serif-medium"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Masukkan kredensial pelanggan untuk menikmati siaran"
+            android:gravity="center"
+            android:textColor="#88FFFFFF"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif"
+            android:layout_marginBottom="22dp" />
 
         <TextView
             android:id="@+id/login_base_url_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Server Base URL"
-            android:textColor="#CCCCCC"
-            android:textSize="12sp"
-            android:layout_marginBottom="4dp"
+            android:text="SERVER BASE URL"
+            android:textColor="#99FFFFFF"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.06"
+            android:layout_marginBottom="6dp"
             android:visibility="gone" />
 
         <EditText
             android:id="@+id/login_base_url"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="44dp"
             android:background="@drawable/bg_login_input_selector"
             android:hint="https://tv.mqlspot.my.id/"
             android:inputType="textUri"
             android:singleLine="true"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#555555"
-            android:paddingLeft="16dp"
-            android:paddingRight="16dp"
-            android:layout_marginBottom="16dp"
+            android:textColor="#FFFFFFFF"
+            android:textColorHint="#55FFFFFF"
+            android:textSize="14sp"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
+            android:layout_marginBottom="14dp"
             android:visibility="gone"
             android:nextFocusDown="@+id/login_username" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Username"
-            android:textColor="#CCCCCC"
-            android:textSize="12sp"
-            android:layout_marginBottom="4dp" />
+            android:text="USERNAME / EMAIL"
+            android:textColor="#99FFFFFF"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.06"
+            android:layout_marginBottom="6dp" />
 
         <EditText
             android:id="@+id/login_username"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="44dp"
             android:background="@drawable/bg_login_input_selector"
-            android:hint="user001"
+            android:hint="Masukkan username"
             android:inputType="text"
             android:singleLine="true"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#555555"
-            android:paddingLeft="16dp"
-            android:paddingRight="16dp"
-            android:layout_marginBottom="16dp"
+            android:textColor="#FFFFFFFF"
+            android:textColorHint="#55FFFFFF"
+            android:textSize="14sp"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
+            android:layout_marginBottom="14dp"
             android:nextFocusDown="@+id/login_password" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Password"
-            android:textColor="#CCCCCC"
-            android:textSize="12sp"
-            android:layout_marginBottom="4dp" />
+            android:text="PASSWORD"
+            android:textColor="#99FFFFFF"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.06"
+            android:layout_marginBottom="6dp" />
 
         <EditText
             android:id="@+id/login_password"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="44dp"
             android:background="@drawable/bg_login_input_selector"
-            android:hint="password"
+            android:hint="Masukkan password"
             android:inputType="textPassword"
             android:singleLine="true"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#555555"
-            android:paddingLeft="16dp"
-            android:paddingRight="16dp"
-            android:layout_marginBottom="24dp"
+            android:textColor="#FFFFFFFF"
+            android:textColorHint="#55FFFFFF"
+            android:textSize="14sp"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
+            android:layout_marginBottom="20dp"
             android:nextFocusUp="@+id/login_username"
             android:nextFocusDown="@+id/login_button" />
 
         <Button
             android:id="@+id/login_button"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="44dp"
             android:background="@drawable/bg_login_button_selector"
-            android:text="MASUK"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
+            android:text="Masuk Sekarang"
+            android:textColor="@color/settings_item_text"
+            android:fontFamily="sans-serif-medium"
+            android:textSize="14sp"
+            android:textAllCaps="false"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
             android:nextFocusUp="@+id/login_password" />
 
         <TextView
@@ -121,9 +161,11 @@
             android:layout_height="wrap_content"
             android:text=""
             android:gravity="center"
-            android:textColor="#ff6b35"
-            android:textSize="14sp"
-            android:layout_marginTop="16dp" />
+            android:textColor="#FFFF6B6B"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif"
+            android:visibility="gone"
+            android:layout_marginTop="14dp" />
 
     </LinearLayout>
-</RelativeLayout>
+</FrameLayout>

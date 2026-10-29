@@ -1,6 +1,7 @@
 package com.mqltv;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -8,6 +9,7 @@ import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
@@ -41,8 +43,29 @@ public class LoginActivity extends FragmentActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        normalizeTvDensity();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+
+        ImageView wpView = findViewById(R.id.bg_wallpaper);
+        if (wpView != null) {
+            Bitmap cached = LauncherWallpaper.getCachedBitmap();
+            if (cached != null) {
+                wpView.setImageBitmap(cached);
+            } else {
+                final android.content.Context appCtx = getApplicationContext();
+                executor.execute(() -> {
+                    final Bitmap loaded = LauncherWallpaper.tryLoad(appCtx);
+                    if (loaded != null) {
+                        mainHandler.post(() -> {
+                            if (!isFinishing()) {
+                                wpView.setImageBitmap(loaded);
+                            }
+                        });
+                    }
+                });
+            }
+        }
 
         baseUrlInput = findViewById(R.id.login_base_url);
         usernameInput = findViewById(R.id.login_username);
@@ -83,6 +106,23 @@ public class LoginActivity extends FragmentActivity {
     protected void onDestroy() {
         super.onDestroy();
         executor.shutdownNow();
+    }
+
+    private void normalizeTvDensity() {
+        try {
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            int sh = Math.min(dm.widthPixels, dm.heightPixels);
+            if (sh > 0) {
+                float targetDensity = sh / 540f;
+                if (Math.abs(dm.density - targetDensity) > 0.05f) {
+                    float scaleFactor = dm.scaledDensity / dm.density;
+                    dm.density = targetDensity;
+                    dm.scaledDensity = targetDensity * (scaleFactor > 0 ? scaleFactor : 1f);
+                    dm.densityDpi = Math.round(targetDensity * 160f);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     private void setBusy(boolean busy) {

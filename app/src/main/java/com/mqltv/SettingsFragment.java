@@ -28,15 +28,8 @@ import androidx.fragment.app.Fragment;
 
 import java.io.File;
 import java.io.InputStream;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -636,25 +629,9 @@ public class SettingsFragment extends Fragment {
         return new DownloadResult(ok, error, sslError);
     }
 
-    @SuppressWarnings("TrustAllX509TrustManager")
     private static OkHttpClient buildWallpaperClient() {
-        try {
-            X509TrustManager trustAll = new X509TrustManager() {
-                @Override public void checkClientTrusted(X509Certificate[] chain, String authType) {}
-                @Override public void checkServerTrusted(X509Certificate[] chain, String authType) {}
-                @Override public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
-            };
-            SSLContext sc = SSLContext.getInstance("TLS");
-            sc.init(null, new TrustManager[]{trustAll}, new SecureRandom());
-            return new OkHttpClient.Builder()
-                    .sslSocketFactory(sc.getSocketFactory(), trustAll)
-                    .hostnameVerifier((hostname, session) -> true)
-                    .connectTimeout(12, TimeUnit.SECONDS)
-                    .readTimeout(25, TimeUnit.SECONDS)
-                    .build();
-        } catch (Exception ignored) {
-            return NetworkClient.getClient();
-        }
+        OkHttpClient client = NetworkClient.getWallpaperClient();
+        return client != null ? client : NetworkClient.getClient();
     }
 
     private static boolean isSslError(Throwable t) {

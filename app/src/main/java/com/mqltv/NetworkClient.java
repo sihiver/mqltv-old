@@ -8,7 +8,6 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 
 import java.io.InputStream;
-import java.security.SecureRandom;
 import java.security.KeyStore;
 import java.security.Security;
 import java.security.cert.Certificate;
@@ -21,10 +20,8 @@ import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.X509TrustManager;
 
 import okhttp3.ConnectionSpec;
@@ -37,7 +34,6 @@ import org.conscrypt.Conscrypt;
 public final class NetworkClient {
     private static final String TAG = "NetworkClient";
     private static volatile OkHttpClient CLIENT;
-    private static volatile OkHttpClient UNSAFE_LOGO_CLIENT;
     @SuppressLint("StaticFieldLeak")
     private static volatile Context APP_CONTEXT;
 
@@ -105,30 +101,17 @@ public final class NetworkClient {
     }
 
     /**
-     * For a few CDNs that fail TLS validation on Android 4.2/4.4 due to missing CA store,
-     * we use a scoped "unsafe" client to download channel logos only.
+     * Client for downloading channel logos using Conscrypt + bundled modern CA certificates.
      */
     public static OkHttpClient getLogoClient(String ignoredHost) {
-        if (Build.VERSION.SDK_INT > 19) return getClient();
-        if (UNSAFE_LOGO_CLIENT == null) {
-            UNSAFE_LOGO_CLIENT = buildUnsafeLogoClient();
-        }
-        return UNSAFE_LOGO_CLIENT;
+        return getRawClient();
     }
 
     /**
-     * For public wallpaper downloads (Bing daily / CDNs) that may fail CA verification
-     * on older Android TV builds.
+     * Client for public wallpaper downloads (Bing daily / CDNs) using Conscrypt + bundled CAs.
      */
     public static OkHttpClient getWallpaperClient() {
-        if (UNSAFE_LOGO_CLIENT == null) {
-            synchronized (NetworkClient.class) {
-                if (UNSAFE_LOGO_CLIENT == null) {
-                    UNSAFE_LOGO_CLIENT = buildUnsafeLogoClient();
-                }
-            }
-        }
-        return UNSAFE_LOGO_CLIENT;
+        return getRawClient();
     }
 
     private static volatile OkHttpClient RAW_CLIENT;
@@ -431,54 +414,6 @@ public final class NetworkClient {
             Log.w(TAG, "extra CA raw=" + resId + " load failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
         }
         return index;
-    }
-
-    private static OkHttpClient buildUnsafeLogoClient() {
-        try {
-            @SuppressLint("CustomX509TrustManager") final X509TrustManager trustAll = new X509TrustManager() {
-                @SuppressLint("TrustAllX509TrustManager")
-                @Override
-                public void checkClientTrusted(X509Certificate[] chain, String authType) {
-                }
-
-                @SuppressLint("TrustAllX509TrustManager")
-                @Override
-                public void checkServerTrusted(X509Certificate[] chain, String authType) {
-                }
-
-                @Override
-                public X509Certificate[] getAcceptedIssuers() {
-                    return new X509Certificate[0];
-                }
-            };
-
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, new TrustManager[] { trustAll }, new SecureRandom());
-
-            HostnameVerifier verifier = (String hostname, SSLSession session) -> true;
-
-            ConnectionSpec tls = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
-                    .tlsVersions(TlsVersion.TLS_1_2, TlsVersion.TLS_1_1, TlsVersion.TLS_1_0)
-                    .build();
-
-            return new OkHttpClient.Builder()
-                    .connectTimeout(8, TimeUnit.SECONDS)
-                    .readTimeout(15, TimeUnit.SECONDS)
-                    .writeTimeout(15, TimeUnit.SECONDS)
-                    .retryOnConnectionFailure(true)
-                    .sslSocketFactory(new Tls12SocketFactory(sslContext.getSocketFactory()), trustAll)
-                    .hostnameVerifier(verifier)
-                    .connectionSpecs(Arrays.asList(tls, ConnectionSpec.COMPATIBLE_TLS, ConnectionSpec.CLEARTEXT))
-                    .build();
-        } catch (Exception e) {
-            Log.w(TAG, "unsafe logo client init failed: " + e.getMessage());
-            return new OkHttpClient.Builder()
-                    .connectTimeout(8, TimeUnit.SECONDS)
-                    .readTimeout(15, TimeUnit.SECONDS)
-                    .writeTimeout(15, TimeUnit.SECONDS)
-                    .retryOnConnectionFailure(true)
-                    .build();
-        }
     }
 
     @SuppressLint("CustomX509TrustManager")

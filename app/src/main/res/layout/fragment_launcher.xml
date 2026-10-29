@@ -212,65 +212,12 @@
                             android:letterSpacing="0.08" />
                     </LinearLayout>
 
-                    <!-- Search Pill -->
-                    <FrameLayout
-                        android:id="@+id/launcher_search"
-                        style="@style/TopButtonIcon"
-                        android:contentDescription="Search"
-                        android:nextFocusDown="@+id/launcher_apps"
-                        android:nextFocusRight="@+id/launcher_notifications">
-
-                        <androidx.appcompat.widget.AppCompatImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:padding="10dp"
-                            android:duplicateParentState="true"
-                            android:src="@android:drawable/ic_menu_search"
-                            app:tint="@color/pill_text"
-                            android:importantForAccessibility="no" />
-                    </FrameLayout>
-
-                    <!-- Notifications Pill -->
-                    <FrameLayout
-                        android:id="@+id/launcher_notifications"
-                        style="@style/TopButtonIcon"
-                        android:contentDescription="Notifications"
-                        android:nextFocusDown="@+id/launcher_apps"
-                        android:nextFocusLeft="@+id/launcher_search"
-                        android:nextFocusRight="@+id/launcher_settings">
-
-                        <androidx.appcompat.widget.AppCompatImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:padding="10dp"
-                            android:duplicateParentState="true"
-                            android:src="@drawable/ic_bell_outline"
-                            app:tint="@color/pill_text"
-                            android:importantForAccessibility="no" />
-
-                        <TextView
-                            android:id="@+id/launcher_notifications_badge"
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_gravity="top|end"
-                            android:layout_marginTop="2dp"
-                            android:layout_marginEnd="2dp"
-                            android:background="@drawable/badge_bg"
-                            android:textColor="#FFFFFF"
-                            android:textSize="9sp"
-                            android:textStyle="bold"
-                            android:gravity="center"
-                            android:text="0"
-                            android:visibility="gone" />
-                    </FrameLayout>
-
                     <!-- Settings Pill -->
                     <FrameLayout
                         android:id="@+id/launcher_settings"
                         style="@style/TopButtonIcon"
                         android:contentDescription="Settings"
                         android:nextFocusDown="@+id/launcher_apps"
-                        android:nextFocusLeft="@+id/launcher_notifications"
                         android:nextFocusRight="@+id/launcher_native_settings">
 
                         <androidx.appcompat.widget.AppCompatImageView
@@ -432,7 +379,7 @@
                 android:paddingEnd="0dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="48dp"
-                android:nextFocusUp="@+id/launcher_search" />
+                android:nextFocusUp="@+id/launcher_settings" />
 
         </LinearLayout>
 

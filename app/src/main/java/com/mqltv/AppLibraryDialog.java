@@ -240,13 +240,15 @@ public final class AppLibraryDialog {
             float density = holder.itemView.getResources().getDisplayMetrics().density;
             int radius = Math.round(14 * density);
 
-            holder.tile.setOutlineProvider(new ViewOutlineProvider() {
-                @Override
-                public void getOutline(View view, Outline outline) {
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
-                }
-            });
-            holder.tile.setClipToOutline(true);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                holder.tile.setOutlineProvider(new ViewOutlineProvider() {
+                    @Override
+                    public void getOutline(View view, Outline outline) {
+                        outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
+                    }
+                });
+                holder.tile.setClipToOutline(true);
+            }
 
             int baseColor = LauncherAppsAdapter.colorFromEntry(entry);
             GradientDrawable normalBg = new GradientDrawable();
@@ -291,8 +293,14 @@ public final class AppLibraryDialog {
 
             // Focus listener -> Scale animation & glowing stroke
             holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
+                float s = hasFocus ? 1.08f : 1.0f;
+                float z = hasFocus ? 8 * density : 0f;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                    v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(160).start();
+                } else {
+                    v.animate().scaleX(s).scaleY(s).setDuration(160).start();
+                }
                 if (hasFocus) {
-                    v.animate().scaleX(1.08f).scaleY(1.08f).translationZ(8 * density).setDuration(160).start();
                     GradientDrawable focusBg = new GradientDrawable();
                     focusBg.setCornerRadius(radius);
                     focusBg.setColor(Color.argb(85, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor)));
@@ -300,7 +308,6 @@ public final class AppLibraryDialog {
                     holder.tile.setBackground(focusBg);
                     holder.title.setSelected(true); // enable marquee if long
                 } else {
-                    v.animate().scaleX(1.0f).scaleY(1.0f).translationZ(0f).setDuration(160).start();
                     holder.tile.setBackground(normalBg);
                     holder.title.setSelected(false);
                 }

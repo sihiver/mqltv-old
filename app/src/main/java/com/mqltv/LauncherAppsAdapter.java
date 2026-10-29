@@ -116,11 +116,15 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 });
                 holder.btnLibrary.setOnFocusChangeListener((v, hasFocus) -> {
                     float density = v.getResources().getDisplayMetrics().density;
-                    if (hasFocus) {
-                        v.animate().scaleX(1.08f).scaleY(1.08f).translationZ(6 * density).setDuration(160).start();
-                        if (listener != null) listener.onLibraryFocused(v);
+                    float s = hasFocus ? 1.08f : 1.0f;
+                    float z = hasFocus ? 6 * density : 0f;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(160).start();
                     } else {
-                        v.animate().scaleX(1.0f).scaleY(1.0f).translationZ(0f).setDuration(160).start();
+                        v.animate().scaleX(s).scaleY(s).setDuration(160).start();
+                    }
+                    if (hasFocus && listener != null) {
+                        listener.onLibraryFocused(v);
                     }
                     if (v instanceof TextView) {
                         int tintColor = hasFocus ? 0xFF111111 : 0xFFFFFFFF;

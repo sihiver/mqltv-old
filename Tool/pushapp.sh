@@ -228,24 +228,26 @@ install_apk() {
 	echo "Installing to $DEV: $apk"
 
 	# Make installs more reliable on rooted STBs (ignore if su not available)
-	adb -s "$DEV" shell su -c 'setenforce 0' >/dev/null 2>&1 || true
+	adb -s "$DEV" shell "su -c 'setenforce 0'" >/dev/null 2>&1 || true
 
+	local out
 	set +e
-	adb -s "$DEV" install -r -d -t "$apk"
+	out="$(adb -s "$DEV" install -r -d -t "$apk" 2>&1)"
 	local rc=$?
 	set -e
+	echo "$out"
 
-	if [[ $rc -eq 0 ]]; then
+	if [[ $rc -eq 0 && "$out" == *"Success"* ]]; then
 		return 0
 	fi
 
 	echo "adb install failed (rc=$rc). Falling back to rooted install via su + pm..."
 	adb -s "$DEV" push "$apk" "$tmp_on_device" >/dev/null
 	set +e
-	adb -s "$DEV" shell su -c "pm install -r -d -t '$tmp_on_device'"
+	adb -s "$DEV" shell "su -c 'pm install -r -d -t \"$tmp_on_device\"'"
 	rc=$?
 	set -e
-	adb -s "$DEV" shell su -c "rm -f '$tmp_on_device'" >/dev/null 2>&1 || true
+	adb -s "$DEV" shell "su -c 'rm -f \"$tmp_on_device\"'" >/dev/null 2>&1 || true
 	return $rc
 }
 

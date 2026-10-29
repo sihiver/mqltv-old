@@ -220,13 +220,13 @@
                         android:nextFocusDown="@+id/launcher_apps"
                         android:nextFocusRight="@+id/launcher_notifications">
 
-                        <ImageView
+                        <androidx.appcompat.widget.AppCompatImageView
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
                             android:padding="10dp"
                             android:duplicateParentState="true"
                             android:src="@android:drawable/ic_menu_search"
-                            android:tint="@color/pill_text"
+                            app:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
                     </FrameLayout>
 
@@ -239,13 +239,13 @@
                         android:nextFocusLeft="@+id/launcher_search"
                         android:nextFocusRight="@+id/launcher_settings">
 
-                        <ImageView
+                        <androidx.appcompat.widget.AppCompatImageView
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
                             android:padding="10dp"
                             android:duplicateParentState="true"
                             android:src="@drawable/ic_bell_outline"
-                            android:tint="@color/pill_text"
+                            app:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
 
                         <TextView
@@ -273,14 +273,14 @@
                         android:nextFocusLeft="@+id/launcher_notifications"
                         android:nextFocusRight="@+id/launcher_native_settings">
 
-                        <ImageView
+                        <androidx.appcompat.widget.AppCompatImageView
                             android:id="@+id/launcher_settings_icon"
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
                             android:padding="10dp"
                             android:duplicateParentState="true"
                             android:src="@android:drawable/ic_menu_manage"
-                            android:tint="@color/pill_text"
+                            app:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
                     </FrameLayout>
 
@@ -293,13 +293,13 @@
                         android:nextFocusLeft="@+id/launcher_settings"
                         android:nextFocusRight="@+id/launcher_profile">
 
-                        <ImageView
+                        <androidx.appcompat.widget.AppCompatImageView
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
                             android:padding="10dp"
                             android:duplicateParentState="true"
                             android:src="@drawable/ic_gear_outline"
-                            android:tint="@color/pill_text"
+                            app:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
                     </FrameLayout>
 

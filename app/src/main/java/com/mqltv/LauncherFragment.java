@@ -407,7 +407,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 }
             });
             appsList.setLayoutManager(glm);
-            appsList.setHasFixedSize(true);
+            appsList.setHasFixedSize(false);
             appsList.setItemViewCacheSize(24);
             appsList.setClipToPadding(false);
             appsList.setClipChildren(false);

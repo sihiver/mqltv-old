@@ -21,6 +21,7 @@ public class GlassView extends View {
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
+    private final RectF glowRect = new RectF();
     private final float density;
     private float radius;
     private int glowRgb = 0xFFFFFF;
@@ -88,7 +89,8 @@ public class GlassView extends View {
             float o = step * (i + 0.5f);
             float t = 1f - (float) i / rings;
             glow.setColor((Math.round(glowAlpha * t) << 24) | glowRgb);
-            canvas.drawRoundRect(rect.left - o, rect.top - o, rect.right + o, rect.bottom + o, radius + o, radius + o, glow);
+            glowRect.set(rect.left - o, rect.top - o, rect.right + o, rect.bottom + o);
+            canvas.drawRoundRect(glowRect, radius + o, radius + o, glow);
         }
 
         // Translucent glass body fill

@@ -456,7 +456,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
                 @Override
                 public void onLibraryFocused(View view) {
-                    if (glass != null && glassShown) {
+                    if (glass != null) {
+                        glass.animate().cancel();
                         glass.animate().alpha(0f).setDuration(120).start();
                         glassShown = false;
                     }
@@ -704,6 +705,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
     private void moveGlassToCard(View cardView, int accentColor) {
         if (cardView == null || glass == null || rootLayout == null) return;
+        if (scrollContainer != null && scrollContainer.getVisibility() != View.VISIBLE) return;
+        if (glass.getVisibility() != View.VISIBLE || !cardView.isShown()) return;
         if (cardView.getWidth() == 0 || cardView.getHeight() == 0) {
             cardView.post(() -> moveGlassToCard(cardView, accentColor));
             return;
@@ -1137,7 +1140,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         View scroll = getView() != null ? getView().findViewById(R.id.launcher_scroll) : null;
 
         if (glass != null) {
+            glass.animate().cancel();
+            if (springX != null) springX.cancel();
+            if (springY != null) springY.cancel();
             glass.setAlpha(0f);
+            glass.setVisibility(View.INVISIBLE);
             glassShown = false;
         }
         if (header != null) header.setVisibility(View.INVISIBLE);
@@ -1148,6 +1155,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         }, () -> {
             if (header != null) header.setVisibility(View.VISIBLE);
             if (scroll != null) scroll.setVisibility(View.VISIBLE);
+            if (glass != null) {
+                glass.setAlpha(0f);
+                glass.setVisibility(View.VISIBLE);
+                glassShown = false;
+            }
             focusLibrary();
         });
         dialog.show();

@@ -292,6 +292,14 @@ public final class AppLibraryDialog {
             });
 
             // Focus listener -> Scale animation & glowing stroke
+            GradientDrawable focusStroke = new GradientDrawable();
+            focusStroke.setCornerRadius(radius);
+            focusStroke.setColor(Color.TRANSPARENT);
+            focusStroke.setStroke(Math.round(2.5f * density), 0xFFFFFFFF);
+            if (holder.tile instanceof android.widget.FrameLayout) {
+                ((android.widget.FrameLayout) holder.tile).setForeground(null);
+            }
+
             holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
                 float s = hasFocus ? 1.08f : 1.0f;
                 float z = hasFocus ? 8 * density : 0f;
@@ -306,9 +314,15 @@ public final class AppLibraryDialog {
                     focusBg.setColor(Color.argb(85, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor)));
                     focusBg.setStroke(Math.round(2.5f * density), 0xFFFFFFFF);
                     holder.tile.setBackground(focusBg);
+                    if (holder.tile instanceof android.widget.FrameLayout) {
+                        ((android.widget.FrameLayout) holder.tile).setForeground(focusStroke);
+                    }
                     holder.title.setSelected(true); // enable marquee if long
                 } else {
                     holder.tile.setBackground(normalBg);
+                    if (holder.tile instanceof android.widget.FrameLayout) {
+                        ((android.widget.FrameLayout) holder.tile).setForeground(null);
+                    }
                     holder.title.setSelected(false);
                 }
             });

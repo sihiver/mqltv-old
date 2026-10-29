@@ -479,8 +479,13 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 public void onAppFocused(LauncherAppEntry entry, int position, View cardView) {
                     syncAppsFocusState(position);
                     if (position < 4) {
-                        if (scrollContainer != null && scrollContainer.getScrollY() != 0) {
+                        if (scrollContainer != null) {
                             scrollContainer.smoothScrollTo(0, 0);
+                            scrollContainer.post(() -> {
+                                if (scrollContainer != null && scrollContainer.getScrollY() != 0) {
+                                    scrollContainer.smoothScrollTo(0, 0);
+                                }
+                            });
                         }
                     }
                     int color = 0xFF3B82F6;
@@ -1085,11 +1090,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             }
 
             mainHandler.post(() -> {
+                boolean wasEmpty = appsAdapter != null && appsAdapter.getAppsCount() == 0;
                 if (appsAdapter != null) appsAdapter.submit(row);
                 // Jika terakhir user berada di baris Apps, pastikan fokus dikembalikan
                 if (lastSelectedCardPosition == APPS_ROW_POSITION) {
-                    if (appsList != null && !appsList.hasFocus() && (getView() == null || getView().findFocus() == null || getView().findFocus().getParent() == appsList)) {
-                        requestFocusToApp(lastSelectedAppIndex);
+                    int targetIdx = lastSelectedAppIndex;
+                    if (targetIdx < 0 || targetIdx >= row.size()) targetIdx = 0;
+                    if (wasEmpty || appsList == null || !appsList.hasFocus() || (getView() == null || getView().findFocus() == null || getView().findFocus().getParent() == appsList)) {
+                        requestFocusToApp(targetIdx);
                     }
                 }
             });

@@ -29,9 +29,10 @@
 
         <ImageView
             android:id="@+id/library_app_icon"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
             android:layout_gravity="center"
+            android:scaleType="fitCenter"
             android:contentDescription="Icon" />
 
         <!-- Pinned on Home Badge -->
@@ -59,13 +60,13 @@
         android:id="@+id/library_app_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="8dp"
         android:gravity="center"
         android:textAlignment="center"
         android:maxLines="1"
         android:ellipsize="marquee"
         android:singleLine="true"
-        android:textSize="12.5sp"
+        android:textSize="15sp"
         android:fontFamily="sans-serif-medium"
         android:textColor="#FFFFFFFF" />
 

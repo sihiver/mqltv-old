@@ -34,44 +34,44 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp">
+            android:gravity="center"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
 
             <ImageView
                 android:id="@+id/launcher_app_icon"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
+                android:layout_width="58dp"
+                android:layout_height="58dp"
+                android:scaleType="fitCenter"
                 android:contentDescription="App" />
 
             <LinearLayout
                 android:id="@+id/launcher_app_text_group"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="10dp"
+                android:layout_marginStart="14dp"
                 android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/launcher_app_title"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:textColor="@color/mql_text_primary"
-                    android:textSize="14sp"
+                    android:textSize="20sp"
                     android:fontFamily="sans-serif-medium"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/launcher_app_subtitle"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="1dp"
+                    android:layout_marginTop="2dp"
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:textColor="#B0C0D4"
-                    android:textSize="10.5sp" />
+                    android:textSize="13sp" />
 
             </LinearLayout>
         </LinearLayout>
@@ -79,9 +79,10 @@
         <!-- Row 2+ Centered Icon (for apps without banner) -->
         <ImageView
             android:id="@+id/launcher_app_center_icon"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
             android:layout_gravity="center"
+            android:scaleType="fitCenter"
             android:visibility="gone"
             android:contentDescription="App Icon" />
 
@@ -92,14 +93,14 @@
         android:id="@+id/launcher_app_bottom_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="8dp"
         android:gravity="center"
         android:textAlignment="center"
         android:maxLines="1"
         android:ellipsize="marquee"
         android:marqueeRepeatLimit="marquee_forever"
         android:singleLine="true"
-        android:textSize="12.5sp"
+        android:textSize="15sp"
         android:fontFamily="sans-serif-medium"
         android:textColor="#FFFFFFFF"
         android:visibility="gone" />

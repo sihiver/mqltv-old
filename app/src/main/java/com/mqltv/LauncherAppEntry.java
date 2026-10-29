@@ -45,10 +45,26 @@ public final class LauncherAppEntry {
         ComponentName cn = new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name);
 
         Drawable icon = null;
+        android.content.res.Resources appRes = null;
+        try {
+            if (ri.activityInfo != null && ri.activityInfo.applicationInfo != null) {
+                appRes = pm.getResourcesForApplication(ri.activityInfo.applicationInfo);
+            }
+        } catch (Exception ignored) {
+        }
+
         try {
             int iconRes = ri.activityInfo != null ? ri.activityInfo.getIconResource() : 0;
             if (iconRes != 0) {
-                icon = pm.getDrawable(ri.activityInfo.packageName, iconRes, ri.activityInfo.applicationInfo);
+                if (appRes != null) {
+                    try {
+                        icon = appRes.getDrawableForDensity(iconRes, android.util.DisplayMetrics.DENSITY_XXHIGH);
+                    } catch (Throwable ignored) {
+                    }
+                }
+                if (icon == null) {
+                    icon = pm.getDrawable(ri.activityInfo.packageName, iconRes, ri.activityInfo.applicationInfo);
+                }
             }
         } catch (Exception ignored) {
         }
@@ -57,7 +73,15 @@ public final class LauncherAppEntry {
             try {
                 ApplicationInfo ai = ri.activityInfo != null ? ri.activityInfo.applicationInfo : null;
                 if (ai != null && ai.icon != 0) {
-                    icon = pm.getApplicationIcon(ai);
+                    if (appRes != null) {
+                        try {
+                            icon = appRes.getDrawableForDensity(ai.icon, android.util.DisplayMetrics.DENSITY_XXHIGH);
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                    if (icon == null) {
+                        icon = pm.getApplicationIcon(ai);
+                    }
                 }
             } catch (Exception ignored) {
             }
@@ -85,7 +109,95 @@ public final class LauncherAppEntry {
             }
         }
 
+        if (banner == null && appRes != null && ri.activityInfo != null) {
+            banner = loadFallbackBanner(appRes, ri.activityInfo.packageName);
+        }
+
+        if (banner != null && appRes != null && android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.LOLLIPOP) {
+            banner = toRoundedBanner(appRes, banner);
+        }
+
         return new LauncherAppEntry(label, icon, banner, cn, false);
+    }
+
+    private static Drawable toRoundedBanner(android.content.res.Resources res, Drawable src) {
+        try {
+            int w = 320;
+            int h = 180;
+            android.graphics.Bitmap raw = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas rawCanvas = new android.graphics.Canvas(raw);
+            src.setBounds(0, 0, w, h);
+            src.draw(rawCanvas);
+
+            android.graphics.Bitmap out = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas c = new android.graphics.Canvas(out);
+            android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.FILTER_BITMAP_FLAG);
+            p.setShader(new android.graphics.BitmapShader(raw, android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP));
+            android.graphics.RectF rect = new android.graphics.RectF(0f, 0f, w, h);
+            float r = 18f;
+            c.drawRoundRect(rect, r, r, p);
+
+            android.graphics.Paint border = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+            border.setStyle(android.graphics.Paint.Style.STROKE);
+            border.setStrokeWidth(1.5f);
+            border.setColor(0x26FFFFFF);
+            android.graphics.RectF borderRect = new android.graphics.RectF(0.75f, 0.75f, w - 0.75f, h - 0.75f);
+            c.drawRoundRect(borderRect, r, r, border);
+
+            raw.recycle();
+            return new android.graphics.drawable.BitmapDrawable(res, out);
+        } catch (Throwable ignored) {
+            return src;
+        }
+    }
+
+    @Nullable
+    private static Drawable loadFallbackBanner(android.content.res.Resources appRes, String pkg) {
+        try {
+            android.content.res.XmlResourceParser parser = appRes.getAssets().openXmlResourceParser("AndroidManifest.xml");
+            int bannerRes = 0;
+            int eventType;
+            while ((eventType = parser.next()) != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+                if (eventType == org.xmlpull.v1.XmlPullParser.START_TAG) {
+                    String tag = parser.getName();
+                    if ("application".equals(tag) || "activity".equals(tag) || "activity-alias".equals(tag)) {
+                        for (int i = 0; i < parser.getAttributeCount(); i++) {
+                            if (parser.getAttributeNameResource(i) == 0x010103f2 || "banner".equals(parser.getAttributeName(i))) {
+                                int resId = parser.getAttributeResourceValue(i, 0);
+                                if (resId != 0) {
+                                    bannerRes = resId;
+                                    if (!"application".equals(tag)) break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            parser.close();
+            if (bannerRes != 0) {
+                Drawable d = appRes.getDrawable(bannerRes);
+                if (d != null) return d;
+            }
+        } catch (Throwable ignored) {
+        }
+
+        String[] names = {"tv_banner", "banner", "ic_banner", "app_banner"};
+        String[] types = {"drawable", "mipmap"};
+        for (String type : types) {
+            for (String name : names) {
+                try {
+                    int id = appRes.getIdentifier(name, type, pkg);
+                    if (id != 0) {
+                        Drawable d = appRes.getDrawable(id);
+                        if (d != null && d.getIntrinsicWidth() > d.getIntrinsicHeight() * 1.2f) {
+                            return d;
+                        }
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        return null;
     }
 
     @Nullable

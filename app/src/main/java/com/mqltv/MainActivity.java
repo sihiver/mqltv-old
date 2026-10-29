@@ -24,8 +24,15 @@ public class MainActivity extends FragmentActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        normalizeTvDensity();
         super.onCreate(savedInstanceState);
-        restoreHomeState();
+        if (savedInstanceState != null) {
+            restoreHomeState();
+        } else {
+            homeFocusPosition = 4;
+            homeAppsIndex = 0;
+            persistHomeState();
+        }
 
         setContentView(R.layout.activity_main);
 
@@ -189,6 +196,28 @@ public class MainActivity extends FragmentActivity {
                     .putInt(KEY_RECENT_INDEX, homeRecentIndex)
                     .apply();
         } catch (Exception ignored) {
+        }
+    }
+
+    private void normalizeTvDensity() {
+        try {
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            int sh = Math.min(dm.widthPixels, dm.heightPixels);
+            if (sh > 0) {
+                float targetDensity = sh / 540f;
+                if (Math.abs(dm.density - targetDensity) > 0.05f) {
+                    float scaleFactor = dm.scaledDensity / dm.density;
+                    dm.density = targetDensity;
+                    dm.scaledDensity = targetDensity * (scaleFactor > 0 ? scaleFactor : 1f);
+                    dm.densityDpi = Math.round(targetDensity * 160f);
+
+                    android.util.DisplayMetrics appDm = getApplicationContext().getResources().getDisplayMetrics();
+                    appDm.density = dm.density;
+                    appDm.scaledDensity = dm.scaledDensity;
+                    appDm.densityDpi = dm.densityDpi;
+                }
+            }
+        } catch (Throwable ignored) {
         }
     }
 

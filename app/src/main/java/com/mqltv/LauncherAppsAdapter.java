@@ -57,7 +57,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
     @Override
     public int getItemCount() {
-        return items.size() + 1;
+        return items.isEmpty() ? 0 : items.size() + 1;
     }
 
     @Override

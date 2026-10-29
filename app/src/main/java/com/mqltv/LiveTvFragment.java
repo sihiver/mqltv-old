@@ -2,6 +2,7 @@ package com.mqltv;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -9,6 +10,7 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -50,7 +52,9 @@ public class LiveTvFragment extends Fragment {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private TextView title;
+    private TextView countText;
     private TextView time;
+    private ImageView wallpaperBg;
     private LiveTvCategoryAdapter categoryAdapter;
     private LiveTvChannelGridAdapter gridAdapter;
     private RecyclerView categoryList;
@@ -69,8 +73,8 @@ public class LiveTvFragment extends Fragment {
         public void run() {
             if (time != null) {
                 try {
-                    SimpleDateFormat fmt = new SimpleDateFormat("hh:mm a", Locale.getDefault());
-                    time.setText(fmt.format(new Date()));
+                    SimpleDateFormat fmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
+                    time.setText(fmt.format(TimeSync.getDate()));
                 } catch (Exception ignored) {
                 }
             }
@@ -86,7 +90,32 @@ public class LiveTvFragment extends Fragment {
         final Context appContext = v.getContext().getApplicationContext();
 
         title = v.findViewById(R.id.live_tv_title);
+        countText = v.findViewById(R.id.live_tv_count);
         time = v.findViewById(R.id.live_tv_time);
+        wallpaperBg = v.findViewById(R.id.live_tv_wallpaper);
+        if (wallpaperBg != null) {
+            Bitmap cached = LauncherWallpaper.getCachedBitmap();
+            if (cached != null) {
+                try {
+                    wallpaperBg.setImageBitmap(cached);
+                } catch (Exception ignored) {
+                }
+            } else {
+                executor.execute(() -> {
+                    final Bitmap bmp = LauncherWallpaper.tryLoad(appContext);
+                    if (bmp != null) {
+                        mainHandler.post(() -> {
+                            if (wallpaperBg != null) {
+                                try {
+                                    wallpaperBg.setImageBitmap(bmp);
+                                } catch (Exception ignored) {
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+        }
         mainHandler.removeCallbacks(timeTicker);
         mainHandler.post(timeTicker);
 
@@ -317,6 +346,9 @@ public class LiveTvFragment extends Fragment {
             }
         }
 
+        if (countText != null) {
+            countText.setText("· " + out.size() + " Saluran");
+        }
         if (gridAdapter != null) gridAdapter.submit(out);
     }
 
@@ -466,7 +498,9 @@ public class LiveTvFragment extends Fragment {
         super.onDestroyView();
         mainHandler.removeCallbacks(timeTicker);
         title = null;
+        countText = null;
         time = null;
+        wallpaperBg = null;
         categoryAdapter = null;
         gridAdapter = null;
         categoryList = null;

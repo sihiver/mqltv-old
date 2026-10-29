@@ -64,6 +64,10 @@ public final class LiveTvChannelGridAdapter extends RecyclerView.Adapter<LiveTvC
         Channel c = items.get(position);
 
         holder.number.setText(String.format(Locale.US, "%03d", position + 1));
+        if (holder.name != null) {
+            String title = c != null ? c.getTitle() : null;
+            holder.name.setText(!TextUtils.isEmpty(title) ? title : String.format(Locale.US, "CH %03d", position + 1));
+        }
 
         String logoUrl = c != null ? c.getLogoUrl() : null;
         holder.logo.setImageDrawable(null);
@@ -103,11 +107,13 @@ public final class LiveTvChannelGridAdapter extends RecyclerView.Adapter<LiveTvC
     static final class VH extends RecyclerView.ViewHolder {
         final ImageView logo;
         final TextView number;
+        final TextView name;
 
         VH(@NonNull View itemView) {
             super(itemView);
             logo = itemView.findViewById(R.id.live_tv_channel_logo);
             number = itemView.findViewById(R.id.live_tv_channel_number);
+            name = itemView.findViewById(R.id.live_tv_channel_name);
         }
     }
 

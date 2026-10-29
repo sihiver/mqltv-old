@@ -1,78 +1,140 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/live_tv_bg"
-    android:paddingStart="28dp"
-    android:paddingEnd="28dp"
-    android:paddingTop="18dp"
-    android:paddingBottom="18dp">
+    android:background="#080B11">
 
-    <TextView
-        android:id="@+id/live_tv_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Semua Saluran"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
+    <!-- Wallpaper Background -->
     <ImageView
-        android:id="@+id/live_tv_search"
-        android:layout_width="22dp"
-        android:layout_height="22dp"
-        android:src="@android:drawable/ic_menu_search"
-        android:tint="@color/mql_text_primary"
-        android:contentDescription="Search"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:clickable="true"
-        app:layout_constraintEnd_toStartOf="@id/live_tv_time"
-        app:layout_constraintTop_toTopOf="@id/live_tv_title"
-        app:layout_constraintBottom_toBottomOf="@id/live_tv_title"
-        android:layout_marginEnd="14dp" />
+        android:id="@+id/live_tv_wallpaper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/launcher_wallpaper_fallback"
+        android:importantForAccessibility="no" />
 
-    <TextView
-        android:id="@+id/live_tv_time"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="00:00 AM"
-        android:textColor="#D9E2F2"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/live_tv_title"
-        app:layout_constraintBottom_toBottomOf="@id/live_tv_title" />
+    <!-- Dark Translucent Backdrop (Consistent with Home / App Library / Settings) -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#CC0A0E17"
+        android:importantForAccessibility="no" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/live_tv_categories"
-        android:layout_width="0dp"
-        android:layout_height="52dp"
-        android:overScrollMode="never"
-        android:clipToPadding="false"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
-        android:layout_marginTop="14dp"
-        android:layout_marginBottom="6dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/live_tv_title" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingStart="44dp"
+        android:paddingEnd="44dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="18dp">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/live_tv_grid"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:overScrollMode="never"
-        android:scrollbars="vertical"
-        android:fadeScrollbars="false"
-        android:clipToPadding="false"
-        android:paddingTop="14dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/live_tv_categories"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        <!-- Header Bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+            <androidx.appcompat.widget.AppCompatImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginEnd="12dp"
+                android:src="@drawable/ic_picture"
+                app:tint="#E6FFFFFF" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="bottom"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/live_tv_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Semua Saluran"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="22sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.01" />
+
+                    <TextView
+                        android:id="@+id/live_tv_count"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="· Live TV"
+                        android:textColor="#88FFFFFF"
+                        android:textSize="14sp"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/live_tv_subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Tekan OK untuk memutar saluran · Tekan Atas di baris pertama untuk memilih kategori"
+                    android:textColor="#77FFFFFF"
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif" />
+            </LinearLayout>
+
+            <!-- Hidden search view kept for ID compatibility -->
+            <View
+                android:id="@+id/live_tv_search"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/live_tv_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/settings_group_card_bg"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:text="00:00"
+                android:textColor="#EEFFFFFF"
+                android:textSize="13sp"
+                android:fontFamily="sans-serif-medium" />
+        </LinearLayout>
+
+        <!-- Category Pills Row -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/live_tv_categories"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:overScrollMode="never"
+            android:clipToPadding="false"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Channel Grid -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/live_tv_grid"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:overScrollMode="never"
+            android:scrollbars="vertical"
+            android:fadeScrollbars="false"
+            android:clipToPadding="false"
+            android:paddingTop="8dp"
+            android:paddingBottom="12dp" />
+
+    </LinearLayout>
+
+</FrameLayout>

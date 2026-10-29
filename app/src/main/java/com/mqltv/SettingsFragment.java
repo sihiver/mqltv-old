@@ -59,31 +59,33 @@ public class SettingsFragment extends Fragment {
         View contentWallpaper = v.findViewById(R.id.content_wallpaper);
         View contentVlc = v.findViewById(R.id.content_vlc);
 
-        View.OnFocusChangeListener focusListener = (view, hasFocus) -> {
-            if (hasFocus) {
-                if (contentGeneral != null) contentGeneral.setVisibility(view == menuGeneral ? View.VISIBLE : View.GONE);
-                if (contentWallpaper != null) contentWallpaper.setVisibility(view == menuWallpaper ? View.VISIBLE : View.GONE);
-                if (contentVlc != null) contentVlc.setVisibility(view == menuVlc ? View.VISIBLE : View.GONE);
-            }
-        };
-
-        View.OnClickListener clickListener = view -> {
+        View.OnClickListener selectTab = view -> {
             if (contentGeneral != null) contentGeneral.setVisibility(view == menuGeneral ? View.VISIBLE : View.GONE);
             if (contentWallpaper != null) contentWallpaper.setVisibility(view == menuWallpaper ? View.VISIBLE : View.GONE);
             if (contentVlc != null) contentVlc.setVisibility(view == menuVlc ? View.VISIBLE : View.GONE);
+            if (menuGeneral != null) menuGeneral.setSelected(view == menuGeneral);
+            if (menuWallpaper != null) menuWallpaper.setSelected(view == menuWallpaper);
+            if (menuVlc != null) menuVlc.setSelected(view == menuVlc);
+        };
+
+        View.OnFocusChangeListener focusListener = (view, hasFocus) -> {
+            if (hasFocus) {
+                selectTab.onClick(view);
+            }
         };
 
         if (menuGeneral != null) {
+            menuGeneral.setSelected(true);
             menuGeneral.setOnFocusChangeListener(focusListener);
-            menuGeneral.setOnClickListener(clickListener);
+            menuGeneral.setOnClickListener(selectTab);
         }
         if (menuWallpaper != null) {
             menuWallpaper.setOnFocusChangeListener(focusListener);
-            menuWallpaper.setOnClickListener(clickListener);
+            menuWallpaper.setOnClickListener(selectTab);
         }
         if (menuVlc != null) {
             menuVlc.setOnFocusChangeListener(focusListener);
-            menuVlc.setOnClickListener(clickListener);
+            menuVlc.setOnClickListener(selectTab);
         }
 
         // MX Player toggle
@@ -678,6 +680,14 @@ public class SettingsFragment extends Fragment {
     private void loadSettingsWallpaper(Context appContext) {
         final ImageView target = wallpaperBg;
         if (target == null) return;
+
+        Bitmap cached = LauncherWallpaper.getCachedBitmap();
+        if (cached != null) {
+            try {
+                target.setImageBitmap(cached);
+            } catch (Exception ignored) {
+            }
+        }
 
         executor.execute(() -> {
             Bitmap bmp = LauncherWallpaper.tryLoad(appContext);

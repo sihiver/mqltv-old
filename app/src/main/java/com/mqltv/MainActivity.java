@@ -128,9 +128,9 @@ public class MainActivity extends FragmentActivity {
                 .runOnCommit(() -> {
                     View root = getWindow().getDecorView();
                     root.post(() -> {
-                        View auto = root.findViewById(R.id.player_mode_auto);
-                        if (auto != null) {
-                            auto.requestFocus();
+                        View menuGeneral = root.findViewById(R.id.menu_general);
+                        if (menuGeneral != null) {
+                            menuGeneral.requestFocus();
                         }
                     });
                 })

@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#FF080B11">
 
     <ImageView
         android:id="@+id/settings_wallpaper"
@@ -15,1011 +17,1217 @@
         android:id="@+id/settings_wallpaper_dim"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#CC000000"
+        android:background="#BD080B11"
         android:importantForAccessibility="no" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="horizontal"
-        android:paddingTop="32dp"
-        android:paddingBottom="32dp"
-        android:paddingStart="40dp"
-        android:paddingEnd="40dp">
+        android:orientation="vertical"
+        android:paddingStart="44dp"
+        android:paddingEnd="44dp"
+        android:paddingTop="28dp"
+        android:paddingBottom="28dp">
 
-        <!-- Left Menu Pane -->
+        <!-- Top Header: Consistent with Home & App Library -->
         <LinearLayout
-            android:id="@+id/settings_menu_pane"
-            android:layout_width="250dp"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:paddingEnd="16dp">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="18dp">
 
-            <TextView
-                android:layout_width="match_parent"
+            <androidx.appcompat.widget.AppCompatImageView
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:src="@drawable/ic_home_settings"
+                app:tint="#FFFFFFFF"
+                android:layout_marginEnd="14dp"
+                android:contentDescription="@null" />
+
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Pengaturan"
-                android:textColor="@color/mql_text_primary"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="24dp"
-                android:paddingStart="14dp" />
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-            <!-- Menu Items -->
-            <Button
-                android:id="@+id/menu_general"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:background="@drawable/settings_action_bg"
-                android:textColor="@color/mql_text_primary"
-                android:text="Umum &amp; Pemutar"
-                android:gravity="start|center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:textAllCaps="false"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:layout_marginBottom="8dp" />
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
-            <Button
-                android:id="@+id/menu_wallpaper"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:background="@drawable/settings_action_bg"
-                android:textColor="@color/mql_text_primary"
-                android:text="Wallpaper"
-                android:gravity="start|center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:textAllCaps="false"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:layout_marginBottom="8dp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Setelan Antarmuka"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="22sp"
+                        android:fontFamily="sans-serif-medium" />
 
-            <Button
-                android:id="@+id/menu_vlc"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:background="@drawable/settings_action_bg"
-                android:textColor="@color/mql_text_primary"
-                android:text="Lanjutan (VLC)"
-                android:gravity="start|center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:textAllCaps="false"
-                android:focusable="true"
-                android:focusableInTouchMode="true" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="· MQLTV"
+                        android:textColor="#88FFFFFF"
+                        android:textSize="14sp"
+                        android:fontFamily="sans-serif" />
+                </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Kelola pemutar siaran, tampilan wallpaper beranda, dan akselerasi perangkat keras"
+                    android:textColor="#77FFFFFF"
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/tv_app_version"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Versi: "
-                android:textColor="@color/mql_text_secondary"
-                android:textSize="14sp"
+                android:background="@drawable/settings_group_card_bg"
                 android:paddingStart="14dp"
-                android:layout_marginBottom="16dp" />
+                android:paddingEnd="14dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:text="Versi MQLTV"
+                android:textColor="#CCFFFFFF"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif-medium" />
         </LinearLayout>
 
-        <!-- Vertical Divider -->
-        <View
-            android:layout_width="1dp"
-            android:layout_height="match_parent"
-            android:background="#33FFFFFF"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="24dp" />
+        <!-- Main Two-Pane Glass Area -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
 
-        <!-- Right Content Pane -->
-        <FrameLayout
-            android:id="@+id/settings_content_pane"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1">
-
-            <!-- Content: General -->
-            <ScrollView
-                android:id="@+id/content_general"
-                android:layout_width="match_parent"
+            <!-- Left Glass Navigation Sidebar -->
+            <LinearLayout
+                android:id="@+id/settings_menu_pane"
+                android:layout_width="244dp"
                 android:layout_height="match_parent"
-                android:fillViewport="true"
-                android:visibility="visible">
-                <LinearLayout
+                android:background="@drawable/glass_panel"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:layout_marginEnd="18dp">
+
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingBottom="24dp"
-                    android:paddingEnd="16dp">
+                    android:text="KATEGORI"
+                    android:textColor="#77FFFFFF"
+                    android:textSize="11sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:paddingStart="12dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="8dp" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                <Button
+                    android:id="@+id/menu_general"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:background="@drawable/settings_menu_bg"
+                    android:textColor="@color/settings_item_text"
+                    android:text="Umum &amp; Pemutar"
+                    android:textSize="15sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="start|center_vertical"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:textAllCaps="false"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:layout_marginBottom="6dp" />
+
+                <Button
+                    android:id="@+id/menu_wallpaper"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:background="@drawable/settings_menu_bg"
+                    android:textColor="@color/settings_item_text"
+                    android:text="Wallpaper Beranda"
+                    android:textSize="15sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="start|center_vertical"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:textAllCaps="false"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:layout_marginBottom="6dp" />
+
+                <Button
+                    android:id="@+id/menu_vlc"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:background="@drawable/settings_menu_bg"
+                    android:textColor="@color/settings_item_text"
+                    android:text="Lanjutan (VLC)"
+                    android:textSize="15sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="start|center_vertical"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:textAllCaps="false"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#1FFFFFFF"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="10dp" />
+
+                <Button
+                    android:id="@+id/btn_check_update"
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:background="@drawable/settings_action_bg"
+                    android:textColor="@color/settings_item_text"
+                    android:textAllCaps="false"
+                    android:text="Periksa Pembaruan"
+                    android:textSize="14sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
+            </LinearLayout>
+
+            <!-- Right Glass Content Pane -->
+            <FrameLayout
+                android:id="@+id/settings_content_pane"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/glass_panel"
+                android:padding="20dp">
+
+                <!-- Content: General -->
+                <ScrollView
+                    android:id="@+id/content_general"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fillViewport="true"
+                    android:overScrollMode="never"
+                    android:scrollbars="none"
+                    android:visibility="visible">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Umum &amp; Pemutar"
-                        android:textColor="@color/mql_text_primary"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
+                        android:orientation="vertical"
+                        android:paddingBottom="16dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Switch player untuk debug (OK untuk memilih)."
-        android:textColor="@color/mql_text_secondary"
-        android:textSize="14sp" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Umum &amp; Pemutar"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="20sp"
+                            android:fontFamily="sans-serif-medium" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:text="Playback Engine"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Pilih mesin pemutar siaran dan perilaku layar saat menonton."
+                            android:textColor="#99FFFFFF"
+                            android:textSize="13sp" />
 
-    <RadioGroup
-        android:id="@+id/player_mode_group"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:orientation="vertical">
+                        <!-- Group Card: Playback Engine -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:background="@drawable/settings_group_card_bg"
+                            android:orientation="vertical"
+                            android:padding="16dp">
 
-        <RadioButton
-            android:id="@+id/player_mode_auto"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Auto (recommended)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Playback Engine"
+                                android:textColor="#FFFFFFFF"
+                                android:textSize="16sp"
+                                android:fontFamily="sans-serif-medium" />
 
-        <RadioButton
-            android:id="@+id/player_mode_exo"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="ExoPlayer (Media3)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="Setelah mengganti pemutar, buka kembali saluran untuk menerapkan."
+                                android:textColor="#88FFFFFF"
+                                android:textSize="12sp" />
 
-        <RadioButton
-            android:id="@+id/player_mode_native"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Native (Android MediaPlayer)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <RadioGroup
+                                android:id="@+id/player_mode_group"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:orientation="vertical">
 
-        <RadioButton
-            android:id="@+id/player_mode_vlc"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="VLC (LibVLC)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/player_mode_auto"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="Otomatis (Direkomendasikan)"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    </RadioGroup>
+                                <RadioButton
+                                    android:id="@+id/player_mode_exo"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="ExoPlayer (Media3)"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Catatan: setelah ganti player, buka channel lagi."
-        android:textColor="@color/mql_text_secondary"
-        android:textSize="14sp" />
+                                <RadioButton
+                                    android:id="@+id/player_mode_native"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="Native (Android MediaPlayer)"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    <Switch
-        android:id="@+id/setting_use_mx_player"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="12dp"
-        android:background="@drawable/settings_option_bg"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
-        android:text="Putar di MX Player (jika ada)"
-        android:textColor="@color/mql_text_primary"
-        android:focusable="true"
-        android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/player_mode_vlc"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="VLC (LibVLC)"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
+                            </RadioGroup>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="Auto Exit Tanpa Interaksi"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+                            <Switch
+                                android:id="@+id/setting_use_mx_player"
+                                android:layout_width="match_parent"
+                                android:layout_height="42dp"
+                                android:layout_marginTop="10dp"
+                                android:background="@drawable/settings_option_bg"
+                                android:paddingStart="14dp"
+                                android:paddingEnd="14dp"
+                                android:text="Putar di MX Player (jika terpasang)"
+                                android:textColor="@color/settings_item_text"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:focusable="true"
+                                android:focusableInTouchMode="true" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Otomatis menutup siaran jika remote TV tidak ditekan."
-        android:textColor="@color/mql_text_secondary"
-        android:textSize="14sp" />
+                            <Switch
+                                android:id="@+id/setting_exo_limit_480p"
+                                android:layout_width="match_parent"
+                                android:layout_height="42dp"
+                                android:layout_marginTop="6dp"
+                                android:background="@drawable/settings_option_bg"
+                                android:paddingStart="14dp"
+                                android:paddingEnd="14dp"
+                                android:text="ExoPlayer: Batasi ke 480p (hemat beban FHD)"
+                                android:textColor="@color/settings_item_text"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:focusable="true"
+                                android:focusableInTouchMode="true" />
+                        </LinearLayout>
 
-    <RadioGroup
-        android:id="@+id/idle_timeout_group"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:orientation="vertical">
+                        <!-- Group Card: Auto Exit Tanpa Interaksi -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:background="@drawable/settings_group_card_bg"
+                            android:orientation="vertical"
+                            android:padding="16dp">
 
-        <RadioButton
-            android:id="@+id/idle_timeout_off"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Nonaktif"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Auto Exit Tanpa Interaksi"
+                                android:textColor="#FFFFFFFF"
+                                android:textSize="16sp"
+                                android:fontFamily="sans-serif-medium" />
 
-        <RadioButton
-            android:id="@+id/idle_timeout_1m"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="1 Menit (Tes)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="Otomatis menutup siaran jika remote TV tidak ditekan."
+                                android:textColor="#88FFFFFF"
+                                android:textSize="12sp" />
 
-        <RadioButton
-            android:id="@+id/idle_timeout_1h"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="1 Jam"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <RadioGroup
+                                android:id="@+id/idle_timeout_group"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:orientation="vertical">
 
-        <RadioButton
-            android:id="@+id/idle_timeout_2h"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="2 Jam (Default)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/idle_timeout_off"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="Nonaktif"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-        <RadioButton
-            android:id="@+id/idle_timeout_3h"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="3 Jam"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/idle_timeout_1m"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="1 Menit (Tes)"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-        <RadioButton
-            android:id="@+id/idle_timeout_4h"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="4 Jam"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/idle_timeout_1h"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="1 Jam"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    </RadioGroup>
+                                <RadioButton
+                                    android:id="@+id/idle_timeout_2h"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="2 Jam (Default)"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="@string/settings_video_display_title"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+                                <RadioButton
+                                    android:id="@+id/idle_timeout_3h"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="3 Jam"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/settings_video_display_hint"
-        android:textColor="@color/mql_text_secondary"
-        android:textSize="14sp" />
+                                <RadioButton
+                                    android:id="@+id/idle_timeout_4h"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="4 Jam"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
+                            </RadioGroup>
+                        </LinearLayout>
 
-    <RadioGroup
-        android:id="@+id/video_display_group"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:orientation="vertical">
+                        <!-- Group Card: Skala Video -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:background="@drawable/settings_group_card_bg"
+                            android:orientation="vertical"
+                            android:padding="16dp">
 
-        <RadioButton
-            android:id="@+id/video_display_fit"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="@string/settings_video_display_fit"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_video_display_title"
+                                android:textColor="#FFFFFFFF"
+                                android:textSize="16sp"
+                                android:fontFamily="sans-serif-medium" />
 
-        <RadioButton
-            android:id="@+id/video_display_fill"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="@string/settings_video_display_fill"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="@string/settings_video_display_hint"
+                                android:textColor="#88FFFFFF"
+                                android:textSize="12sp" />
 
-        <RadioButton
-            android:id="@+id/video_display_zoom"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="@string/settings_video_display_zoom"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <RadioGroup
+                                android:id="@+id/video_display_group"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:orientation="vertical">
 
-        <RadioButton
-            android:id="@+id/video_display_16_9"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="@string/settings_video_display_16_9"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/video_display_fit"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="@string/settings_video_display_fit"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-        <RadioButton
-            android:id="@+id/video_display_4_3"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="@string/settings_video_display_4_3"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/video_display_fill"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="@string/settings_video_display_fill"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    </RadioGroup>
+                                <RadioButton
+                                    android:id="@+id/video_display_zoom"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="@string/settings_video_display_zoom"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="@string/settings_vision_quality_title"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+                                <RadioButton
+                                    android:id="@+id/video_display_16_9"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="@string/settings_video_display_16_9"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/settings_vision_quality_hint"
-        android:textColor="@color/mql_text_secondary"
-        android:textSize="14sp" />
+                                <RadioButton
+                                    android:id="@+id/video_display_4_3"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="@string/settings_video_display_4_3"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
+                            </RadioGroup>
+                        </LinearLayout>
 
-    <RadioGroup
-        android:id="@+id/vision_quality_group"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:orientation="vertical">
+                        <!-- Group Card: Kualitas Video -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:background="@drawable/settings_group_card_bg"
+                            android:orientation="vertical"
+                            android:padding="16dp">
 
-        <RadioButton
-            android:id="@+id/vision_quality_auto"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="@string/player_quality_auto"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_vision_quality_title"
+                                android:textColor="#FFFFFFFF"
+                                android:textSize="16sp"
+                                android:fontFamily="sans-serif-medium" />
 
-        <RadioButton
-            android:id="@+id/vision_quality_1080"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="@string/player_quality_1080"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="@string/settings_vision_quality_hint"
+                                android:textColor="#88FFFFFF"
+                                android:textSize="12sp" />
 
-        <RadioButton
-            android:id="@+id/vision_quality_720"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="@string/player_quality_720"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <RadioGroup
+                                android:id="@+id/vision_quality_group"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:orientation="vertical">
 
-        <RadioButton
-            android:id="@+id/vision_quality_480"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="@string/player_quality_480"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/vision_quality_auto"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="@string/player_quality_auto"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-        <RadioButton
-            android:id="@+id/vision_quality_360"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="@string/player_quality_360"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/vision_quality_1080"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="@string/player_quality_1080"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-        <RadioButton
-            android:id="@+id/vision_quality_lowest"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="@string/player_quality_lowest"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/vision_quality_720"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="@string/player_quality_720"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    </RadioGroup>
+                                <RadioButton
+                                    android:id="@+id/vision_quality_480"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="@string/player_quality_480"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="Debug Options"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+                                <RadioButton
+                                    android:id="@+id/vision_quality_360"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="@string/player_quality_360"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    <Switch
-        android:id="@+id/setting_exo_limit_480p"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="12dp"
-        android:background="@drawable/settings_option_bg"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
-        android:text="Exo: limit to 480p (reduce FHD lag)"
-        android:textColor="@color/mql_text_primary"
-        android:focusable="true"
-        android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/vision_quality_lowest"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="@string/player_quality_lowest"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
+                            </RadioGroup>
+                        </LinearLayout>
+                    </LinearLayout>
+                </ScrollView>
 
-    <Button
-        android:id="@+id/btn_check_update"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="16dp"
-        android:background="@drawable/settings_action_bg"
-        android:textColor="@color/mql_text_primary"
-        android:textAllCaps="true"
-        android:text="Periksa Pembaruan (Manual)"
-        android:focusable="true"
-        android:focusableInTouchMode="true" />
-
-                </LinearLayout>
-            </ScrollView>
-
-            <!-- Content: Wallpaper -->
-            <ScrollView
-                android:id="@+id/content_wallpaper"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:fillViewport="true"
-                android:visibility="gone">
-                <LinearLayout
+                <!-- Content: Wallpaper -->
+                <ScrollView
+                    android:id="@+id/content_wallpaper"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingBottom="24dp"
-                    android:paddingEnd="16dp">
+                    android:layout_height="match_parent"
+                    android:fillViewport="true"
+                    android:overScrollMode="never"
+                    android:scrollbars="none"
+                    android:visibility="gone">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Launcher Wallpaper"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="22sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/wallpaper_status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Status: Default"
-        android:textColor="@color/mql_text_secondary"
-        android:textSize="14sp" />
-
-    <Button
-        android:id="@+id/wallpaper_pick_button"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="12dp"
-        android:background="@drawable/settings_action_bg"
-        android:textColor="@color/mql_text_primary"
-        android:textAllCaps="true"
-        android:text="Pilih Wallpaper (File)"
-        android:focusable="true"
-        android:focusableInTouchMode="true" />
-
-    <Button
-        android:id="@+id/wallpaper_set_url_button"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/settings_action_bg"
-        android:textColor="@color/mql_text_primary"
-        android:textAllCaps="true"
-        android:text="Set Wallpaper dari URL"
-        android:focusable="true"
-        android:focusableInTouchMode="true" />
-
-    <Button
-        android:id="@+id/wallpaper_reset_button"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/settings_action_bg"
-        android:textColor="@color/mql_text_primary"
-        android:textAllCaps="true"
-        android:text="Reset Wallpaper"
-        android:focusable="true"
-        android:focusableInTouchMode="true" />
-
-                </LinearLayout>
-            </ScrollView>
-
-            <!-- Content: VLC -->
-            <ScrollView
-                android:id="@+id/content_vlc"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:fillViewport="true"
-                android:visibility="gone">
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingBottom="24dp"
-                    android:paddingEnd="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Lanjutan (VLC)"
-                        android:textColor="@color/mql_text_primary"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
+                        android:orientation="vertical"
+                        android:paddingBottom="16dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:text="VLC hardware decoding"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Wallpaper Beranda"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="20sp"
+                            android:fontFamily="sans-serif-medium" />
 
-    <RadioGroup
-        android:id="@+id/vlc_hw_group"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Gunakan foto harian Bing otomatis atau pasang gambar latar pilihan sendiri."
+                            android:textColor="#99FFFFFF"
+                            android:textSize="13sp" />
 
-        <RadioButton
-            android:id="@+id/vlc_hw_auto"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Auto"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:background="@drawable/settings_group_card_bg"
+                            android:orientation="vertical"
+                            android:padding="16dp">
 
-        <RadioButton
-            android:id="@+id/vlc_hw_on"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="HW ON (mediacodec)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <TextView
+                                android:id="@+id/wallpaper_status"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Status: Default"
+                                android:textColor="#FF34D399"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium" />
 
-        <RadioButton
-            android:id="@+id/vlc_hw_plus"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="HW+ (mediacodec direct render)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <Button
+                                android:id="@+id/wallpaper_pick_button"
+                                android:layout_width="match_parent"
+                                android:layout_height="44dp"
+                                android:layout_marginTop="14dp"
+                                android:background="@drawable/settings_action_bg"
+                                android:textColor="@color/settings_item_text"
+                                android:textAllCaps="false"
+                                android:text="Pilih Wallpaper dari Perangkat"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="start|center_vertical"
+                                android:paddingStart="16dp"
+                                android:paddingEnd="16dp"
+                                android:focusable="true"
+                                android:focusableInTouchMode="true" />
 
-        <RadioButton
-            android:id="@+id/vlc_hw_off"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="HW OFF (software)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <Button
+                                android:id="@+id/wallpaper_set_url_button"
+                                android:layout_width="match_parent"
+                                android:layout_height="44dp"
+                                android:layout_marginTop="8dp"
+                                android:background="@drawable/settings_action_bg"
+                                android:textColor="@color/settings_item_text"
+                                android:textAllCaps="false"
+                                android:text="Pasang Wallpaper dari URL"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="start|center_vertical"
+                                android:paddingStart="16dp"
+                                android:paddingEnd="16dp"
+                                android:focusable="true"
+                                android:focusableInTouchMode="true" />
 
-    </RadioGroup>
+                            <Button
+                                android:id="@+id/wallpaper_reset_button"
+                                android:layout_width="match_parent"
+                                android:layout_height="44dp"
+                                android:layout_marginTop="8dp"
+                                android:background="@drawable/settings_action_bg"
+                                android:textColor="@color/settings_item_text"
+                                android:textAllCaps="false"
+                                android:text="Kembalikan ke Bing Daily Wallpaper"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="start|center_vertical"
+                                android:paddingStart="16dp"
+                                android:paddingEnd="16dp"
+                                android:focusable="true"
+                                android:focusableInTouchMode="true" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </ScrollView>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="VLC HW decoder impl"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+                <!-- Content: VLC -->
+                <ScrollView
+                    android:id="@+id/content_vlc"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fillViewport="true"
+                    android:overScrollMode="never"
+                    android:scrollbars="none"
+                    android:visibility="gone">
 
-    <RadioGroup
-        android:id="@+id/vlc_hw_impl_group"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:orientation="vertical">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingBottom="16dp">
 
-        <RadioButton
-            android:id="@+id/vlc_hw_impl_auto"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Auto"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Lanjutan (VLC)"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="20sp"
+                            android:fontFamily="sans-serif-medium" />
 
-        <RadioButton
-            android:id="@+id/vlc_hw_impl_mediacodec"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="mediacodec"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Pengaturan dekoder perangkat keras, output video, dan buffer jaringan LibVLC."
+                            android:textColor="#99FFFFFF"
+                            android:textSize="13sp" />
 
-        <RadioButton
-            android:id="@+id/vlc_hw_impl_mediacodec_ndk"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="mediacodec_ndk"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                        <!-- Group Card: Hardware Decoding -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:background="@drawable/settings_group_card_bg"
+                            android:orientation="vertical"
+                            android:padding="16dp">
 
-    </RadioGroup>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="VLC Hardware Decoding"
+                                android:textColor="#FFFFFFFF"
+                                android:textSize="16sp"
+                                android:fontFamily="sans-serif-medium" />
 
-    <Switch
-        android:id="@+id/setting_vlc_hw_force_only"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/settings_option_bg"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
-        android:text="Force HW only (disable SW fallback)"
-        android:textColor="@color/mql_text_primary"
-        android:focusable="true"
-        android:focusableInTouchMode="true" />
+                            <RadioGroup
+                                android:id="@+id/vlc_hw_group"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:orientation="vertical">
 
-    <Switch
-        android:id="@+id/setting_vlc_texture"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="12dp"
-        android:background="@drawable/settings_option_bg"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
-        android:text="VLC output: TextureView (uncheck = SurfaceView)"
-        android:textColor="@color/mql_text_primary"
-        android:focusable="true"
-        android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/vlc_hw_auto"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="Auto"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    <Switch
-        android:id="@+id/setting_vlc_deinterlace"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/settings_option_bg"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
-        android:text="VLC deinterlace (untuk video interlaced)"
-        android:textColor="@color/mql_text_primary"
-        android:focusable="true"
-        android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/vlc_hw_on"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="HW ON (mediacodec)"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="VLC video output (vout)"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+                                <RadioButton
+                                    android:id="@+id/vlc_hw_plus"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="HW+ (mediacodec direct render)"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    <RadioGroup
-        android:id="@+id/vlc_vout_group"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:orientation="vertical">
+                                <RadioButton
+                                    android:id="@+id/vlc_hw_off"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="HW OFF (software)"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
+                            </RadioGroup>
 
-        <RadioButton
-            android:id="@+id/vlc_vout_auto"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Auto"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="16dp"
+                                android:text="Implementasi Decoder HW"
+                                android:textColor="#FFFFFFFF"
+                                android:textSize="15sp"
+                                android:fontFamily="sans-serif-medium" />
 
-        <RadioButton
-            android:id="@+id/vlc_vout_android_display"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="android_display (recommended for some STB)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <RadioGroup
+                                android:id="@+id/vlc_hw_impl_group"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:orientation="vertical">
 
-        <RadioButton
-            android:id="@+id/vlc_vout_android_surface"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="android_surface"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/vlc_hw_impl_auto"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="Auto"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-        <RadioButton
-            android:id="@+id/vlc_vout_gles2"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="gles2 (OpenGL)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/vlc_hw_impl_mediacodec"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="mediacodec"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    </RadioGroup>
+                                <RadioButton
+                                    android:id="@+id/vlc_hw_impl_mediacodec_ndk"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="mediacodec_ndk"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
+                            </RadioGroup>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:text="VLC Network Caching"
-        android:textColor="@color/mql_text_primary"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+                            <Switch
+                                android:id="@+id/setting_vlc_hw_force_only"
+                                android:layout_width="match_parent"
+                                android:layout_height="42dp"
+                                android:layout_marginTop="10dp"
+                                android:background="@drawable/settings_option_bg"
+                                android:paddingStart="14dp"
+                                android:paddingEnd="14dp"
+                                android:text="Paksa HW saja (matikan fallback SW)"
+                                android:textColor="@color/settings_item_text"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:focusable="true"
+                                android:focusableInTouchMode="true" />
 
-    <RadioGroup
-        android:id="@+id/vlc_caching_group"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:orientation="vertical">
+                            <Switch
+                                android:id="@+id/setting_vlc_texture"
+                                android:layout_width="match_parent"
+                                android:layout_height="42dp"
+                                android:layout_marginTop="6dp"
+                                android:background="@drawable/settings_option_bg"
+                                android:paddingStart="14dp"
+                                android:paddingEnd="14dp"
+                                android:text="Output VLC: TextureView (nonaktif = SurfaceView)"
+                                android:textColor="@color/settings_item_text"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:focusable="true"
+                                android:focusableInTouchMode="true" />
 
-        <RadioButton
-            android:id="@+id/vlc_caching_1500"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="1500 ms (default)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <Switch
+                                android:id="@+id/setting_vlc_deinterlace"
+                                android:layout_width="match_parent"
+                                android:layout_height="42dp"
+                                android:layout_marginTop="6dp"
+                                android:background="@drawable/settings_option_bg"
+                                android:paddingStart="14dp"
+                                android:paddingEnd="14dp"
+                                android:text="VLC Deinterlace (untuk video interlaced)"
+                                android:textColor="@color/settings_item_text"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:focusable="true"
+                                android:focusableInTouchMode="true" />
+                        </LinearLayout>
 
-        <RadioButton
-            android:id="@+id/vlc_caching_3000"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="3000 ms"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                        <!-- Group Card: Video Output & Caching -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:background="@drawable/settings_group_card_bg"
+                            android:orientation="vertical"
+                            android:padding="16dp">
 
-        <RadioButton
-            android:id="@+id/vlc_caching_5000"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="5000 ms"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="VLC Video Output (vout)"
+                                android:textColor="#FFFFFFFF"
+                                android:textSize="16sp"
+                                android:fontFamily="sans-serif-medium" />
 
-        <RadioButton
-            android:id="@+id/vlc_caching_10000"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/settings_option_bg"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="10000 ms (max buffer)"
-            android:textColor="@color/mql_text_primary"
-            android:buttonTint="#D9E2F2"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+                            <RadioGroup
+                                android:id="@+id/vlc_vout_group"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:orientation="vertical">
 
-    </RadioGroup>
+                                <RadioButton
+                                    android:id="@+id/vlc_vout_auto"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="Auto"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-    <Button
-        android:id="@+id/vlc_reset_button"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="16dp"
-        android:background="@drawable/settings_action_bg"
-        android:textColor="@color/mql_text_primary"
-        android:textAllCaps="true"
-        android:text="Reset VLC Settings"
-        android:focusable="true"
-        android:focusableInTouchMode="true" />
+                                <RadioButton
+                                    android:id="@+id/vlc_vout_android_display"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="android_display (direkomendasikan untuk STB)"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-                </LinearLayout>
-            </ScrollView>
+                                <RadioButton
+                                    android:id="@+id/vlc_vout_android_surface"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="android_surface"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
 
-        </FrameLayout>
+                                <RadioButton
+                                    android:id="@+id/vlc_vout_gles2"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="gles2 (OpenGL)"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
+                            </RadioGroup>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="16dp"
+                                android:text="VLC Network Caching"
+                                android:textColor="#FFFFFFFF"
+                                android:textSize="15sp"
+                                android:fontFamily="sans-serif-medium" />
+
+                            <RadioGroup
+                                android:id="@+id/vlc_caching_group"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:orientation="vertical">
+
+                                <RadioButton
+                                    android:id="@+id/vlc_caching_1500"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="1500 ms (default)"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
+
+                                <RadioButton
+                                    android:id="@+id/vlc_caching_3000"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="3000 ms"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
+
+                                <RadioButton
+                                    android:id="@+id/vlc_caching_5000"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="5000 ms"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
+
+                                <RadioButton
+                                    android:id="@+id/vlc_caching_10000"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="42dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/settings_option_bg"
+                                    android:paddingStart="14dp"
+                                    android:paddingEnd="14dp"
+                                    android:text="10000 ms (buffer maksimum)"
+                                    android:textColor="@color/settings_item_text"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:focusable="true"
+                                    android:focusableInTouchMode="true" />
+                            </RadioGroup>
+
+                            <Button
+                                android:id="@+id/vlc_reset_button"
+                                android:layout_width="match_parent"
+                                android:layout_height="44dp"
+                                android:layout_marginTop="16dp"
+                                android:background="@drawable/settings_action_bg"
+                                android:textColor="@color/settings_item_text"
+                                android:textAllCaps="false"
+                                android:text="Reset Setelan VLC ke Default"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:focusable="true"
+                                android:focusableInTouchMode="true" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </ScrollView>
+
+            </FrameLayout>
+        </LinearLayout>
     </LinearLayout>
-
 </FrameLayout>

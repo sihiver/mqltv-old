@@ -188,16 +188,17 @@
                     <LinearLayout
                         android:id="@+id/launcher_network_pill"
                         style="@style/TopButton"
-                        android:focusable="false"
-                        android:clickable="false"
-                        android:layout_marginEnd="4dp">
+                        android:orientation="horizontal"
+                        android:nextFocusDown="@+id/launcher_apps"
+                        android:nextFocusRight="@+id/launcher_settings">
 
-                        <ImageView
+                        <androidx.appcompat.widget.AppCompatImageView
                             android:id="@+id/launcher_header_net"
                             android:layout_width="18dp"
                             android:layout_height="18dp"
+                            android:duplicateParentState="true"
                             android:src="@drawable/ic_mql_wifi"
-                            android:tint="#FFFFFFFF"
+                            app:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
 
                         <TextView
@@ -205,50 +206,45 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
+                            android:duplicateParentState="true"
                             android:text="ONLINE"
-                            android:textColor="#E6FFFFFF"
-                            android:textSize="12sp"
+                            android:textColor="@color/pill_text"
+                            android:textSize="13sp"
                             android:fontFamily="sans-serif-medium"
-                            android:letterSpacing="0.08" />
+                            android:letterSpacing="0.04" />
                     </LinearLayout>
 
-                    <!-- Settings Pill -->
-                    <FrameLayout
+                    <!-- Quick Settings Pill (CleanYourTV style) -->
+                    <LinearLayout
                         android:id="@+id/launcher_settings"
-                        style="@style/TopButtonIcon"
-                        android:contentDescription="Settings"
+                        style="@style/TopButton"
+                        android:orientation="horizontal"
+                        android:contentDescription="Setelan"
                         android:nextFocusDown="@+id/launcher_apps"
-                        android:nextFocusRight="@+id/launcher_native_settings">
-
-                        <androidx.appcompat.widget.AppCompatImageView
-                            android:id="@+id/launcher_settings_icon"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:padding="10dp"
-                            android:duplicateParentState="true"
-                            android:src="@android:drawable/ic_menu_manage"
-                            app:tint="@color/pill_text"
-                            android:importantForAccessibility="no" />
-                    </FrameLayout>
-
-                    <!-- Native TV Settings Pill -->
-                    <FrameLayout
-                        android:id="@+id/launcher_native_settings"
-                        style="@style/TopButtonIcon"
-                        android:contentDescription="Native Settings"
-                        android:nextFocusDown="@+id/launcher_apps"
-                        android:nextFocusLeft="@+id/launcher_settings"
+                        android:nextFocusLeft="@+id/launcher_network_pill"
                         android:nextFocusRight="@+id/launcher_profile">
 
                         <androidx.appcompat.widget.AppCompatImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:padding="10dp"
+                            android:id="@+id/launcher_settings_icon"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
                             android:duplicateParentState="true"
-                            android:src="@drawable/ic_gear_outline"
+                            android:src="@drawable/ic_settings"
                             app:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
-                    </FrameLayout>
+
+                        <TextView
+                            android:id="@+id/launcher_settings_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:duplicateParentState="true"
+                            android:text="Setelan"
+                            android:textColor="@color/pill_text"
+                            android:textSize="13sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="0.02" />
+                    </LinearLayout>
 
                     <!-- Profile / Account Pill -->
                     <FrameLayout
@@ -256,7 +252,7 @@
                         style="@style/TopButtonIcon"
                         android:contentDescription="Profile"
                         android:nextFocusDown="@+id/launcher_apps"
-                        android:nextFocusLeft="@+id/launcher_native_settings">
+                        android:nextFocusLeft="@+id/launcher_settings">
 
                         <TextView
                             android:id="@+id/launcher_profile_letter"

@@ -60,9 +60,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
     private RecyclerView cardsList;
     private LauncherCardAdapter adapter;
+    private View networkPill;
     private View settingsButton;
-    private View nativeSettingsButton;
     private View profileButton;
+    private android.widget.PopupWindow quickSettingsPopup;
     private int lastSelectedCardPosition = APPS_ROW_POSITION;
     private int lastSelectedAppIndex = 0;
     private String latestLiveSubtitle = "+5000 Saluran";
@@ -279,21 +280,17 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             LauncherWallpaper.addListener(wallpaperListener);
         }
 
+        networkPill = v.findViewById(R.id.launcher_network_pill);
+        setupPillFocus(networkPill, () -> {
+            syncHomeFocusState(NATIVE_SETTINGS_BUTTON_POSITION);
+            startSystemSettingsIntent(appContext, android.provider.Settings.ACTION_WIFI_SETTINGS);
+        }, () -> syncHomeFocusState(NATIVE_SETTINGS_BUTTON_POSITION));
+
         settingsButton = v.findViewById(R.id.launcher_settings);
         setupPillFocus(settingsButton, () -> {
             syncHomeFocusState(SETTINGS_BUTTON_POSITION);
-            if (getActivity() instanceof MainActivity) {
-                ((MainActivity) getActivity()).openSettings();
-            }
+            showQuickSettingsPopup(settingsButton, appContext);
         }, () -> syncHomeFocusState(SETTINGS_BUTTON_POSITION));
-
-        nativeSettingsButton = v.findViewById(R.id.launcher_native_settings);
-        setupPillFocus(nativeSettingsButton, () -> {
-            syncHomeFocusState(NATIVE_SETTINGS_BUTTON_POSITION);
-            Intent intent = new Intent(android.provider.Settings.ACTION_SETTINGS);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            appContext.startActivity(intent);
-        }, () -> syncHomeFocusState(NATIVE_SETTINGS_BUTTON_POSITION));
 
         profileButton = v.findViewById(R.id.launcher_profile);
         TextView profileLetter = v.findViewById(R.id.launcher_profile_letter);
@@ -475,12 +472,12 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     });
                 }
             } else if (lastSelectedCardPosition == NATIVE_SETTINGS_BUTTON_POSITION) {
-                if (nativeSettingsButton != null) {
+                if (networkPill != null) {
                     mainHandler.post(() -> {
                         setHeaderButtonsFocusable(true);
-                        nativeSettingsButton.setFocusable(true);
-                        nativeSettingsButton.setFocusableInTouchMode(true);
-                        nativeSettingsButton.requestFocus();
+                        networkPill.setFocusable(true);
+                        networkPill.setFocusableInTouchMode(true);
+                        networkPill.requestFocus();
                     });
                 }
             } else if (lastSelectedCardPosition == PROFILE_BUTTON_POSITION) {
@@ -568,9 +565,180 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
     @Override
     public void onPause() {
+        if (quickSettingsPopup != null && quickSettingsPopup.isShowing()) {
+            try {
+                quickSettingsPopup.dismiss();
+            } catch (Exception ignored) {
+            }
+        }
         syncFocusFromCurrentView();
         super.onPause();
         if (adapter != null) adapter.setHostActive(false);
+    }
+
+    public boolean openQuickSettings() {
+        if (!isAdded() || settingsButton == null || getContext() == null) return false;
+        showQuickSettingsPopup(settingsButton, getContext().getApplicationContext());
+        return true;
+    }
+
+    private void startSystemSettingsIntent(Context appContext, String action) {
+        try {
+            Intent target = SystemSettings.intent(appContext, action);
+            target.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            appContext.startActivity(target);
+        } catch (Exception e) {
+            try {
+                Intent fallback = new Intent(android.provider.Settings.ACTION_SETTINGS);
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                appContext.startActivity(fallback);
+            } catch (Exception ignored) {
+                Toast.makeText(appContext, "Tidak tersedia di TV ini", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void showQuickSettingsPopup(View anchor, Context appContext) {
+        if (anchor == null || getContext() == null) return;
+        if (quickSettingsPopup != null && quickSettingsPopup.isShowing()) {
+            quickSettingsPopup.dismiss();
+            return;
+        }
+
+        if (glass != null && glassShown) {
+            glass.animate().cancel();
+            glass.animate().alpha(0f).setDuration(120).start();
+            glassShown = false;
+        }
+
+        float density = getResources().getDisplayMetrics().density;
+        ViewGroup root = (rootLayout instanceof ViewGroup) ? (ViewGroup) rootLayout : null;
+        View panel = LayoutInflater.from(getContext()).inflate(R.layout.popup_inputs, root, false);
+        android.widget.LinearLayout rows = panel.findViewById(R.id.rows);
+
+        int minWidth = Math.round(230f * density);
+        final android.widget.PopupWindow popup = new android.widget.PopupWindow(
+                panel, minWidth, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        popup.setOutsideTouchable(true);
+        popup.setAnimationStyle(0);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            popup.setElevation(12f * density);
+        }
+        popup.setOnDismissListener(() -> {
+            if (quickSettingsPopup == popup) {
+                quickSettingsPopup = null;
+            }
+        });
+        quickSettingsPopup = popup;
+
+        // 1. Setelan Sistem TV
+        addQuickSettingRow(rows, popup, anchor, R.drawable.ic_settings, "Setelan Sistem TV", false, null,
+                () -> startSystemSettingsIntent(appContext, android.provider.Settings.ACTION_SETTINGS));
+
+        // 2. Tampilan
+        addQuickSettingRow(rows, popup, anchor, R.drawable.ic_picture, "Tampilan", false, null,
+                () -> startSystemSettingsIntent(appContext, android.provider.Settings.ACTION_DISPLAY_SETTINGS));
+
+        // 3. Jaringan (dengan indikator status koneksi saat ini)
+        String netLabel = headerNetLabel != null && headerNetLabel.getText() != null
+                ? headerNetLabel.getText().toString() : "";
+        boolean online = !"OFFLINE".equalsIgnoreCase(netLabel) && !netLabel.isEmpty();
+        addQuickSettingRow(rows, popup, anchor, R.drawable.ic_mql_wifi, "Jaringan", online, netLabel,
+                () -> startSystemSettingsIntent(appContext, android.provider.Settings.ACTION_WIFI_SETTINGS));
+
+        // 4. Aplikasi
+        addQuickSettingRow(rows, popup, anchor, R.drawable.ic_apps, "Aplikasi", false, "Kelola",
+                () -> startSystemSettingsIntent(appContext, android.provider.Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS));
+
+        // 5. Setelan Antarmuka (MQLTV)
+        addQuickSettingRow(rows, popup, anchor, R.drawable.ic_home_settings, "Setelan Antarmuka", false, "MQLTV", () -> {
+            if (getActivity() instanceof MainActivity) {
+                ((MainActivity) getActivity()).openSettings();
+            }
+        });
+
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int popupWidth = Math.max(minWidth, Math.min(panel.getMeasuredWidth(), Math.round(340f * density)));
+        popup.setWidth(popupWidth);
+
+        // Drop-in animation (CleanYourTV style) aligned to the right edge of the anchor pill
+        int xoff = anchor.getWidth() - popupWidth;
+        int yoff = Math.round(10f * density);
+        panel.setAlpha(0f);
+        panel.setPivotY(0f);
+        panel.setScaleY(0.92f);
+        panel.setTranslationY(-8f * density);
+        popup.showAsDropDown(anchor, xoff, yoff);
+        panel.animate()
+                .alpha(1f)
+                .scaleY(1f)
+                .translationY(0f)
+                .setDuration(220)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f))
+                .start();
+
+        rows.post(() -> {
+            if (rows.getChildCount() > 0) {
+                rows.getChildAt(0).requestFocus();
+            }
+        });
+    }
+
+    private View addQuickSettingRow(
+            android.widget.LinearLayout rows,
+            android.widget.PopupWindow popup,
+            View anchor,
+            int iconRes,
+            String title,
+            boolean showDot,
+            @Nullable String statusText,
+            Runnable action) {
+        View row = LayoutInflater.from(rows.getContext()).inflate(R.layout.item_input, rows, false);
+        ImageView icon = row.findViewById(R.id.icon);
+        TextView titleView = row.findViewById(R.id.title);
+        View dot = row.findViewById(R.id.dot);
+        TextView status = row.findViewById(R.id.status);
+
+        if (icon != null) icon.setImageResource(iconRes);
+        if (titleView != null) titleView.setText(title);
+        if (dot != null) dot.setVisibility(showDot ? View.VISIBLE : View.GONE);
+        if (status != null) {
+            if (statusText != null && !statusText.trim().isEmpty()) {
+                status.setText(statusText);
+                status.setVisibility(View.VISIBLE);
+            } else {
+                status.setVisibility(View.GONE);
+            }
+        }
+
+        row.setOnClickListener(v -> {
+            popup.dismiss();
+            if (action != null) action.run();
+        });
+
+        row.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
+            int idx = rows.indexOfChild(v);
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP && idx == 0) {
+                return true;
+            }
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN && idx == rows.getChildCount() - 1) {
+                return true;
+            }
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT || keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
+                return true;
+            }
+            if (keyCode == android.view.KeyEvent.KEYCODE_SETTINGS || keyCode == android.view.KeyEvent.KEYCODE_MENU) {
+                popup.dismiss();
+                if (anchor != null) anchor.requestFocus();
+                return true;
+            }
+            return false;
+        });
+
+        rows.addView(row);
+        return row;
     }
 
     private void setupPillFocus(View view, Runnable onClick, Runnable onFocus) {
@@ -822,13 +990,13 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     }
 
     private void setHeaderButtonsFocusable(boolean focusable) {
+        if (networkPill != null) {
+            networkPill.setFocusable(focusable);
+            networkPill.setFocusableInTouchMode(focusable);
+        }
         if (settingsButton != null) {
             settingsButton.setFocusable(focusable);
             settingsButton.setFocusableInTouchMode(focusable);
-        }
-        if (nativeSettingsButton != null) {
-            nativeSettingsButton.setFocusable(focusable);
-            nativeSettingsButton.setFocusableInTouchMode(focusable);
         }
         if (profileButton != null) {
             profileButton.setFocusable(focusable);
@@ -891,7 +1059,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             syncHomeFocusState(SETTINGS_BUTTON_POSITION);
             return;
         }
-        if (focused == nativeSettingsButton) {
+        if (focused == networkPill) {
             syncHomeFocusState(NATIVE_SETTINGS_BUTTON_POSITION);
             return;
         }

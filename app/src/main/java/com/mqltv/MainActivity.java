@@ -178,6 +178,18 @@ public class MainActivity extends FragmentActivity {
     }
 
     @Override
+    public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
+        if ((keyCode == android.view.KeyEvent.KEYCODE_SETTINGS || keyCode == android.view.KeyEvent.KEYCODE_MENU)
+                && currentDestination == NavDestination.HOME) {
+            androidx.fragment.app.Fragment f = getSupportFragmentManager().findFragmentById(R.id.content_container);
+            if (f instanceof LauncherFragment && ((LauncherFragment) f).openQuickSettings()) {
+                return true;
+            }
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
     public void onBackPressed() {
         // Launcher-style behavior: don't finish the Home activity.
         if (currentDestination != NavDestination.HOME) {

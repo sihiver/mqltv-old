@@ -270,23 +270,14 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             }
 
             if (e.isLiveTv) {
-                if (holder.banner != null) holder.banner.setVisibility(View.GONE);
-                if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.VISIBLE);
-                if (holder.icon != null) {
-                    if (e.icon != null) holder.icon.setImageDrawable(e.icon);
-                    else holder.icon.setImageResource(R.mipmap.ic_launcher);
-                    holder.icon.clearColorFilter();
+                if (holder.banner != null) {
+                    holder.banner.setImageResource(R.drawable.mqltv_banner);
+                    holder.banner.setVisibility(View.VISIBLE);
                 }
-                if (holder.title != null) {
-                    holder.title.setText(e.label != null ? e.label : "MQL TV");
-                    holder.title.setTextColor(Color.WHITE);
+                if (holder.contentGroup != null) {
+                    holder.contentGroup.setVisibility(View.GONE);
                 }
-                if (holder.subtitle != null) {
-                    holder.subtitle.setText(e.customSubtitle != null ? e.customSubtitle : "+5000 Saluran");
-                    holder.subtitle.setVisibility(View.VISIBLE);
-                    holder.subtitle.setTextColor(0xFFD9E2F2);
-                }
-                targetCard.setBackground(createTileBackground(ctx, 0xFF7C3AED));
+                targetCard.setBackground(createTileBackground(ctx, 0xFF0A111E));
             } else if (e.banner != null) {
                 if (holder.banner != null) {
                     holder.banner.setImageDrawable(e.banner);
@@ -329,6 +320,13 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                     holder.centerIcon.setColorFilter(Color.WHITE);
                 }
                 targetCard.setBackground(createTileBackground(ctx, 0xFF4D5B6A));
+            } else if (e.isLiveTv) {
+                if (holder.centerIcon != null) holder.centerIcon.setVisibility(View.GONE);
+                if (holder.banner != null) {
+                    holder.banner.setImageResource(R.drawable.mqltv_banner);
+                    holder.banner.setVisibility(View.VISIBLE);
+                }
+                targetCard.setBackground(createTileBackground(ctx, 0xFF0A111E));
             } else if (e.banner != null) {
                 if (holder.centerIcon != null) holder.centerIcon.setVisibility(View.GONE);
                 if (holder.banner != null) {
@@ -508,7 +506,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
     public static int colorFromEntry(LauncherAppEntry e) {
         if (e != null && e.isLiveTv) {
-            return 0xFF7C3AED; // tvOS purple / violet accent
+            return 0xFF00D2FF; // Glowing Cyan accent from MQL TV banner
         }
         if (e != null && e.isAddButton) {
             return 0xFF3B82F6; // Clean blue

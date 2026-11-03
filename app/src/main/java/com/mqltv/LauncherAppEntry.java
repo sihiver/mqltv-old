@@ -33,11 +33,13 @@ public final class LauncherAppEntry {
 
     public static LauncherAppEntry createLiveTvEntry(android.content.Context context, String subtitle) {
         Drawable icon = null;
+        Drawable banner = null;
         try {
             icon = androidx.core.content.ContextCompat.getDrawable(context, R.mipmap.ic_launcher);
+            banner = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.mqltv_banner);
         } catch (Exception ignored) {
         }
-        return new LauncherAppEntry("MQL TV", icon, null, null, false, true, subtitle != null ? subtitle : "+5000 Saluran");
+        return new LauncherAppEntry("MQL TV", icon, banner, null, false, true, subtitle != null ? subtitle : "+5000 Saluran");
     }
 
     public static LauncherAppEntry fromResolveInfo(ResolveInfo ri, android.content.pm.PackageManager pm) {

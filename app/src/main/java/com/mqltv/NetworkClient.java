@@ -60,7 +60,7 @@ public final class NetworkClient {
                 } else {
                     HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
                 }
-                Log.d(TAG, "HttpsURLConnection TLS defaults installed (Conscrypt)");
+                Log.d(TAG, "HttpsURLConnection TLS defaults installed" + (Build.VERSION.SDK_INT <= 19 ? " (Conscrypt)" : " (System)"));
             }
         } catch (Exception e) {
             Log.w(TAG, "HttpsURLConnection TLS setup failed", e);
@@ -69,15 +69,17 @@ public final class NetworkClient {
 
     @Nullable
     private static SSLContext createLegacySslContext(Context context) {
-        try {
-            java.security.Provider provider = Conscrypt.newProvider();
-            X509TrustManager trustManager = getTrustManager(provider, context);
-            if (trustManager != null) {
-                SSLContext sslContext = SSLContext.getInstance("TLS", provider);
-                sslContext.init(null, new TrustManager[] { trustManager }, null);
-                return sslContext;
+        if (Build.VERSION.SDK_INT <= 19) {
+            try {
+                java.security.Provider provider = Conscrypt.newProvider();
+                X509TrustManager trustManager = getTrustManager(provider, context);
+                if (trustManager != null) {
+                    SSLContext sslContext = SSLContext.getInstance("TLS", provider);
+                    sslContext.init(null, new TrustManager[] { trustManager }, null);
+                    return sslContext;
+                }
+            } catch (Throwable ignored) {
             }
-        } catch (Throwable ignored) {
         }
         try {
             X509TrustManager trustManager = getTrustManager(null, context);
@@ -136,7 +138,7 @@ public final class NetworkClient {
     }
 
     private static OkHttpClient buildClient() {
-        if (Build.VERSION.SDK_INT <= 25) {
+        if (Build.VERSION.SDK_INT <= 19) {
             try {
                 Security.insertProviderAt(Conscrypt.newProvider(), 1);
             } catch (Exception ignored) {
@@ -324,7 +326,13 @@ public final class NetworkClient {
     private static void enableTls12(OkHttpClient.Builder builder, Context context) {
         try {
             SSLContext sslContext = createLegacySslContext(context);
-            X509TrustManager trustManager = getTrustManager(Conscrypt.newProvider(), context);
+            X509TrustManager trustManager = null;
+            if (Build.VERSION.SDK_INT <= 19) {
+                try {
+                    trustManager = getTrustManager(Conscrypt.newProvider(), context);
+                } catch (Throwable ignored) {
+                }
+            }
             if (trustManager == null) {
                 trustManager = getTrustManager(null, context);
             }

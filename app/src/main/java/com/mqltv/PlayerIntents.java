@@ -5,7 +5,9 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
+import android.text.TextUtils;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -15,6 +17,9 @@ import androidx.annotation.Nullable;
 
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -152,18 +157,23 @@ public final class PlayerIntents {
      */
     public static Intent createPreferredPlayIntent(Context context, int id, String title, String url,
                                                    @Nullable ChannelPlaybackMeta meta) {
-        // Vision+ JSON (headers / DRM) must stay in-app — MX Player cannot apply header_iptv.
-        if (meta == null || !meta.isActive()) {
-            if (PlaybackPrefs.isUseMxPlayer(context)) {
-                Intent mx = createMxPlayIntent(context, title, url);
-                if (mx != null) return mx;
+        if (PlaybackPrefs.isUseMxPlayer(context)) {
+            // DRM channels (ClearKey / Widevine) cannot be decrypted by external players like MX Player
+            if (meta != null && meta.requiresExoDrm()) {
+                MAIN_HANDLER.post(() -> Toast.makeText(context,
+                        "Channel terenkripsi DRM, otomatis diputar di player internal",
+                        Toast.LENGTH_SHORT).show());
+                return createPlayIntent(context, id, title, url, meta);
             }
+            Intent mx = createMxPlayIntent(context, title, url, meta);
+            if (mx != null) return mx;
         }
         return createPlayIntent(context, id, title, url, meta);
     }
 
     @SuppressLint("QueryPermissionsNeeded")
-    private static Intent createMxPlayIntent(Context context, String title, String url) {
+    private static Intent createMxPlayIntent(Context context, String title, String url,
+                                             @Nullable ChannelPlaybackMeta meta) {
         if (url == null) return null;
 
         String mime = "video/*";
@@ -176,6 +186,28 @@ public final class PlayerIntents {
         base.putExtra(Intent.EXTRA_TITLE, title);
         base.putExtra("title", title);
 
+        // Pass headers to external player (MX Player supports "headers" string array)
+        if (meta != null && !TextUtils.isEmpty(meta.getHeaderIptvJson())) {
+            Map<String, String> headersMap = VisionPlusPlayback.parseHeaderJson(meta.getHeaderIptvJson());
+            if (headersMap != null && !headersMap.isEmpty()) {
+                List<String> hList = new ArrayList<>();
+                for (Map.Entry<String, String> entry : headersMap.entrySet()) {
+                    if (entry.getKey() != null && entry.getValue() != null) {
+                        hList.add(entry.getKey());
+                        hList.add(entry.getValue());
+                        if ("User-Agent".equalsIgnoreCase(entry.getKey())) {
+                            base.putExtra("user_agent", entry.getValue());
+                            base.putExtra("User-Agent", entry.getValue());
+                        } else if ("Referer".equalsIgnoreCase(entry.getKey())) {
+                            base.putExtra("referer", entry.getValue());
+                            base.putExtra("Referer", entry.getValue());
+                        }
+                    }
+                }
+                base.putExtra("headers", hList.toArray(new String[0]));
+            }
+        }
+
         if (!(context instanceof Activity)) {
             base.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         }
@@ -186,12 +218,26 @@ public final class PlayerIntents {
                 "com.mxtech.videoplayer.pro",
                 "com.mxtech.videoplayer.tv",
                 "com.mxtech.videoplayer",
+                "org.videolan.vlc",
+                "com.brouken.player",
         };
 
         for (String pkg : packages) {
             Intent i = new Intent(base);
             i.setPackage(pkg);
             if (i.resolveActivity(pm) != null) return i;
+        }
+
+        // Generic fallback to any installed external player except MQLTV
+        Intent generic = new Intent(base);
+        List<ResolveInfo> resolves = pm.queryIntentActivities(generic, 0);
+        if (resolves != null) {
+            for (ResolveInfo ri : resolves) {
+                if (ri.activityInfo != null && !context.getPackageName().equals(ri.activityInfo.packageName)) {
+                    generic.setClassName(ri.activityInfo.packageName, ri.activityInfo.name);
+                    return generic;
+                }
+            }
         }
 
         return null;

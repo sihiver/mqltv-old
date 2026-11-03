@@ -340,6 +340,9 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             if (animator2 instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
                 ((androidx.recyclerview.widget.SimpleItemAnimator) animator2).setSupportsChangeAnimations(false);
             }
+            if (animator2 != null) {
+                animator2.setMoveDuration(170);
+            }
 
             appsAdapter = new LauncherAppsAdapter(new LauncherAppsAdapter.Listener() {
                 @Override
@@ -801,13 +804,34 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         int[] cardLoc = new int[2];
         cardView.getLocationOnScreen(cardLoc);
 
-        float cardX = cardLoc[0] - rootLoc[0];
-        float cardY = cardLoc[1] - rootLoc[1];
+        // Compensate for any ongoing RecyclerView ItemAnimator translation on cardView or its ancestors
+        float animTransX = 0f;
+        float animTransY = 0f;
+        View p = cardView;
+        while (p != null && p != appsList && p != rootLayout) {
+            animTransX += p.getTranslationX();
+            animTransY += p.getTranslationY();
+            if (p.getParent() instanceof View) {
+                p = (View) p.getParent();
+            } else {
+                break;
+            }
+        }
+
         float cardW = cardView.getWidth();
         float cardH = cardView.getHeight();
 
-        float centerX = cardX + cardW / 2f;
-        float centerY = cardY + cardH / 2f;
+        float scaleX = cardView.getScaleX();
+        float scaleY = cardView.getScaleY();
+
+        // When a view is scaled around its center (pivot = width/2, height/2),
+        // getLocationOnScreen maps (0,0) to screen, which shifts top-left by (scale - 1) * dim / 2.
+        // Therefore, the true visual center on screen is cardLoc + (dim * scale) / 2.
+        float trueCenterX = cardLoc[0] + (cardW * scaleX) / 2f;
+        float trueCenterY = cardLoc[1] + (cardH * scaleY) / 2f;
+
+        float centerX = trueCenterX - rootLoc[0] - animTransX;
+        float centerY = trueCenterY - rootLoc[1] - animTransY;
 
         float density = getResources().getDisplayMetrics().density;
         float pad = 6f * density;
@@ -1795,14 +1819,15 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             appsList.scrollToPosition(target);
             RecyclerView.ViewHolder vh = appsList.findViewHolderForAdapterPosition(target);
             if (vh != null && vh.itemView != null) {
-                vh.itemView.requestFocus();
+                if (!vh.itemView.hasFocus()) {
+                    vh.itemView.requestFocus();
+                }
                 View card = vh.itemView.findViewById(R.id.launcher_app_tile);
                 if (card == null) card = vh.itemView;
-                final View finalCard = card;
                 LauncherAppEntry entry = appsAdapter.getEntryAt(target);
                 final int color = reordering ? REORDER_ACCENT
                         : (entry != null ? LauncherAppsAdapter.colorFromEntry(entry) : 0xFF3B82F6);
-                finalCard.post(() -> moveGlassToCard(finalCard, color));
+                moveGlassToCard(card, color);
             } else {
                 requestFocusToApp(target);
             }

@@ -88,21 +88,28 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         return out;
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     public void move(int from, int to) {
         if (from < 1 || to < 1 || from >= items.size() || to >= items.size() || from == to) return;
         LauncherAppEntry item = items.remove(from);
         items.add(to, item);
-        notifyDataSetChanged();
+        notifyItemMoved(from, to);
+
+        boolean fromRow1 = from < 4;
+        boolean toRow1 = to < 4;
+        if (fromRow1 != toRow1) {
+            notifyItemChanged(to);
+            int borderItem = from < to ? 3 : 4;
+            notifyItemChanged(borderItem);
+        }
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     public void swap(int posA, int posB) {
         if (posA < 1 || posB < 1 || posA >= items.size() || posB >= items.size() || posA == posB) return;
         LauncherAppEntry tmp = items.get(posA);
         items.set(posA, items.get(posB));
         items.set(posB, tmp);
-        notifyDataSetChanged();
+        notifyItemChanged(posA);
+        notifyItemChanged(posB);
     }
 
     @SuppressLint("NotifyDataSetChanged")

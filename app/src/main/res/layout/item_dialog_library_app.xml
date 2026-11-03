@@ -54,6 +54,16 @@
             android:fontFamily="sans-serif-medium"
             android:visibility="gone" />
 
+        <!-- Center Circle Loading -->
+        <ProgressBar
+            android:id="@+id/library_app_center_loading"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            android:indeterminateTint="#FF34D399"
+            android:visibility="gone" />
+
     </com.mqltv.RatioFrameLayout>
 
     <TextView

@@ -23,16 +23,19 @@ import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import java.text.Collator;
 import java.util.ArrayList;
@@ -135,6 +138,10 @@ public final class AppLibraryDialog {
         grid.setHasFixedSize(true);
         grid.setClipChildren(false);
         grid.setClipToPadding(false);
+        RecyclerView.ItemAnimator animator = grid.getItemAnimator();
+        if (animator instanceof SimpleItemAnimator) {
+            ((SimpleItemAnimator) animator).setSupportsChangeAnimations(false);
+        }
         TopFade.attach(grid, 44 * density);
         grid.addItemDecoration(new RecyclerView.ItemDecoration() {
             @Override
@@ -291,8 +298,21 @@ public final class AppLibraryDialog {
                 }
             }
 
+            final boolean[] longPressed = {false};
+            final Runnable longPressTrigger = () -> {
+                longPressed[0] = true;
+                int pos = holder.getBindingAdapterPosition();
+                if (pos == RecyclerView.NO_POSITION) pos = position;
+                View card = holder.tile != null ? holder.tile : holder.itemView;
+                showAppOptions(entry, pos, card);
+            };
+
             // Click listener -> Open App
             holder.itemView.setOnClickListener(v -> {
+                if (longPressed[0]) {
+                    longPressed[0] = false;
+                    return;
+                }
                 Intent launch = entry.buildLaunchIntent();
                 if (launch != null) {
                     try {
@@ -311,6 +331,27 @@ public final class AppLibraryDialog {
                 View card = holder.tile != null ? holder.tile : holder.itemView;
                 showAppOptions(entry, pos, card);
                 return true;
+            });
+
+            holder.itemView.setOnKeyListener((v, keyCode, event) -> {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER
+                        || keyCode == KeyEvent.KEYCODE_ENTER
+                        || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                        if (event.getRepeatCount() == 0) {
+                            longPressed[0] = false;
+                            v.removeCallbacks(longPressTrigger);
+                            v.postDelayed(longPressTrigger, 550);
+                        }
+                    } else if (event.getAction() == KeyEvent.ACTION_UP) {
+                        v.removeCallbacks(longPressTrigger);
+                        if (longPressed[0]) {
+                            longPressed[0] = false;
+                            return true;
+                        }
+                    }
+                }
+                return false;
             });
 
             // Focus listener -> Scale animation & glowing stroke
@@ -348,6 +389,154 @@ public final class AppLibraryDialog {
                     holder.title.setSelected(false);
                 }
             });
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull LibraryVH holder, int position, @NonNull List<Object> payloads) {
+            if (!payloads.isEmpty()) {
+                Object p = payloads.get(0);
+                if ("ADD_TO_HOME".equals(p)) {
+                    animateAddToHome(holder);
+                    return;
+                } else if ("REMOVE_FROM_HOME".equals(p)) {
+                    animateRemoveFromHome(holder);
+                    return;
+                }
+            }
+            onBindViewHolder(holder, position);
+        }
+
+        private void animateAddToHome(LibraryVH holder) {
+            if (holder == null) return;
+
+            // 1. Tampilkan center circle loading di tengah ubin kartu
+            if (holder.centerLoading != null) {
+                holder.centerLoading.setVisibility(View.VISIBLE);
+                holder.centerLoading.setAlpha(0f);
+                holder.centerLoading.setScaleX(0.7f);
+                holder.centerLoading.setScaleY(0.7f);
+                holder.centerLoading.animate()
+                        .alpha(1f)
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(160)
+                        .start();
+            }
+
+            // Redupkan icon/banner sejenak agar circle loading di tengah terlihat jelas
+            if (holder.icon != null && holder.icon.getVisibility() == View.VISIBLE) {
+                holder.icon.animate().alpha(0.35f).setDuration(160).start();
+            }
+            if (holder.banner != null && holder.banner.getVisibility() == View.VISIBLE) {
+                holder.banner.animate().alpha(0.35f).setDuration(160).start();
+            }
+
+            // 2. Setelah loading berputar sejenak (~400ms), sembunyikan loading dan tampilkan badge 'DI BERANDA'
+            holder.itemView.postDelayed(() -> {
+                if (holder.centerLoading != null) {
+                    holder.centerLoading.animate()
+                            .alpha(0f)
+                            .scaleX(0.7f)
+                            .scaleY(0.7f)
+                            .setDuration(160)
+                            .withEndAction(() -> {
+                                holder.centerLoading.setVisibility(View.GONE);
+                                holder.centerLoading.setAlpha(1f);
+                                holder.centerLoading.setScaleX(1f);
+                                holder.centerLoading.setScaleY(1f);
+                            })
+                            .start();
+                }
+
+                // Pulihkan opasitas icon/banner
+                if (holder.icon != null && holder.icon.getVisibility() == View.VISIBLE) {
+                    holder.icon.animate().alpha(1f).setDuration(200).start();
+                }
+                if (holder.banner != null && holder.banner.getVisibility() == View.VISIBLE) {
+                    holder.banner.animate().alpha(1f).setDuration(200).start();
+                }
+
+                // Munculkan badge 'DI BERANDA'
+                if (holder.badge != null) {
+                    holder.badge.setVisibility(View.VISIBLE);
+                    holder.badge.setAlpha(0f);
+                    holder.badge.setScaleX(0.5f);
+                    holder.badge.setScaleY(0.5f);
+                    holder.badge.animate()
+                            .alpha(1f)
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(220)
+                            .setInterpolator(new DecelerateInterpolator(1.6f))
+                            .start();
+                }
+            }, 420);
+        }
+
+        private void animateRemoveFromHome(LibraryVH holder) {
+            if (holder == null) return;
+
+            // 1. Tampilkan center circle loading sejenak
+            if (holder.centerLoading != null) {
+                holder.centerLoading.setVisibility(View.VISIBLE);
+                holder.centerLoading.setAlpha(0f);
+                holder.centerLoading.setScaleX(0.7f);
+                holder.centerLoading.setScaleY(0.7f);
+                holder.centerLoading.animate()
+                        .alpha(1f)
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(160)
+                        .start();
+            }
+
+            if (holder.icon != null && holder.icon.getVisibility() == View.VISIBLE) {
+                holder.icon.animate().alpha(0.35f).setDuration(160).start();
+            }
+            if (holder.banner != null && holder.banner.getVisibility() == View.VISIBLE) {
+                holder.banner.animate().alpha(0.35f).setDuration(160).start();
+            }
+
+            // 2. Sembunyikan badge 'DI BERANDA'
+            holder.itemView.postDelayed(() -> {
+                if (holder.centerLoading != null) {
+                    holder.centerLoading.animate()
+                            .alpha(0f)
+                            .scaleX(0.7f)
+                            .scaleY(0.7f)
+                            .setDuration(160)
+                            .withEndAction(() -> {
+                                holder.centerLoading.setVisibility(View.GONE);
+                                holder.centerLoading.setAlpha(1f);
+                                holder.centerLoading.setScaleX(1f);
+                                holder.centerLoading.setScaleY(1f);
+                            })
+                            .start();
+                }
+
+                if (holder.icon != null && holder.icon.getVisibility() == View.VISIBLE) {
+                    holder.icon.animate().alpha(1f).setDuration(200).start();
+                }
+                if (holder.banner != null && holder.banner.getVisibility() == View.VISIBLE) {
+                    holder.banner.animate().alpha(1f).setDuration(200).start();
+                }
+
+                if (holder.badge != null) {
+                    holder.badge.animate()
+                            .alpha(0f)
+                            .scaleX(0.5f)
+                            .scaleY(0.5f)
+                            .setDuration(180)
+                            .setInterpolator(new AccelerateInterpolator(1.5f))
+                            .withEndAction(() -> {
+                                holder.badge.setVisibility(View.GONE);
+                                holder.badge.setAlpha(1f);
+                                holder.badge.setScaleX(1f);
+                                holder.badge.setScaleY(1f);
+                            })
+                            .start();
+                }
+            }, 350);
         }
 
         @Override
@@ -396,7 +585,7 @@ public final class AppLibraryDialog {
             actionPopup = popup;
 
             // 1. Buka
-            addOptionRow(rows, popup, "Buka", () -> {
+            addOptionRow(rows, panel, popup, "Buka", () -> {
                 Intent launch = entry.buildLaunchIntent();
                 if (launch != null) {
                     try {
@@ -409,20 +598,23 @@ public final class AppLibraryDialog {
             });
 
             // 2. Tambah ke Beranda / Hapus dari Beranda
-            addOptionRow(rows, popup, isPinned ? "Hapus dari Beranda" : "Tambah ke Beranda", () -> {
+            addOptionRow(rows, panel, popup, isPinned ? "Hapus dari Beranda" : "Tambah ke Beranda", () -> {
                 if (isPinned) {
                     PinnedAppsStore.remove(activity, key);
                     pinnedKeys.remove(key);
+                    notifyItemChanged(position, "REMOVE_FROM_HOME");
+                    Toast.makeText(activity, (entry.label != null ? entry.label : "Aplikasi") + " dihapus dari Beranda", Toast.LENGTH_SHORT).show();
                 } else {
                     PinnedAppsStore.add(activity, key);
                     pinnedKeys.add(key);
+                    notifyItemChanged(position, "ADD_TO_HOME");
+                    Toast.makeText(activity, (entry.label != null ? entry.label : "Aplikasi") + " ditambahkan ke Beranda", Toast.LENGTH_SHORT).show();
                 }
-                notifyItemChanged(position);
                 if (pinnedListener != null) pinnedListener.onPinnedChanged();
             });
 
             // 3. Info aplikasi
-            addOptionRow(rows, popup, "Info aplikasi", () -> {
+            addOptionRow(rows, panel, popup, "Info aplikasi", () -> {
                 if (pkg != null) {
                     SystemSettings.appInfo(activity, pkg);
                 }
@@ -467,7 +659,7 @@ public final class AppLibraryDialog {
             });
         }
 
-        private void addOptionRow(LinearLayout rows, PopupWindow popup, String labelText, Runnable action) {
+        private void addOptionRow(LinearLayout rows, View panel, PopupWindow popup, String labelText, Runnable action) {
             View row = LayoutInflater.from(rows.getContext()).inflate(R.layout.item_input, rows, false);
             View icon = row.findViewById(R.id.icon);
             View dot = row.findViewById(R.id.dot);
@@ -479,10 +671,23 @@ public final class AppLibraryDialog {
             TextView titleView = row.findViewById(R.id.title);
             if (titleView != null) titleView.setText(labelText);
 
-            row.setOnClickListener(v -> {
-                popup.dismiss();
-                if (action != null) action.run();
-            });
+            Runnable executeCloseAndAction = () -> {
+                panel.animate()
+                        .alpha(0f)
+                        .scaleX(0.92f)
+                        .scaleY(0.92f)
+                        .setDuration(120)
+                        .setInterpolator(new AccelerateInterpolator(1.4f))
+                        .withEndAction(() -> {
+                            try {
+                                popup.dismiss();
+                            } catch (Exception ignored) {}
+                            if (action != null) action.run();
+                        })
+                        .start();
+            };
+
+            row.setOnClickListener(v -> executeCloseAndAction.run());
 
             final boolean[] pressed = {false};
             row.setOnKeyListener((v, keyCode, event) -> {
@@ -491,7 +696,9 @@ public final class AppLibraryDialog {
                         || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
                     if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
                         pressed[0] = true;
-                    } else if (event.getAction() == KeyEvent.ACTION_UP && !pressed[0]) {
+                    } else if (event.getAction() == KeyEvent.ACTION_UP && pressed[0]) {
+                        pressed[0] = false;
+                        executeCloseAndAction.run();
                         return true;
                     }
                 }
@@ -513,6 +720,7 @@ public final class AppLibraryDialog {
         final ImageView icon;
         final TextView badge;
         final TextView title;
+        final ProgressBar centerLoading;
 
         LibraryVH(@NonNull View itemView) {
             super(itemView);
@@ -521,6 +729,7 @@ public final class AppLibraryDialog {
             icon = itemView.findViewById(R.id.library_app_icon);
             badge = itemView.findViewById(R.id.library_app_home_badge);
             title = itemView.findViewById(R.id.library_app_title);
+            centerLoading = itemView.findViewById(R.id.library_app_center_loading);
         }
     }
 }

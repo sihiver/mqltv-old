@@ -231,7 +231,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         heroSubtitle = v.findViewById(R.id.launcher_hero_subtitle);
         launcherHero = v.findViewById(R.id.launcher_hero);
 
-        updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV", "+5000 Saluran TV Lokal & Internasional", 0xFF8B5CF6);
+        updateHero("MQLTV · LIVE ENTERTAINMENT", "MQL TV", "+5000 Saluran TV Lokal & Internasional", 0xFF8B5CF6);
 
         headerTime = v.findViewById(R.id.launcher_header_time);
         headerNet = v.findViewById(R.id.launcher_header_net);
@@ -451,7 +451,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                                 launcherHero.animate().alpha(1f).setDuration(160).start();
                             }
                             if (entry.isLiveTv) {
-                                updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV",
+                                updateHero("MQLTV · LIVE ENTERTAINMENT", "MQL TV",
                                         latestLiveSubtitle != null ? latestLiveSubtitle + " TV Lokal & Internasional" : "+5000 Saluran TV Lokal & Internasional",
                                         color);
                             } else {
@@ -470,7 +470,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         }
 
         // Initial Hero state for Live TV
-        updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV", "+5000 Saluran TV Lokal & Internasional", 0xFF8B5CF6);
+        updateHero("MQLTV · LIVE ENTERTAINMENT", "MQL TV", "+5000 Saluran TV Lokal & Internasional", 0xFF8B5CF6);
 
         loadCounts(appContext);
         loadLauncherApps(appContext);
@@ -978,7 +978,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 loadLauncherApps(appContext);
 
                 if (appsList != null && appsList.hasFocus() && lastSelectedAppIndex == 0) {
-                    updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV", "+" + finalLiveCount + " Saluran TV Tersedia", 0xFF8B5CF6);
+                    updateHero("MQLTV · LIVE ENTERTAINMENT", "MQL TV", "+" + finalLiveCount + " Saluran TV Tersedia", 0xFF8B5CF6);
                 }
 
                 // If channel count is 0 (load failed or network delayed), schedule auto-retry in 4 seconds
@@ -1976,7 +1976,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (card == null) return;
         if (card.getDestination() == NavDestination.LIVE_TV) {
             syncHomeFocusState(LIVE_TV_CARD_POSITION);
-            updateHero("MQLTV · LIVE ENTERTAINMENT", "LIVE TV", card.getSubtitle() != null ? card.getSubtitle() : "+5000 Saluran TV Lokal & Internasional", 0xFF8B5CF6);
+            updateHero("MQLTV · LIVE ENTERTAINMENT", "MQL TV", card.getSubtitle() != null ? card.getSubtitle() : "+5000 Saluran TV Lokal & Internasional", 0xFF8B5CF6);
         } else if (card.getDestination() == NavDestination.SHOWS) {
             syncHomeFocusState(RADIO_CARD_POSITION);
             updateHero("MQLTV · DIGITAL AUDIO", "INTERNET RADIOS", card.getSubtitle() != null ? card.getSubtitle() : "Radio Streaming Saluran Lokal & Global", 0xFF06B6D4);

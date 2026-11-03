@@ -72,7 +72,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="10dp"
-                        android:text="· Live TV"
+                        android:text="· MQL TV"
                         android:textColor="#88FFFFFF"
                         android:textSize="14sp"
                         android:fontFamily="sans-serif" />

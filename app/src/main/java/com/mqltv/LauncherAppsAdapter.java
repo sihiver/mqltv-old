@@ -261,7 +261,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                     holder.icon.clearColorFilter();
                 }
                 if (holder.title != null) {
-                    holder.title.setText(e.label != null ? e.label : "Live TV");
+                    holder.title.setText(e.label != null ? e.label : "MQL TV");
                     holder.title.setTextColor(Color.WHITE);
                 }
                 if (holder.subtitle != null) {

@@ -37,7 +37,7 @@ public final class LauncherAppEntry {
             icon = androidx.core.content.ContextCompat.getDrawable(context, R.mipmap.ic_launcher);
         } catch (Exception ignored) {
         }
-        return new LauncherAppEntry("Live TV", icon, null, null, false, true, subtitle != null ? subtitle : "+5000 Saluran");
+        return new LauncherAppEntry("MQL TV", icon, null, null, false, true, subtitle != null ? subtitle : "+5000 Saluran");
     }
 
     public static LauncherAppEntry fromResolveInfo(ResolveInfo ri, android.content.pm.PackageManager pm) {

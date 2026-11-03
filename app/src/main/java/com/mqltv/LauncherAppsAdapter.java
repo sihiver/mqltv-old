@@ -103,6 +103,16 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         }
     }
 
+    public LauncherAppEntry removeItem(int position) {
+        if (position < 1 || position >= items.size()) return null;
+        LauncherAppEntry removed = items.remove(position);
+        notifyItemRemoved(position);
+        if (position <= 3 && items.size() >= 4) {
+            notifyItemChanged(3);
+        }
+        return removed;
+    }
+
     public void swap(int posA, int posB) {
         if (posA < 1 || posB < 1 || posA >= items.size() || posB >= items.size() || posA == posB) return;
         LauncherAppEntry tmp = items.get(posA);

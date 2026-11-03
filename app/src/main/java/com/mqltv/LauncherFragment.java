@@ -341,7 +341,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 ((androidx.recyclerview.widget.SimpleItemAnimator) animator2).setSupportsChangeAnimations(false);
             }
             if (animator2 != null) {
-                animator2.setMoveDuration(170);
+                animator2.setMoveDuration(180);
+                animator2.setRemoveDuration(160);
             }
 
             appsAdapter = new LauncherAppsAdapter(new LauncherAppsAdapter.Listener() {
@@ -1388,6 +1389,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         View panel = LayoutInflater.from(getContext()).inflate(R.layout.popup_inputs, root, false);
         android.widget.LinearLayout rows = panel.findViewById(R.id.rows);
 
+        final boolean[] actionExecuted = {false};
+
         int minWidth = Math.round(220f * density);
         final android.widget.PopupWindow popup = new android.widget.PopupWindow(
                 panel, minWidth, ViewGroup.LayoutParams.WRAP_CONTENT, true);
@@ -1401,7 +1404,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             if (tileMenuPopup == popup) {
                 tileMenuPopup = null;
             }
-            if (!reordering && !dockEditing) {
+            if (!actionExecuted[0] && !reordering && !dockEditing) {
                 focusTileAfterEdit(position);
             }
         });
@@ -1411,14 +1414,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         final String pkg = entry.component.getPackageName();
         final boolean inDock = position < 4;
 
-        addTileMenuRow(rows, popup,
+        addTileMenuRow(rows, panel, popup, actionExecuted,
                 inDock ? "Ganti dengan aplikasi lain" : "Tambah ke dock",
                 () -> startDockEditFor(appContext, key, inDock));
-        addTileMenuRow(rows, popup, "Pindahkan",
+        addTileMenuRow(rows, panel, popup, actionExecuted, "Pindahkan",
                 () -> startMoveFor(appContext, key));
-        addTileMenuRow(rows, popup, "Hapus dari Beranda",
+        addTileMenuRow(rows, panel, popup, actionExecuted, "Hapus dari Beranda",
                 () -> removeAppFromHome(appContext, key, position));
-        addTileMenuRow(rows, popup, "Info aplikasi",
+        addTileMenuRow(rows, panel, popup, actionExecuted, "Info aplikasi",
                 () -> {
                     if (getContext() != null && pkg != null) {
                         SystemSettings.appInfo(getContext(), pkg);
@@ -1470,7 +1473,9 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
     private View addTileMenuRow(
             android.widget.LinearLayout rows,
+            View panel,
             android.widget.PopupWindow popup,
+            boolean[] actionExecuted,
             String title,
             Runnable action) {
         View row = LayoutInflater.from(rows.getContext()).inflate(R.layout.item_input, rows, false);
@@ -1484,10 +1489,24 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         TextView titleView = row.findViewById(R.id.title);
         if (titleView != null) titleView.setText(title);
 
-        row.setOnClickListener(v -> {
-            popup.dismiss();
-            if (action != null) action.run();
-        });
+        Runnable executeCloseAndAction = () -> {
+            actionExecuted[0] = true;
+            panel.animate()
+                    .alpha(0f)
+                    .scaleX(0.92f)
+                    .scaleY(0.92f)
+                    .setDuration(120)
+                    .setInterpolator(new android.view.animation.AccelerateInterpolator(1.4f))
+                    .withEndAction(() -> {
+                        try {
+                            popup.dismiss();
+                        } catch (Exception ignored) {}
+                        if (action != null) action.run();
+                    })
+                    .start();
+        };
+
+        row.setOnClickListener(v -> executeCloseAndAction.run());
 
         final boolean[] pressed = {false};
         row.setOnKeyListener((v, keyCode, event) -> {
@@ -1496,7 +1515,9 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     || keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER) {
                 if (event.getAction() == android.view.KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
                     pressed[0] = true;
-                } else if (event.getAction() == android.view.KeyEvent.ACTION_UP && !pressed[0]) {
+                } else if (event.getAction() == android.view.KeyEvent.ACTION_UP && pressed[0]) {
+                    pressed[0] = false;
+                    executeCloseAndAction.run();
                     return true;
                 }
             }
@@ -1513,19 +1534,56 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     }
 
     private void removeAppFromHome(Context appContext, String key, int position) {
+        if (appsAdapter == null) return;
+        int currentPos = appsAdapter.positionOfKey(key);
+        if (currentPos < 0) currentPos = position;
+        int countBefore = appsAdapter.getAppsCount();
+        if (currentPos < 1 || currentPos >= countBefore) return;
+
+        // Persist to store asynchronously in background
         executeBackground(() -> {
             List<String> list = PinnedAppsStore.load(appContext);
             int idx = list.indexOf(key);
             if (idx >= 0) {
                 list.remove(idx);
                 PinnedAppsStore.save(appContext, list);
-                mainHandler.post(() -> {
-                    if (!isAdded() || getContext() == null) return;
-                    lastSelectedAppIndex = Math.max(0, position - 1);
-                    loadLauncherApps(appContext);
-                });
             }
         });
+
+        // Determine target focus index before removing
+        int countAfter = countBefore - 1;
+        final int targetFocus;
+        if (currentPos < countAfter) {
+            targetFocus = currentPos;
+        } else {
+            targetFocus = Math.max(0, countAfter - 1);
+        }
+
+        // Animate item removal in adapter
+        appsAdapter.removeItem(currentPos);
+        lastSelectedAppIndex = targetFocus;
+        syncAppsFocusState(targetFocus);
+
+        // Smoothly transfer focus to targetFocus without any scroll jump or bounce
+        if (targetFocus < 4 && currentPos < 4 && scrollContainer != null) {
+            scrollContainer.smoothScrollTo(0, 0);
+        }
+        if (appsList != null) {
+            appsList.post(() -> {
+                if (appsList == null || appsAdapter == null) return;
+                RecyclerView.ViewHolder vh = appsList.findViewHolderForAdapterPosition(targetFocus);
+                if (vh != null && vh.itemView != null) {
+                    vh.itemView.requestFocus();
+                    View card = vh.itemView.findViewById(R.id.launcher_app_tile);
+                    if (card == null) card = vh.itemView;
+                    LauncherAppEntry entry = appsAdapter.getEntryAt(targetFocus);
+                    int color = entry != null ? LauncherAppsAdapter.colorFromEntry(entry) : 0xFF3B82F6;
+                    moveGlassToCard(card, color);
+                } else {
+                    requestFocusToApp(targetFocus);
+                }
+            });
+        }
     }
 
     private void saveCurrentPinnedOrder(Context appContext) {

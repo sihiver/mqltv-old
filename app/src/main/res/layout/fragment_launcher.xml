@@ -192,12 +192,13 @@
                         android:nextFocusDown="@+id/launcher_apps"
                         android:nextFocusRight="@+id/launcher_settings">
 
-                        <androidx.appcompat.widget.AppCompatImageView
+                        <ImageView
                             android:id="@+id/launcher_header_net"
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:duplicateParentState="true"
                             android:src="@drawable/ic_mql_wifi"
+                            android:tint="@color/pill_text"
                             app:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
 
@@ -224,12 +225,13 @@
                         android:nextFocusLeft="@+id/launcher_network_pill"
                         android:nextFocusRight="@+id/launcher_profile">
 
-                        <androidx.appcompat.widget.AppCompatImageView
+                        <ImageView
                             android:id="@+id/launcher_settings_icon"
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:duplicateParentState="true"
                             android:src="@drawable/ic_settings"
+                            android:tint="@color/pill_text"
                             app:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
 

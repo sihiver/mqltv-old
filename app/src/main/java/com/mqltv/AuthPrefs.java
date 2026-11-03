@@ -19,7 +19,7 @@ public final class AuthPrefs {
     private static final String KEY_LAST_STATUS_REFRESH = "auth_last_status_refresh";
 
     // Default backend endpoint; user can override in login screen.
-    private static final String DEFAULT_BASE_URL = "https://tv.mqlspot.my.id/";
+    private static final String DEFAULT_BASE_URL = "https://tv.mqlspot.my.id";
 
     private static SharedPreferences sp(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context.getApplicationContext());
@@ -33,12 +33,19 @@ public final class AuthPrefs {
     public static String getBaseUrl(Context context) {
         String v = sp(context).getString(KEY_BASE_URL, DEFAULT_BASE_URL);
         v = v.trim();
+        while (v.endsWith("/")) {
+            v = v.substring(0, v.length() - 1).trim();
+        }
         return v.isEmpty() ? DEFAULT_BASE_URL : v;
     }
 
     public static void setBaseUrl(Context context, String baseUrl) {
         if (baseUrl == null) baseUrl = "";
-        sp(context).edit().putString(KEY_BASE_URL, baseUrl.trim()).apply();
+        baseUrl = baseUrl.trim();
+        while (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1).trim();
+        }
+        sp(context).edit().putString(KEY_BASE_URL, baseUrl).apply();
     }
 
     public static String getUsername(Context context) {

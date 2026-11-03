@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 public class LauncherFragment extends Fragment implements LauncherCardAdapter.Listener {
 
@@ -57,6 +58,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    private void executeBackground(Runnable task) {
+        if (executor.isShutdown() || executor.isTerminated()) return;
+        try {
+            executor.execute(task);
+        } catch (RejectedExecutionException ignored) {
+        }
+    }
 
     private RecyclerView cardsList;
     private LauncherCardAdapter adapter;
@@ -248,7 +257,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 }
             }
 
-            executor.execute(() -> {
+            executeBackground(() -> {
                 Bitmap bmp = LauncherWallpaper.tryLoad(appContext);
                 if (bmp != null) {
                     if (bmp != cachedBmp) {
@@ -944,7 +953,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     }
 
     private void loadCounts(Context appContext) {
-        executor.execute(() -> {
+        executeBackground(() -> {
             List<Channel> channels = new PlaylistRepository().loadForUser(appContext);
             RecentChannelsStore.pruneAgainstPlaylist(appContext, channels);
             
@@ -965,6 +974,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             latestLiveSubtitle = "+" + finalLiveCount + " Saluran";
 
             mainHandler.post(() -> {
+                if (!isAdded() || getContext() == null) return;
                 loadLauncherApps(appContext);
 
                 if (appsList != null && appsList.hasFocus() && lastSelectedAppIndex == 0) {
@@ -974,7 +984,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 // If channel count is 0 (load failed or network delayed), schedule auto-retry in 4 seconds
                 if (finalLiveCount == 0) {
                     mainHandler.postDelayed(() -> {
-                        if (isAdded()) {
+                        if (isAdded() && getContext() != null) {
                             loadCounts(appContext);
                         }
                     }, 4000);
@@ -1140,18 +1150,19 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         syncFocusFromCurrentView();
         super.onDestroy();
         if (adapter != null) adapter.release();
+        mainHandler.removeCallbacksAndMessages(null);
         executor.shutdownNow();
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        mainHandler.removeCallbacksAndMessages(null);
         if (wallpaperListener != null) {
             LauncherWallpaper.removeListener(wallpaperListener);
             wallpaperListener = null;
         }
         if (adapter != null) adapter.release();
-        mainHandler.removeCallbacks(headerTicker);
         headerTime = null;
         headerNet = null;
     }
@@ -1159,7 +1170,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private void loadLauncherApps(Context appContext) {
         if (appsAdapter == null) return;
 
-        executor.execute(() -> {
+        executeBackground(() -> {
             PackageManager pm = appContext.getPackageManager();
             List<LauncherAppEntry> all = queryAllLaunchableApps(pm, appContext);
             allLaunchableAppsCache = all;
@@ -1183,6 +1194,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             }
 
             mainHandler.post(() -> {
+                if (!isAdded() || getContext() == null) return;
                 boolean wasEmpty = appsAdapter != null && appsAdapter.getAppsCount() == 0;
                 if (appsAdapter != null) appsAdapter.submit(row);
                 // Jika terakhir user berada di baris Apps, pastikan fokus dikembalikan (kecuali sedang membuka App Library)
@@ -1200,11 +1212,12 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private void loadRecentLive(Context appContext) {
         if (recentAdapter == null) return;
 
-        executor.execute(() -> {
+        executeBackground(() -> {
             PlaylistRepository repo = new PlaylistRepository();
             List<Channel> playlist = repo.loadForUser(appContext);
             List<Channel> recent = RecentChannelsStore.loadSyncedWithPlaylist(appContext, playlist);
             mainHandler.post(() -> {
+                if (!isAdded() || getContext() == null) return;
                 boolean has = recent != null && !recent.isEmpty();
                 if (recentTitle != null) recentTitle.setVisibility(has ? View.VISIBLE : View.GONE);
                 if (recentList != null) recentList.setVisibility(has ? View.VISIBLE : View.GONE);
@@ -1300,7 +1313,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     }
 
     private void showAddAppDialog(Context appContext) {
-        executor.execute(() -> {
+        executeBackground(() -> {
             PackageManager pm = appContext.getPackageManager();
             List<LauncherAppEntry> all = allLaunchableAppsCache != null ? allLaunchableAppsCache : queryAllLaunchableApps(pm, appContext);
 
@@ -1531,13 +1544,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     }
 
     private void removeAppFromHome(Context appContext, String key, int position) {
-        executor.execute(() -> {
+        executeBackground(() -> {
             List<String> list = PinnedAppsStore.load(appContext);
             int idx = list.indexOf(key);
             if (idx >= 0) {
                 list.remove(idx);
                 PinnedAppsStore.save(appContext, list);
                 mainHandler.post(() -> {
+                    if (!isAdded() || getContext() == null) return;
                     lastSelectedAppIndex = Math.max(0, position - 1);
                     loadLauncherApps(appContext);
                 });
@@ -1548,7 +1562,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private void saveCurrentPinnedOrder(Context appContext) {
         if (appsAdapter == null) return;
         final List<String> pinned = appsAdapter.getPinnedKeys();
-        executor.execute(() -> PinnedAppsStore.save(appContext, pinned));
+        executeBackground(() -> PinnedAppsStore.save(appContext, pinned));
     }
 
     private void startDockEdit(Context appContext) {

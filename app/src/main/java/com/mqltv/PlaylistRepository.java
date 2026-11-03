@@ -31,6 +31,9 @@ public final class PlaylistRepository {
         if (baseUrl == null || baseUrl.isEmpty()) {
             return loadCache(context);
         }
+        while (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
 
         // Ambil channel dari REST API (limit 10000 untuk memuat semua seperti M3U lama)
         String url = baseUrl + "/api/channels?limit=10000";

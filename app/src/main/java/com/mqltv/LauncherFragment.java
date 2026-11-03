@@ -25,9 +25,6 @@ import android.graphics.Bitmap;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.widget.NestedScrollView;
-import androidx.dynamicanimation.animation.DynamicAnimation;
-import androidx.dynamicanimation.animation.SpringAnimation;
-import androidx.dynamicanimation.animation.SpringForce;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -98,9 +95,6 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private RecyclerView appsList;
     private View rootLayout;
     private GlassView glass;
-    private SpringAnimation springX;
-    private SpringAnimation springY;
-    private boolean glassShown = false;
 
     static LauncherFragment newInstance(int initialFocusPosition, int initialAppsIndex, @Nullable String initialRecentUrl, int initialRecentIndex) {
         LauncherFragment fragment = new LauncherFragment();
@@ -177,30 +171,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         rootLayout = v;
 
         glass = v.findViewById(R.id.launcher_glass);
-        if (glass != null) {
-            springX = new SpringAnimation(glass, DynamicAnimation.TRANSLATION_X);
-            SpringForce forceX = new SpringForce();
-            forceX.setDampingRatio(0.76f);
-            forceX.setStiffness(320f);
-            springX.setSpring(forceX);
-
-            springY = new SpringAnimation(glass, DynamicAnimation.TRANSLATION_Y);
-            SpringForce forceY = new SpringForce();
-            forceY.setDampingRatio(0.76f);
-            forceY.setStiffness(320f);
-            springY.setSpring(forceY);
-        }
 
         launcherHeader = v.findViewById(R.id.launcher_header);
         scrollContainer = v.findViewById(R.id.launcher_scroll);
         if (scrollContainer != null) {
             scrollContainer.setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener) (sv, scrollX, scrollY, oldScrollX, oldScrollY) -> {
                 int dy = scrollY - oldScrollY;
-                if (glassShown && glass != null && glass.getAlpha() > 0.05f) {
-                    glass.setTranslationY(glass.getTranslationY() - dy);
-                    if (springY != null && springY.getSpring() != null) {
-                        springY.getSpring().setFinalPosition(springY.getSpring().getFinalPosition() - dy);
-                    }
+                if (glass != null) {
+                    glass.offsetBy(0, -dy);
                 }
             });
         }
@@ -411,9 +389,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 @Override
                 public void onLibraryFocused(View view) {
                     if (glass != null) {
-                        glass.animate().cancel();
-                        glass.animate().alpha(0f).setDuration(120).start();
-                        glassShown = false;
+                        glass.hide();
                     }
                     if (appsAdapter != null) {
                         syncAppsFocusState(appsAdapter.getItemCount() - 1);
@@ -636,10 +612,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             return;
         }
 
-        if (glass != null && glassShown) {
-            glass.animate().cancel();
-            glass.animate().alpha(0f).setDuration(120).start();
-            glassShown = false;
+        if (glass != null) {
+            glass.hide();
         }
 
         float density = getResources().getDisplayMetrics().density;
@@ -803,9 +777,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 }
             }
             if (hasFocus) {
-                if (glass != null && glassShown) {
-                    glass.animate().alpha(0f).setDuration(120).start();
-                    glassShown = false;
+                if (glass != null) {
+                    glass.hide();
                 }
                 if (onFocus != null) {
                     onFocus.run();
@@ -817,7 +790,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private void moveGlassToCard(View cardView, int accentColor) {
         if (cardView == null || glass == null || rootLayout == null) return;
         if (scrollContainer != null && scrollContainer.getVisibility() != View.VISIBLE) return;
-        if (glass.getVisibility() != View.VISIBLE || !cardView.isShown()) return;
+        if (!cardView.isShown()) return;
         if (cardView.getWidth() == 0 || cardView.getHeight() == 0) {
             cardView.post(() -> moveGlassToCard(cardView, accentColor));
             return;
@@ -844,26 +817,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         float targetX = centerX - targetW / 2f;
         float targetY = centerY - targetH / 2f;
 
-        ViewGroup.LayoutParams lp = glass.getLayoutParams();
-        if (lp.width != Math.round(targetW) || lp.height != Math.round(targetH)) {
-            lp.width = Math.round(targetW);
-            lp.height = Math.round(targetH);
-            glass.setLayoutParams(lp);
-        }
-
-        glass.setAccent(accentColor);
-
-        if (!glassShown || glass.getAlpha() < 0.05f) {
-            if (springX != null) springX.cancel();
-            if (springY != null) springY.cancel();
-            glass.setTranslationX(targetX);
-            glass.setTranslationY(targetY);
-            glass.animate().alpha(1f).setDuration(180).start();
-            glassShown = true;
-        } else {
-            if (springX != null) springX.animateToFinalPosition(targetX);
-            if (springY != null) springY.animateToFinalPosition(targetY);
-        }
+        glass.moveTo(targetX, targetY, targetW, targetH, accentColor);
     }
 
     public void updateHero(String kicker, String title, String subtitle, int accentColor) {
@@ -1254,12 +1208,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         View scroll = getView() != null ? getView().findViewById(R.id.launcher_scroll) : null;
 
         if (glass != null) {
-            glass.animate().cancel();
-            if (springX != null) springX.cancel();
-            if (springY != null) springY.cancel();
-            glass.setAlpha(0f);
-            glass.setVisibility(View.INVISIBLE);
-            glassShown = false;
+            glass.hide();
         }
         if (header != null) header.setVisibility(View.INVISIBLE);
         if (scroll != null) scroll.setVisibility(View.INVISIBLE);
@@ -1271,9 +1220,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             if (header != null) header.setVisibility(View.VISIBLE);
             if (scroll != null) scroll.setVisibility(View.VISIBLE);
             if (glass != null) {
-                glass.setAlpha(0f);
-                glass.setVisibility(View.VISIBLE);
-                glassShown = false;
+                glass.hide();
             }
             focusLibrary();
         });
@@ -1408,10 +1355,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             return;
         }
 
-        if (glass != null && glassShown) {
-            glass.animate().cancel();
-            glass.animate().alpha(0f).setDuration(120).start();
-            glassShown = false;
+        if (glass != null) {
+            glass.hide();
         }
 
         float density = getResources().getDisplayMetrics().density;

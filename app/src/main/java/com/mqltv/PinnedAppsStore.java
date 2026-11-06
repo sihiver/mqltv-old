@@ -16,6 +16,12 @@ public final class PinnedAppsStore {
 
     private PinnedAppsStore() {}
 
+    private static String packageOf(String component) {
+        if (component == null) return "";
+        int slash = component.indexOf('/');
+        return slash > 0 ? component.substring(0, slash).trim() : component.trim();
+    }
+
     public static List<String> load(Context context) {
         List<String> out = new ArrayList<>();
         if (context == null) return out;
@@ -24,9 +30,21 @@ public final class PinnedAppsStore {
             String raw = sp.getString(KEY_LIST, null);
             if (raw == null || raw.trim().isEmpty()) return out;
             JSONArray arr = new JSONArray(raw);
+            java.util.Set<String> seenPackages = new java.util.HashSet<>();
+            boolean hadDuplicates = false;
             for (int i = 0; i < arr.length(); i++) {
                 String s = arr.optString(i, null);
-                if (s != null && !s.trim().isEmpty()) out.add(s);
+                if (s != null && !s.trim().isEmpty()) {
+                    String pkg = packageOf(s);
+                    if (!pkg.isEmpty() && seenPackages.add(pkg)) {
+                        out.add(s);
+                    } else {
+                        hadDuplicates = true;
+                    }
+                }
+            }
+            if (hadDuplicates) {
+                save(context, out);
             }
         } catch (Exception ignored) {
         }
@@ -47,9 +65,15 @@ public final class PinnedAppsStore {
         if (context == null) return;
         try {
             JSONArray arr = new JSONArray();
+            java.util.Set<String> seenPackages = new java.util.HashSet<>();
             if (components != null) {
                 for (String c : components) {
-                    if (c != null && !c.trim().isEmpty()) arr.put(c);
+                    if (c != null && !c.trim().isEmpty()) {
+                        String pkg = packageOf(c);
+                        if (!pkg.isEmpty() && seenPackages.add(pkg)) {
+                            arr.put(c);
+                        }
+                    }
                 }
             }
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -63,17 +87,30 @@ public final class PinnedAppsStore {
 
     public static void add(Context context, String component) {
         if (context == null || component == null || component.trim().isEmpty()) return;
+        String targetPkg = packageOf(component);
         List<String> list = load(context);
-        if (!list.contains(component)) {
-            list.add(component);
-            save(context, list);
+        for (String existing : list) {
+            if (component.equals(existing) || (!targetPkg.isEmpty() && targetPkg.equals(packageOf(existing)))) {
+                return;
+            }
         }
+        list.add(component);
+        save(context, list);
     }
 
     public static void remove(Context context, String component) {
         if (context == null || component == null || component.trim().isEmpty()) return;
+        String targetPkg = packageOf(component);
         List<String> list = load(context);
-        if (list.remove(component)) {
+        boolean changed = false;
+        for (int i = list.size() - 1; i >= 0; i--) {
+            String existing = list.get(i);
+            if (component.equals(existing) || (!targetPkg.isEmpty() && targetPkg.equals(packageOf(existing)))) {
+                list.remove(i);
+                changed = true;
+            }
+        }
+        if (changed) {
             save(context, list);
         }
     }

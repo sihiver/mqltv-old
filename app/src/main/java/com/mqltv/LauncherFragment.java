@@ -505,6 +505,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             mainHandler.removeCallbacks(headerTicker);
             mainHandler.post(headerTicker);
 
+            if (appLibraryDialog != null && appLibraryDialog.isShowing()) {
+                return;
+            }
+
             // Restore focus based on last visited position
             if (lastSelectedCardPosition == SETTINGS_BUTTON_POSITION) {
                 if (settingsButton != null) {
@@ -618,6 +622,17 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         syncFocusFromCurrentView();
         super.onPause();
         if (adapter != null) adapter.setHostActive(false);
+    }
+
+    @Override
+    public void onStop() {
+        if (appLibraryDialog != null && appLibraryDialog.hasLaunchedExternalApp()) {
+            try {
+                appLibraryDialog.close();
+            } catch (Exception ignored) {
+            }
+        }
+        super.onStop();
     }
 
     public boolean openQuickSettings() {
@@ -1199,10 +1214,13 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             // Live TV as #1 App Tile
             row.add(LauncherAppEntry.createLiveTvEntry(appContext, latestLiveSubtitle));
 
+            java.util.Set<String> seenPinnedPackages = new java.util.HashSet<>();
             for (String flat : pinned) {
                 ComponentName cn = ComponentName.unflattenFromString(flat);
                 if (cn == null) continue;
-                if (cn.getPackageName() != null && cn.getPackageName().equals(appContext.getPackageName())) continue;
+                String pkg = cn.getPackageName();
+                if (pkg == null || pkg.equals(appContext.getPackageName())) continue;
+                if (!seenPinnedPackages.add(pkg)) continue;
                 LauncherAppEntry e = findByComponent(all, cn);
                 if (e != null) row.add(e);
             }
@@ -1276,13 +1294,16 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         appLibraryDialog = new AppLibraryDialog(getActivity(), () -> {
             loadLauncherApps(appContext);
         }, () -> {
+            boolean launchedExternal = appLibraryDialog != null && appLibraryDialog.hasLaunchedExternalApp();
             appLibraryDialog = null;
             if (header != null) header.setVisibility(View.VISIBLE);
             if (scroll != null) scroll.setVisibility(View.VISIBLE);
             if (glass != null) {
                 glass.hide();
             }
-            focusLibrary();
+            if (!launchedExternal) {
+                focusLibrary();
+            }
         });
         appLibraryDialog.show();
     }
@@ -1932,15 +1953,27 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (all == null) return pinned;
         PackageManager pm = appContext.getPackageManager();
 
-        // Prefer Settings if present.
-        for (LauncherAppEntry e : all) {
-            if (e != null && e.component != null && "com.android.settings".equals(e.component.getPackageName())) {
-                pinned.add(e.component.flattenToString());
-                break;
+        // Prioritize essential streaming apps and settings first.
+        String[] preferredPkgs = {
+            "com.google.android.youtube.tv",
+            "com.liskovsoft.videomanager",
+            "com.vidio.android.tv",
+            "com.tencent.qqlivei18n",
+            "com.android.settings"
+        };
+        for (String pkg : preferredPkgs) {
+            for (LauncherAppEntry e : all) {
+                if (e != null && e.component != null && pkg.equals(e.component.getPackageName())) {
+                    String flat = e.component.flattenToString();
+                    if (!pinned.contains(flat)) {
+                        pinned.add(flat);
+                    }
+                    break;
+                }
             }
         }
 
-        // Add a few system apps.
+        // Add remaining system apps up to 6.
         for (LauncherAppEntry e : all) {
             if (e == null || e.component == null) continue;
             if (appContext.getPackageName().equals(e.component.getPackageName())) continue;
@@ -1969,6 +2002,14 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         for (LauncherAppEntry e : all) {
             if (e != null && cn.equals(e.component)) return e;
         }
+        String pkg = cn.getPackageName();
+        if (pkg != null) {
+            for (LauncherAppEntry e : all) {
+                if (e != null && e.component != null && pkg.equals(e.component.getPackageName())) {
+                    return e;
+                }
+            }
+        }
         return null;
     }
 
@@ -1977,34 +2018,31 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         List<LauncherAppEntry> out = new ArrayList<>();
         if (pm == null || ctx == null) return out;
 
-        // Query LAUNCHER and LEANBACK_LAUNCHER and merge.
+        // Query LEANBACK_LAUNCHER first (so Android TV native activities & banners take priority), then LAUNCHER.
         List<ResolveInfo> resolved = new ArrayList<>();
-        try {
-            Intent i1 = new Intent(Intent.ACTION_MAIN);
-            i1.addCategory(Intent.CATEGORY_LAUNCHER);
-            resolved.addAll(pm.queryIntentActivities(i1, 0));
-        } catch (Exception ignored) {
-        }
         try {
             Intent i2 = new Intent(Intent.ACTION_MAIN);
             i2.addCategory("android.intent.category.LEANBACK_LAUNCHER");
             resolved.addAll(pm.queryIntentActivities(i2, 0));
         } catch (Exception ignored) {
         }
+        try {
+            Intent i1 = new Intent(Intent.ACTION_MAIN);
+            i1.addCategory(Intent.CATEGORY_LAUNCHER);
+            resolved.addAll(pm.queryIntentActivities(i1, 0));
+        } catch (Exception ignored) {
+        }
 
-        // Dedup by component.
-        List<String> seen = new ArrayList<>();
+        // Dedup by package name so apps with both LAUNCHER and LEANBACK_LAUNCHER activities don't duplicate banners.
+        java.util.Set<String> seenPackages = new java.util.HashSet<>();
         for (ResolveInfo ri : resolved) {
             if (ri == null || ri.activityInfo == null) continue;
-            ComponentName cn = new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name);
-            String key = cn.flattenToString();
-            if (seen.contains(key)) continue;
-            seen.add(key);
+            String pkg = ri.activityInfo.packageName;
+            if (pkg == null || ctx.getPackageName().equals(pkg)) continue;
+            if (!seenPackages.add(pkg)) continue;
             try {
                 LauncherAppEntry e = LauncherAppEntry.fromResolveInfo(ri, pm);
-                // Exclude our own app.
-                if (ctx.getPackageName().equals(cn.getPackageName())) continue;
-                if (e.icon == null) continue;
+                if (e.icon == null && e.banner == null) continue;
                 out.add(e);
             } catch (Exception ignored) {
             }

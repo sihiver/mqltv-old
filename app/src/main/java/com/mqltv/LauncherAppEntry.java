@@ -206,9 +206,8 @@ public final class LauncherAppEntry {
     public Intent buildLaunchIntent() {
         if (component == null) return null;
         Intent i = new Intent(Intent.ACTION_MAIN);
-        i.addCategory(Intent.CATEGORY_LAUNCHER);
         i.setComponent(component);
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
         return i;
     }
 }

@@ -66,6 +66,7 @@ public final class AppLibraryDialog {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Dialog dialog;
     private PopupWindow actionPopup;
+    private boolean launchedExternalApp = false;
 
     public AppLibraryDialog(@NonNull Activity activity, OnPinnedChangeListener pinnedListener) {
         this(activity, pinnedListener, null);
@@ -77,13 +78,39 @@ public final class AppLibraryDialog {
         this.onDismissListener = onDismissListener;
     }
 
+    public boolean isShowing() {
+        return dialog != null && dialog.isShowing();
+    }
+
+    public boolean hasLaunchedExternalApp() {
+        return launchedExternalApp;
+    }
+
     public void close() {
+        mainHandler.removeCallbacksAndMessages(null);
         if (actionPopup != null && actionPopup.isShowing()) {
             actionPopup.dismiss();
             actionPopup = null;
         }
         if (dialog != null && dialog.isShowing()) {
             dialog.dismiss();
+        }
+    }
+
+    private void launchEntry(LauncherAppEntry entry) {
+        if (entry == null) return;
+        Intent launch = entry.buildLaunchIntent();
+        if (launch != null) {
+            try {
+                launchedExternalApp = true;
+                activity.startActivity(launch);
+                // Biarkan dialog tetap menutup layar selama transisi window aplikasi tujuan,
+                // sehingga tidak berkedip menampilkan Beranda terlebih dahulu.
+                mainHandler.postDelayed(this::close, 900);
+            } catch (Exception e) {
+                launchedExternalApp = false;
+                Toast.makeText(activity, "Gagal membuka aplikasi", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -192,15 +219,14 @@ public final class AppLibraryDialog {
         tvIntent.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
         List<ResolveInfo> tv = pm.queryIntentActivities(tvIntent, 0);
 
-        Set<String> seen = new HashSet<>();
+        Set<String> seenPackages = new HashSet<>();
         List<LauncherAppEntry> out = new ArrayList<>();
 
         for (ResolveInfo ri : tv) {
             if (ri == null || ri.activityInfo == null) continue;
             String pkg = ri.activityInfo.packageName;
-            if (ctx.getPackageName().equals(pkg)) continue; // ignore MQLTV launcher itself
-            String key = pkg + "/" + ri.activityInfo.name;
-            if (seen.add(key)) {
+            if (pkg == null || ctx.getPackageName().equals(pkg)) continue; // ignore MQLTV launcher itself
+            if (seenPackages.add(pkg)) {
                 out.add(LauncherAppEntry.fromResolveInfo(ri, pm));
             }
         }
@@ -208,9 +234,8 @@ public final class AppLibraryDialog {
         for (ResolveInfo ri : standard) {
             if (ri == null || ri.activityInfo == null) continue;
             String pkg = ri.activityInfo.packageName;
-            if (ctx.getPackageName().equals(pkg)) continue;
-            String key = pkg + "/" + ri.activityInfo.name;
-            if (seen.add(key)) {
+            if (pkg == null || ctx.getPackageName().equals(pkg)) continue;
+            if (seenPackages.add(pkg)) {
                 out.add(LauncherAppEntry.fromResolveInfo(ri, pm));
             }
         }
@@ -230,9 +255,17 @@ public final class AppLibraryDialog {
         private final RecyclerView grid;
         private final List<LauncherAppEntry> items = new ArrayList<>();
         private final Set<String> pinnedKeys = new HashSet<>();
+        private final Set<String> pinnedPackages = new HashSet<>();
 
         LibraryAdapter(RecyclerView grid) {
             this.grid = grid;
+        }
+
+        private boolean isEntryPinned(LauncherAppEntry entry) {
+            if (entry == null || entry.component == null) return false;
+            String key = entry.component.flattenToString();
+            String pkg = entry.component.getPackageName();
+            return pinnedKeys.contains(key) || (pkg != null && pinnedPackages.contains(pkg));
         }
 
         @SuppressLint("NotifyDataSetChanged")
@@ -240,7 +273,16 @@ public final class AppLibraryDialog {
             items.clear();
             if (newItems != null) items.addAll(newItems);
             pinnedKeys.clear();
-            if (pinned != null) pinnedKeys.addAll(pinned);
+            pinnedPackages.clear();
+            if (pinned != null) {
+                pinnedKeys.addAll(pinned);
+                for (String s : pinned) {
+                    if (s == null) continue;
+                    int slash = s.indexOf('/');
+                    String pkg = slash > 0 ? s.substring(0, slash).trim() : s.trim();
+                    if (!pkg.isEmpty()) pinnedPackages.add(pkg);
+                }
+            }
             notifyDataSetChanged();
         }
 
@@ -258,8 +300,7 @@ public final class AppLibraryDialog {
 
             holder.title.setText(entry.label != null ? entry.label : "");
 
-            String key = entry.component != null ? entry.component.flattenToString() : "";
-            boolean isPinned = pinnedKeys.contains(key);
+            boolean isPinned = isEntryPinned(entry);
             holder.badge.setVisibility(isPinned ? View.VISIBLE : View.GONE);
 
             // Card outline & background
@@ -313,15 +354,7 @@ public final class AppLibraryDialog {
                     longPressed[0] = false;
                     return;
                 }
-                Intent launch = entry.buildLaunchIntent();
-                if (launch != null) {
-                    try {
-                        activity.startActivity(launch);
-                        if (dialog != null) dialog.dismiss();
-                    } catch (Exception e) {
-                        Toast.makeText(activity, "Gagal membuka aplikasi", Toast.LENGTH_SHORT).show();
-                    }
-                }
+                launchEntry(entry);
             });
 
             // Long click -> Show CleanYourTV glass popup menu next to card
@@ -553,7 +586,7 @@ public final class AppLibraryDialog {
 
             final String key = entry.component.flattenToString();
             final String pkg = entry.component.getPackageName();
-            final boolean isPinned = pinnedKeys.contains(key);
+            final boolean isPinned = isEntryPinned(entry);
 
             float density = activity.getResources().getDisplayMetrics().density;
             View decor = dialog.getWindow() != null ? dialog.getWindow().getDecorView() : cardView.getRootView();
@@ -585,28 +618,20 @@ public final class AppLibraryDialog {
             actionPopup = popup;
 
             // 1. Buka
-            addOptionRow(rows, panel, popup, "Buka", () -> {
-                Intent launch = entry.buildLaunchIntent();
-                if (launch != null) {
-                    try {
-                        activity.startActivity(launch);
-                        if (dialog != null) dialog.dismiss();
-                    } catch (Exception e) {
-                        Toast.makeText(activity, "Gagal membuka aplikasi", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            });
+            addOptionRow(rows, panel, popup, "Buka", () -> launchEntry(entry));
 
             // 2. Tambah ke Beranda / Hapus dari Beranda
             addOptionRow(rows, panel, popup, isPinned ? "Hapus dari Beranda" : "Tambah ke Beranda", () -> {
                 if (isPinned) {
                     PinnedAppsStore.remove(activity, key);
                     pinnedKeys.remove(key);
+                    if (pkg != null) pinnedPackages.remove(pkg);
                     notifyItemChanged(position, "REMOVE_FROM_HOME");
                     Toast.makeText(activity, (entry.label != null ? entry.label : "Aplikasi") + " dihapus dari Beranda", Toast.LENGTH_SHORT).show();
                 } else {
                     PinnedAppsStore.add(activity, key);
                     pinnedKeys.add(key);
+                    if (pkg != null) pinnedPackages.add(pkg);
                     notifyItemChanged(position, "ADD_TO_HOME");
                     Toast.makeText(activity, (entry.label != null ? entry.label : "Aplikasi") + " ditambahkan ke Beranda", Toast.LENGTH_SHORT).show();
                 }

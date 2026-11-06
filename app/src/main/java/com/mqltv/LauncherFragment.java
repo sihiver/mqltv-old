@@ -69,6 +69,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private View networkPill;
     private View settingsButton;
     private View profileButton;
+    private TextView profileLetter;
     private android.widget.PopupWindow quickSettingsPopup;
     private android.widget.PopupWindow tileMenuPopup;
     private AppLibraryDialog appLibraryDialog;
@@ -137,6 +138,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                     Context appContext = getContext().getApplicationContext();
                     updateHeaderTime();
                     updateNetworkIcon(appContext);
+                    updateProfileIcon(appContext);
                     LauncherWallpaper.checkBingUpdateInBackground(appContext);
                 }
             } finally {
@@ -293,17 +295,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         }, () -> syncHomeFocusState(SETTINGS_BUTTON_POSITION));
 
         profileButton = v.findViewById(R.id.launcher_profile);
-        TextView profileLetter = v.findViewById(R.id.launcher_profile_letter);
-        if (profileLetter != null) {
-            String name = AuthPrefs.getDisplayName(appContext);
-            if (name.trim().isEmpty()) name = AuthPrefs.getUsername(appContext);
-            String letter = "?";
-            name = name.trim();
-            if (!name.isEmpty()) {
-                letter = String.valueOf(Character.toUpperCase(name.charAt(0)));
-            }
-            profileLetter.setText(letter);
-        }
+        profileLetter = v.findViewById(R.id.launcher_profile_letter);
+        updateProfileIcon(appContext);
         setupPillFocus(profileButton, () -> {
             syncHomeFocusState(PROFILE_BUTTON_POSITION);
             if (AuthPrefs.isLoggedIn(appContext)) {
@@ -447,14 +440,50 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 }
             });
             appsList.setAdapter(appsAdapter);
+            appsAdapter.submit(java.util.Collections.singletonList(
+                    LauncherAppEntry.createLiveTvEntry(appContext, latestLiveSubtitle)));
         }
 
         // Initial Hero state for Live TV
         updateHero("MQLTV · LIVE ENTERTAINMENT", "MQL TV", "+5000 Saluran TV Lokal & Internasional", 0xFF8B5CF6);
 
-        loadCounts(appContext);
+        if (AuthPrefs.isLoggedIn(appContext)) {
+            loadCounts(appContext);
+        }
         loadLauncherApps(appContext);
         return v;
+    }
+
+    public void updateProfileIcon(Context appContext) {
+        if (profileLetter == null || appContext == null) return;
+        String letter = "?";
+        if (AuthPrefs.isLoggedIn(appContext)) {
+            String name = AuthPrefs.getDisplayName(appContext);
+            if (name == null || name.trim().isEmpty()) {
+                name = AuthPrefs.getUsername(appContext);
+            }
+            if (name != null) {
+                name = name.trim();
+                if (!name.isEmpty()) {
+                    letter = String.valueOf(Character.toUpperCase(name.charAt(0)));
+                }
+            }
+        }
+        profileLetter.setText(letter);
+    }
+
+    public void refreshAfterAuthChange() {
+        lastSelectedCardPosition = APPS_ROW_POSITION;
+        lastSelectedAppIndex = 0;
+        if (getContext() != null) {
+            Context appContext = getContext().getApplicationContext();
+            updateProfileIcon(appContext);
+            loadCounts(appContext);
+            loadLauncherApps(appContext);
+            loadRecentLive(appContext);
+            lockFocusForRestoration(APPS_ROW_POSITION);
+            requestFocusToApp(0);
+        }
     }
 
     @Override
@@ -463,7 +492,11 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (adapter != null) adapter.setHostActive(true);
         if (getContext() != null) {
             Context appContext = getContext().getApplicationContext();
+            updateProfileIcon(appContext);
             LauncherWallpaper.checkBingUpdateInBackground(appContext);
+            if (AuthPrefs.isLoggedIn(appContext)) {
+                loadCounts(appContext);
+            }
             loadLauncherApps(appContext);
             loadRecentLive(appContext);
 
@@ -932,7 +965,9 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     }
 
     private void loadCounts(Context appContext) {
+        if (appContext == null || !AuthPrefs.isLoggedIn(appContext)) return;
         executeBackground(() -> {
+            if (!AuthPrefs.isLoggedIn(appContext)) return;
             List<Channel> channels = new PlaylistRepository().loadForUser(appContext);
             RecentChannelsStore.pruneAgainstPlaylist(appContext, channels);
             

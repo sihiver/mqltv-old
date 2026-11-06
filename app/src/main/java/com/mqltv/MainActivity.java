@@ -51,9 +51,32 @@ public class MainActivity extends FragmentActivity {
     }
 
     @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        homeFocusPosition = 4;
+        homeAppsIndex = 0;
+        persistHomeState();
+
+        androidx.fragment.app.Fragment f = getSupportFragmentManager().findFragmentById(R.id.content_container);
+        if (f instanceof LauncherFragment) {
+            currentDestination = NavDestination.HOME;
+            ((LauncherFragment) f).refreshAfterAuthChange();
+        } else {
+            currentDestination = null;
+            showDestination(NavDestination.HOME);
+        }
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
-        AccountStatusRefresher.refreshIfDue(this);
+        AccountStatusRefresher.refreshIfDue(this, () -> {
+            androidx.fragment.app.Fragment f = getSupportFragmentManager().findFragmentById(R.id.content_container);
+            if (f instanceof LauncherFragment && getApplicationContext() != null) {
+                ((LauncherFragment) f).updateProfileIcon(getApplicationContext());
+            }
+        });
         // Cek update (dibatasi 1x setiap 6 jam di dalam fungsi ini)
         AppUpdater.checkForUpdates(this);
     }
@@ -80,6 +103,11 @@ public class MainActivity extends FragmentActivity {
 
     public void navigateTo(NavDestination destination) {
         if (destination == null) return;
+        if (destination == NavDestination.LIVE_TV || destination == NavDestination.SHOWS) {
+            if (!LoginGuard.ensureLoggedIn(this, LoginActivity.DEST_LIVE_TV)) {
+                return;
+            }
+        }
         if (destination == NavDestination.LIVE_TV) {
             homeFocusPosition = 0;
         } else if (destination == NavDestination.SHOWS) {
@@ -138,40 +166,49 @@ public class MainActivity extends FragmentActivity {
     }
 
     private void showDestination(NavDestination destination) {
-        if (destination == currentDestination) return;
-        currentDestination = destination;
+        androidx.fragment.app.Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.content_container);
+        if (destination == currentDestination) {
+            if (destination == NavDestination.HOME && currentFragment instanceof LauncherFragment) return;
+            if ((destination == NavDestination.LIVE_TV || destination == NavDestination.SHOWS)
+                    && currentFragment instanceof LiveTvFragment) return;
+        }
 
         switch (destination) {
             case HOME:
+                currentDestination = destination;
                 getSupportFragmentManager().beginTransaction()
                         .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
                         .replace(R.id.content_container, LauncherFragment.newInstance(homeFocusPosition, homeAppsIndex, homeRecentUrl, homeRecentIndex))
-                        .commit();
+                        .commitAllowingStateLoss();
                 break;
             case LIVE_TV:
                 if (!LoginGuard.ensureLoggedIn(this, LoginActivity.DEST_LIVE_TV)) {
                     return;
                 }
+                currentDestination = destination;
                 // Tidak cek expired saat masuk grid — pengecekan dilakukan saat klik channel.
                 getSupportFragmentManager().beginTransaction()
                         .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
                         .replace(R.id.content_container, LiveTvFragment.newInstance(false))
-                        .commit();
+                        .commitAllowingStateLoss();
                 break;
             case MOVIES:
+                currentDestination = destination;
                 showPlaceholder("Movies");
                 break;
             case SHOWS:
                 if (!LoginGuard.ensureLoggedIn(this, LoginActivity.DEST_LIVE_TV)) {
                     return;
                 }
+                currentDestination = destination;
                 // Tidak cek expired saat masuk grid — pengecekan dilakukan saat klik channel.
                 getSupportFragmentManager().beginTransaction()
                         .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
                         .replace(R.id.content_container, LiveTvFragment.newInstance(true))
-                        .commit();
+                        .commitAllowingStateLoss();
                 break;
             case LIBRARY:
+                currentDestination = destination;
                 showPlaceholder("Library");
                 break;
         }

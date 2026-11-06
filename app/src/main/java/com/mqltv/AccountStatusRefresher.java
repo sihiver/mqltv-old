@@ -22,13 +22,17 @@ public final class AccountStatusRefresher {
     private AccountStatusRefresher() {}
 
     public static void refreshIfDue(Context context) {
+        refreshIfDue(context, null);
+    }
+
+    public static void refreshIfDue(Context context, Runnable onDone) {
         if (context == null) return;
         if (!AuthPrefs.isLoggedIn(context)) return;
 
         long last = AuthPrefs.getLastStatusRefreshMs(context);
         long now = System.currentTimeMillis();
         if (last > 0 && (now - last) < MIN_REFRESH_INTERVAL_MS) return;
-        refresh(context, null);
+        refresh(context, onDone);
     }
 
     public static void refresh(Context context, Runnable onDone) {

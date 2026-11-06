@@ -27,6 +27,9 @@ public final class PlaylistRepository {
     }
 
     private List<Channel> loadForUserInternal(Context context, int attempt) {
+        if (context == null || !AuthPrefs.isLoggedIn(context)) {
+            return Collections.emptyList();
+        }
         String baseUrl = AuthPrefs.getBaseUrl(context);
         if (baseUrl == null || baseUrl.isEmpty()) {
             return loadCache(context);

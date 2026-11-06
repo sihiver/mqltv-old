@@ -158,6 +158,7 @@ public final class AuthPrefs {
                 .remove(KEY_DISPLAY_NAME)
                 .remove(KEY_ACCESS_TOKEN)
                 .remove(KEY_REFRESH_TOKEN)
+                .remove(KEY_PASSWORD)
                 .remove(KEY_PLAN)
                 .remove(KEY_PACKAGES)
                 .remove(KEY_EXPIRES_AT)

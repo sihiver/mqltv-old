@@ -185,6 +185,7 @@ public final class NetworkClient {
             }
 
             if (APP_CONTEXT == null) return null;
+            if (!AuthPrefs.isLoggedIn(APP_CONTEXT)) return null;
 
             String refreshToken = AuthPrefs.getRefreshToken(APP_CONTEXT);
             String baseUrl = AuthPrefs.getBaseUrl(APP_CONTEXT);

@@ -763,7 +763,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         View dot = row.findViewById(R.id.dot);
         TextView status = row.findViewById(R.id.status);
 
-        if (icon != null) icon.setImageResource(iconRes);
+        if (icon != null) {
+            icon.setImageResource(iconRes);
+            icon.setColorFilter(0xFFFFFFFF, android.graphics.PorterDuff.Mode.SRC_IN);
+        }
         if (titleView != null) titleView.setText(title);
         if (dot != null) dot.setVisibility(showDot ? View.VISIBLE : View.GONE);
         if (status != null) {
@@ -774,6 +777,12 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 status.setVisibility(View.GONE);
             }
         }
+
+        row.setOnFocusChangeListener((v, hasFocus) -> {
+            if (icon != null) {
+                icon.setColorFilter(hasFocus ? 0xFF111111 : 0xFFFFFFFF, android.graphics.PorterDuff.Mode.SRC_IN);
+            }
+        });
 
         row.setOnClickListener(v -> {
             popup.dismiss();

@@ -198,8 +198,6 @@
                             android:layout_height="18dp"
                             android:duplicateParentState="true"
                             android:src="@drawable/ic_mql_wifi"
-                            android:tint="@color/pill_text"
-                            app:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
 
                         <TextView
@@ -231,8 +229,6 @@
                             android:layout_height="18dp"
                             android:duplicateParentState="true"
                             android:src="@drawable/ic_settings"
-                            android:tint="@color/pill_text"
-                            app:tint="@color/pill_text"
                             android:importantForAccessibility="no" />
 
                         <TextView

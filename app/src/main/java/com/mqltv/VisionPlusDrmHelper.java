@@ -10,7 +10,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -208,7 +208,7 @@ public final class VisionPlusDrmHelper {
             try {
                 JSONObject root = new JSONObject(body);
                 if (root.has("keys")) {
-                    return body.getBytes(StandardCharsets.UTF_8);
+                    return body.getBytes(Charset.forName("UTF-8"));
                 }
                 if (root.has("license")) {
                     return normalizeClearKeyLicense(root.optString("license", ""), challenge);
@@ -240,7 +240,7 @@ public final class VisionPlusDrmHelper {
         // Base64-encoded ClearKey JSON
         try {
             byte[] decoded = Base64.decode(body, Base64.DEFAULT);
-            String decodedStr = new String(decoded, StandardCharsets.UTF_8).trim();
+            String decodedStr = new String(decoded, Charset.forName("UTF-8")).trim();
             if (decodedStr.startsWith("{")) {
                 return normalizeClearKeyLicense(decodedStr, challenge);
             }
@@ -248,7 +248,7 @@ public final class VisionPlusDrmHelper {
         }
 
         // Last resort: return as-is (server may already return raw JSON without braces check).
-        return body.getBytes(StandardCharsets.UTF_8);
+        return body.getBytes(Charset.forName("UTF-8"));
     }
 
     private static byte[] wrapSingleKey(String kid, String key) throws IOException {
@@ -275,7 +275,7 @@ public final class VisionPlusDrmHelper {
             JSONObject root = new JSONObject();
             root.put("keys", keys);
             root.put("type", "temporary");
-            return root.toString().getBytes(StandardCharsets.UTF_8);
+            return root.toString().getBytes(Charset.forName("UTF-8"));
         } catch (Exception e) {
             throw new IOException("build ClearKey JSON failed", e);
         }

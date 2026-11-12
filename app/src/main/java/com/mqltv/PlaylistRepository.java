@@ -9,7 +9,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -119,11 +119,11 @@ public final class PlaylistRepository {
         try {
             File file = new File(context.getApplicationContext().getFilesDir(), CACHE_FILE);
             try (FileOutputStream fos = new FileOutputStream(file)) {
-                fos.write(jsonStr.getBytes(StandardCharsets.UTF_8));
+                fos.write(jsonStr.getBytes(Charset.forName("UTF-8")));
                 fos.flush();
             }
             Log.d(TAG, "Channels cached successfully (" + file.length() + " bytes)");
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.w(TAG, "Failed to cache channels: " + e.getMessage());
         }
     }
@@ -139,7 +139,7 @@ public final class PlaylistRepository {
                 if (read <= 0) return Collections.emptyList();
             }
 
-            String jsonStr = new String(buf, StandardCharsets.UTF_8);
+            String jsonStr = new String(buf, Charset.forName("UTF-8"));
             JSONObject json = new JSONObject(jsonStr);
             JSONArray data = json.optJSONArray("data");
             List<Channel> cached = parseChannels(data);
@@ -147,7 +147,7 @@ public final class PlaylistRepository {
                 Log.i(TAG, "Loaded " + cached.size() + " channels from local cache fallback");
             }
             return cached;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.w(TAG, "Failed to load cached channels: " + e.getMessage());
             return Collections.emptyList();
         }

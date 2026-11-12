@@ -2,6 +2,7 @@ package com.mqltv;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.Build;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -104,6 +105,9 @@ public final class VisionPlusPlayback {
     @OptIn(markerClass = UnstableApi.class)
     @Nullable
     public static DrmSessionManager buildMedia3DrmSessionManager(@Nullable ChannelPlaybackMeta meta) {
+        if (Build.VERSION.SDK_INT < 18) {
+            return null;
+        }
         if (meta == null || !meta.requiresExoDrm() || TextUtils.isEmpty(meta.getUrlLicense())) {
             return null;
         }

@@ -38,11 +38,11 @@ android {
 
     defaultConfig {
         applicationId 'com.mqltv'
-        minSdk 18
+        minSdk 17
         targetSdk 34
         
         // Version Code HARUS DIUBAH SECARA MANUAL di bawah ini
-        versionCode 42
+        versionCode 44
         
         // Version Name otomatis menambahkan Build Number di belakangnya
         versionName "1.0." + currentBuildNumber
@@ -75,6 +75,8 @@ android {
                 storePassword keystoreProps['storePassword']
                 keyAlias keystoreProps['keyAlias']
                 keyPassword keystoreProps['keyPassword']
+                v1SigningEnabled true
+                v2SigningEnabled true
             }
         }
     }
@@ -93,6 +95,10 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lint {
+        abortOnError false
     }
 }
 

@@ -91,14 +91,13 @@
 
     </LinearLayout>
 
-    <!-- Program / Info Glass Card (Bottom-Right) -->
+    <!-- Program / Info Glass Card (Center Bottom) -->
     <LinearLayout
         android:id="@+id/player_channel_overlay_info"
-        android:layout_width="510dp"
+        android:layout_width="560dp"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="22dp"
-        android:layout_marginBottom="18dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="24dp"
         android:orientation="vertical"
         android:background="@drawable/player_info_card_bg"
         android:paddingStart="18dp"

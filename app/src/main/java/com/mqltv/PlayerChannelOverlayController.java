@@ -232,7 +232,8 @@ public final class PlayerChannelOverlayController {
         MAIN.removeCallbacks(hideQuickInfoRunnable);
         if (scrim != null) scrim.setVisibility(View.VISIBLE);
         if (panel != null) panel.setVisibility(View.VISIBLE);
-        if (infoCard != null) infoCard.setVisibility(View.VISIBLE);
+        // Overlay mode: show channel list only, hide info banner
+        if (infoCard != null) infoCard.setVisibility(View.GONE);
         root.setVisibility(View.VISIBLE);
         root.bringToFront();
         root.requestFocus();

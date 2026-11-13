@@ -17,10 +17,20 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.content.Intent;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentActivity;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
+import org.json.JSONObject;
 
 import org.videolan.libvlc.LibVLC;
 import org.videolan.libvlc.Media;
@@ -258,16 +268,7 @@ public class VlcPlayerActivity extends FragmentActivity {
             setTitle(title);
         }
 
-        channelOverlay = new PlayerChannelOverlayController(this, channel -> {
-            if (channel == null) return;
-            if (!LoginGuard.ensureLoggedIn(VlcPlayerActivity.this, LoginActivity.DEST_LIVE_TV)) return;
-            if (!SubscriptionGuard.ensureNotExpired(VlcPlayerActivity.this)) return;
-            RecentChannelsStore.record(VlcPlayerActivity.this, channel);
-            PresenceReporter.reportOnlineLaunch(VlcPlayerActivity.this, channel.getTitle(), channel.getUrl());
-            if (loading != null) loading.setVisibility(View.VISIBLE);
-            releasePlayer();
-            PlayerIntents.launchPlayer(VlcPlayerActivity.this, channel, this::finish);
-        });
+        channelOverlay = new PlayerChannelOverlayController(this, this::switchChannelInPlace);
     }
 
     @Override
@@ -287,7 +288,10 @@ public class VlcPlayerActivity extends FragmentActivity {
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
 
         int currentId = getIntent().getIntExtra(Constants.EXTRA_CHANNEL_ID, 0);
-        if (channelOverlay != null) channelOverlay.setCurrentChannelId(currentId);
+        if (channelOverlay != null) {
+            channelOverlay.setCurrentChannelId(currentId);
+            channelOverlay.showQuickInfoBannerForChannelId(currentId);
+        }
 
         ArrayList<String> options = new ArrayList<>();
         // Keep logging lightweight on legacy STBs.
@@ -367,15 +371,29 @@ public class VlcPlayerActivity extends FragmentActivity {
         mediaPlayer.setEventListener(event -> {
             if (event.type == MediaPlayer.Event.Buffering) {
                 if (loading != null) {
-                    loading.setVisibility(event.getBuffering() < 100f ? View.VISIBLE : View.GONE);
+                    if (!isZapping) {
+                        loading.setVisibility(event.getBuffering() < 100f ? View.VISIBLE : View.GONE);
+                    } else {
+                        loading.setVisibility(View.GONE);
+                    }
                 }
             }
             if (event.type == MediaPlayer.Event.EncounteredError) {
+                isZapping = false;
+                if (mediaPlayer != null) {
+                    try { mediaPlayer.setVolume(100); } catch (Exception ignored) {}
+                }
                 Toast.makeText(VlcPlayerActivity.this, "VLC playback error", Toast.LENGTH_LONG).show();
             }
 
-            if (event.type == MediaPlayer.Event.Playing
-                    || event.type == MediaPlayer.Event.Paused
+            if (event.type == MediaPlayer.Event.Playing) {
+                isZapping = false;
+                if (loading != null) loading.setVisibility(View.GONE);
+                if (mediaPlayer != null) {
+                    try { mediaPlayer.setVolume(100); } catch (Exception ignored) {}
+                }
+                updateUiFromPlayer();
+            } else if (event.type == MediaPlayer.Event.Paused
                     || event.type == MediaPlayer.Event.Stopped
                     || event.type == MediaPlayer.Event.TimeChanged
                     || event.type == MediaPlayer.Event.LengthChanged) {
@@ -423,48 +441,13 @@ public class VlcPlayerActivity extends FragmentActivity {
 
             Media media = new Media(libVLC, Uri.parse(url));
             ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromIntent(getIntent());
-            VisionPlusPlayback.applyVlcMediaHeaders(media, meta);
-            media.addOption(":network-caching=" + cachingMsFinal);
-            media.addOption(":live-caching=" + cachingMsFinal);
-            media.addOption(":file-caching=" + cachingMsFinal);
-            media.addOption(":drop-late-frames");
-            media.addOption(":skip-frames");
-            media.addOption(":avcodec-threads=" + avThreadsFinal);
-            media.addOption(legacySdk ? ":avcodec-skiploopfilter=nonref" : ":avcodec-skiploopfilter=all");
-            if (legacySdk) {
-                media.addOption(":avcodec-fast");
-                media.addOption(":avcodec-skip-frame=nonref");
-                media.addOption(":avcodec-skip-idct=nonref");
-                media.addOption(":clock-jitter=0");
-            }
-            media.addOption(":android-display-chroma=" + (legacySdk ? "RV32" : "RV16"));
-            if (deinterlace) {
-                media.addOption(":deinterlace=1");
-                media.addOption(":deinterlace-mode=yadif");
-            } else {
-                media.addOption(":deinterlace=0");
-            }
-            // Android 4.4: Direct rendering (mediacodec-dr) causes frozen frame on legacy SoCs
-            // because the HW decoder writes directly to the Surface in an incompatible format.
-            // Fix: enable HW decode but disable direct rendering — VLC copies frames via buffer.
-            // Software decode (setHWDecoderEnabled=false) is too slow for live video on old CPUs.
-            if (legacySdk) {
-                media.setHWDecoderEnabled(true, false);
-                Log.w(TAG, "Legacy device (API <=19): HW decode ON, direct rendering OFF");
-            } else {
-                boolean forceHw = hwModeFinal == PlaybackPrefs.VLC_HW_PLUS;
-                media.setHWDecoderEnabled(useHw, forceHw);
-                if (forceHwOnly && useHw) {
-                    media.addOption(":codec=" + hwCodecList);
-                }
-            }
+            configureVlcMedia(media, meta);
             mediaPlayer.setMedia(media);
             media.release();
 
             mediaPlayer.play();
             // No updateVideoSurfaces() in older LibVLC API.
 
-            showControlsTemporarily();
             uiHandler.removeCallbacks(progressRunnable);
             uiHandler.post(progressRunnable);
             }
@@ -479,32 +462,29 @@ public class VlcPlayerActivity extends FragmentActivity {
             return true;
         }
 
-        // When the channel list is open, let focused list items receive navigation keys.
-        if (channelOverlay != null && channelOverlay.isVisible() && event.getAction() == KeyEvent.ACTION_DOWN) {
-            int key = event.getKeyCode();
-            if (key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN
-                    || key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                if (controls != null) controls.setVisibility(View.GONE);
-                return super.dispatchKeyEvent(event);
-            }
-        }
-        // For TV: show controls on any D-PAD/OK interaction.
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             int key = event.getKeyCode();
-            if (key == KeyEvent.KEYCODE_DPAD_CENTER || key == KeyEvent.KEYCODE_ENTER) {
-                togglePlayPause();
-                showControlsTemporarily();
+            if (key == KeyEvent.KEYCODE_CHANNEL_UP || key == KeyEvent.KEYCODE_DPAD_UP) {
+                if (channelOverlay != null) {
+                    channelOverlay.zapNextChannel();
+                    return true;
+                }
+            } else if (key == KeyEvent.KEYCODE_CHANNEL_DOWN || key == KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (channelOverlay != null) {
+                    channelOverlay.zapPrevChannel();
+                    return true;
+                }
+            } else if (key == KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK
+                    || key == KeyEvent.KEYCODE_MENU
+                    || key == KeyEvent.KEYCODE_PROG_RED) {
+                toggleAudioTrack();
                 return true;
-            }
-
-            if (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT
-                    || key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN) {
-                showControlsTemporarily();
-
-                // Optional quick seek when the stream is seekable.
-                if ((key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) && mediaPlayer != null) {
+            } else if (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                // Quick seek only when the stream is seekable (VOD)
+                if (mediaPlayer != null) {
                     long length = mediaPlayer.getLength();
                     if (length > 0) {
+                        showControlsTemporarily();
                         long cur = mediaPlayer.getTime();
                         long delta = (key == KeyEvent.KEYCODE_DPAD_LEFT) ? -10_000L : 10_000L;
                         long target = Math.max(0, Math.min(length, cur + delta));
@@ -621,7 +601,240 @@ public class VlcPlayerActivity extends FragmentActivity {
         resetIdleTimer();
     }
 
+    private void toggleAudioTrack() {
+        if (mediaPlayer == null) return;
+        MediaPlayer.TrackDescription[] tracks = mediaPlayer.getAudioTracks();
+        if (tracks == null || tracks.length <= 1) {
+            Toast.makeText(this, "Hanya 1 track audio tersedia", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        int cur = mediaPlayer.getAudioTrack();
+        int nextIdx = 0;
+        for (int i = 0; i < tracks.length; i++) {
+            if (tracks[i].id == cur) {
+                nextIdx = (i + 1) % tracks.length;
+                break;
+            }
+        }
+        mediaPlayer.setAudioTrack(tracks[nextIdx].id);
+        Toast.makeText(this, "Audio: " + tracks[nextIdx].name, Toast.LENGTH_SHORT).show();
+    }
+
+    private void configureVlcMedia(Media media, @Nullable ChannelPlaybackMeta meta) {
+        if (media == null) return;
+        boolean legacySdk = android.os.Build.VERSION.SDK_INT <= 19;
+        int cachingMs = PlaybackPrefs.getVlcNetworkCaching(this);
+        if (legacySdk && cachingMs < 3000) cachingMs = 5000;
+        final int cachingMsFinal = cachingMs;
+
+        int cores = 1;
+        try { cores = Math.max(1, Runtime.getRuntime().availableProcessors()); } catch (Exception ignored) {}
+        final int avThreadsFinal = legacySdk ? Math.min(2, cores) : Math.min(4, cores);
+
+        int hwMode = PlaybackPrefs.getVlcHwDecoderMode(this);
+        if (DeviceQuirks.isHuaweiEc6108v9() && hwMode == PlaybackPrefs.VLC_HW_PLUS) {
+            hwMode = PlaybackPrefs.VLC_HW_ON;
+        }
+        final int hwModeFinal = hwMode;
+        boolean useHw = hwMode != PlaybackPrefs.VLC_HW_OFF;
+        boolean deinterlace = PlaybackPrefs.isVlcDeinterlaceEnabled(this);
+        int hwImpl = PlaybackPrefs.getVlcHwDecoderImpl(this);
+        boolean forceHwOnly = PlaybackPrefs.isVlcHwForceOnly(this);
+
+        final String hwImplName = !useHw ? null
+            : (hwImpl == PlaybackPrefs.VLC_HW_IMPL_MEDIACODEC_NDK ? "mediacodec_ndk"
+            : (android.os.Build.VERSION.SDK_INT >= 21 ? "mediacodec_ndk" : "mediacodec_jni"));
+        final String hwCodecList = (hwImplName != null) ? hwImplName : (android.os.Build.VERSION.SDK_INT >= 21 ? "mediacodec_ndk" : "mediacodec_jni");
+
+        VisionPlusPlayback.applyVlcMediaHeaders(media, meta);
+        media.addOption(":network-caching=" + cachingMsFinal);
+        media.addOption(":live-caching=" + cachingMsFinal);
+        media.addOption(":file-caching=" + cachingMsFinal);
+        media.addOption(":drop-late-frames");
+        media.addOption(":skip-frames");
+        media.addOption(":avcodec-threads=" + avThreadsFinal);
+        media.addOption(legacySdk ? ":avcodec-skiploopfilter=nonref" : ":avcodec-skiploopfilter=all");
+        if (legacySdk) {
+            media.addOption(":avcodec-fast");
+            media.addOption(":avcodec-skip-frame=nonref");
+            media.addOption(":avcodec-skip-idct=nonref");
+            media.addOption(":clock-jitter=0");
+        }
+        media.addOption(":android-display-chroma=" + (legacySdk ? "RV32" : "RV16"));
+        if (deinterlace) {
+            media.addOption(":deinterlace=1");
+            media.addOption(":deinterlace-mode=yadif");
+        } else {
+            media.addOption(":deinterlace=0");
+        }
+        if (legacySdk) {
+            media.setHWDecoderEnabled(true, false);
+        } else {
+            boolean forceHw = hwModeFinal == PlaybackPrefs.VLC_HW_PLUS;
+            media.setHWDecoderEnabled(useHw, forceHw);
+            if (forceHwOnly && useHw) {
+                media.addOption(":codec=" + hwCodecList);
+            }
+        }
+    }
+
+    private boolean isZapping = false;
+    private long zapSequence = 0;
+    private static final ExecutorService ZAP_EXECUTOR = Executors.newSingleThreadExecutor();
+
+    public void switchChannelInPlace(@Nullable Channel channel) {
+        if (channel == null || isFinishing()) return;
+
+        int currentId = getIntent().getIntExtra(Constants.EXTRA_CHANNEL_ID, 0);
+        if (channel.getId() == currentId) return;
+
+        if (!LoginGuard.ensureLoggedIn(this, LoginActivity.DEST_LIVE_TV)) return;
+        if (!SubscriptionGuard.ensureNotExpired(this)) return;
+
+        RecentChannelsStore.record(this, channel);
+        PresenceReporter.reportOnlineLaunch(this, channel.getTitle(), channel.getUrl());
+
+        if (channelOverlay != null) {
+            channelOverlay.setCurrentChannelId(channel.getId());
+            channelOverlay.showQuickInfoBannerForChannelId(channel.getId());
+        }
+
+        isZapping = true;
+        final long currentZapSeq = ++zapSequence;
+
+        // Keep screen on last frame, do not show center loading spinner
+        if (loading != null) {
+            loading.setVisibility(View.GONE);
+        }
+        // Mute audio immediately so previous channel stops playing instantly
+        if (mediaPlayer != null) {
+            try { mediaPlayer.setVolume(0); } catch (Exception ignored) {}
+        }
+
+        final int targetId = channel.getId();
+        final String targetTitle = channel.getTitle();
+
+        ZAP_EXECUTOR.execute(() -> {
+            try {
+                String baseUrl = AuthPrefs.getBaseUrl(VlcPlayerActivity.this);
+                String token = AuthPrefs.getAccessToken(VlcPlayerActivity.this);
+                String url = baseUrl + "/api/channels/" + targetId + "/stream";
+                Request req = new Request.Builder()
+                        .url(url)
+                        .header("User-Agent", "MQLTV/1.0")
+                        .header("Authorization", "Bearer " + token)
+                        .build();
+
+                try (Response resp = NetworkClient.getClient().newCall(req).execute()) {
+                    ResponseBody body = resp.body();
+                    if (!resp.isSuccessful() || body == null) {
+                        int code = resp != null ? resp.code() : 0;
+                        String errorMsg = "Gagal memuat stream (HTTP " + code + ")";
+                        if (body != null) {
+                            try {
+                                JSONObject errObj = new JSONObject(body.string());
+                                String parsedErr = errObj.optString("error", "");
+                                if (!parsedErr.isEmpty()) errorMsg = parsedErr;
+                            } catch (Exception ignored) {}
+                        }
+                        final String finalErrorMsg = errorMsg;
+                        runOnUiThread(() -> {
+                            if (isFinishing() || currentZapSeq != zapSequence) return;
+                            isZapping = false;
+                            if (mediaPlayer != null) {
+                                try { mediaPlayer.setVolume(100); } catch (Exception ignored) {}
+                            }
+                            if ((code == 401 || code == 403) && finalErrorMsg.toLowerCase().contains("subscription tidak aktif")) {
+                                SubscriptionGuard.showExpired(VlcPlayerActivity.this);
+                            } else {
+                                Toast.makeText(VlcPlayerActivity.this, finalErrorMsg, Toast.LENGTH_LONG).show();
+                            }
+                        });
+                        return;
+                    }
+
+                    JSONObject json = new JSONObject(body.string());
+                    String streamUrl = json.optString("streamUrl", "");
+                    if (streamUrl.isEmpty()) {
+                        runOnUiThread(() -> {
+                            if (isFinishing() || currentZapSeq != zapSequence) return;
+                            isZapping = false;
+                            if (mediaPlayer != null) {
+                                try { mediaPlayer.setVolume(100); } catch (Exception ignored) {}
+                            }
+                            Toast.makeText(VlcPlayerActivity.this, "Stream tidak tersedia", Toast.LENGTH_SHORT).show();
+                        });
+                        return;
+                    }
+
+                    JSONObject fakeMeta = new JSONObject();
+                    fakeMeta.put("drm_type", json.isNull("drmType") ? "" : json.optString("drmType", ""));
+                    fakeMeta.put("drm_key", json.isNull("drmKey") ? "" : json.optString("drmKey", ""));
+                    fakeMeta.put("user_agent", json.isNull("userAgent") ? "" : json.optString("userAgent", ""));
+                    fakeMeta.put("referer", json.isNull("referer") ? "" : json.optString("referer", ""));
+                    ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromVisionPlusObject(fakeMeta);
+
+                    runOnUiThread(() -> {
+                        if (isFinishing() || currentZapSeq != zapSequence) return;
+
+                        // Check if channel requires DRM (Media3/ExoPlayer), or is Radio, or preferred player is MX Player
+                        boolean isRadio = channel.getGroupTitle() != null && channel.getGroupTitle().toLowerCase().contains("radio");
+                        boolean requiresDrm = meta != null && meta.requiresExoDrm();
+                        boolean useMx = PlaybackPrefs.isUseMxPlayer(VlcPlayerActivity.this) && (meta == null || !meta.requiresExoDrm());
+
+                        if (isRadio || requiresDrm || useMx) {
+                            releasePlayer();
+                            Intent intent;
+                            if (requiresDrm) {
+                                intent = PlayerIntents.createPlayIntent(VlcPlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta);
+                            } else if (isRadio) {
+                                intent = PlayerIntents.createPlayIntent(VlcPlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta);
+                            } else {
+                                intent = PlayerIntents.createPreferredPlayIntent(VlcPlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta);
+                            }
+                            startActivity(intent);
+                            finish();
+                            return;
+                        }
+
+                        // IN-PLACE TRANSITION ON VLC
+                        setTitle(targetTitle);
+                        getIntent().putExtra(Constants.EXTRA_CHANNEL_ID, targetId);
+                        getIntent().putExtra(Constants.EXTRA_TITLE, targetTitle);
+                        getIntent().putExtra(Constants.EXTRA_URL, streamUrl);
+                        if (meta != null) meta.putInIntent(getIntent());
+
+                        PresenceReporter.startPlayback(getApplicationContext(), targetTitle, streamUrl);
+
+                        if (mediaPlayer != null && libVLC != null) {
+                            try {
+                                mediaPlayer.stop();
+                                Media media = new Media(libVLC, Uri.parse(streamUrl));
+                                configureVlcMedia(media, meta);
+                                mediaPlayer.setMedia(media);
+                                media.release();
+                                mediaPlayer.play();
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error switching VLC media", e);
+                            }
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    if (isFinishing() || currentZapSeq != zapSequence) return;
+                    isZapping = false;
+                    if (mediaPlayer != null) {
+                        try { mediaPlayer.setVolume(100); } catch (Exception ignored) {}
+                    }
+                    Toast.makeText(VlcPlayerActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
     private void releasePlayer() {
+        isZapping = false;
         if (released) return;
         released = true;
 

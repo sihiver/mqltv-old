@@ -250,6 +250,7 @@ public class NativePlayerActivity extends Activity {
         });
         int currentId = getIntent().getIntExtra(Constants.EXTRA_CHANNEL_ID, 0);
         channelOverlay.setCurrentChannelId(currentId);
+        channelOverlay.showQuickInfoBannerForChannelId(currentId);
 
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
 
@@ -599,6 +600,19 @@ public class NativePlayerActivity extends Activity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (channelOverlay != null && channelOverlay.handleKeyEvent(event)) return true;
+
+        if (keyCode == KeyEvent.KEYCODE_CHANNEL_UP || keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+            if (channelOverlay != null) {
+                channelOverlay.zapNextChannel();
+                return true;
+            }
+        }
+        if (keyCode == KeyEvent.KEYCODE_CHANNEL_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+            if (channelOverlay != null) {
+                channelOverlay.zapPrevChannel();
+                return true;
+            }
+        }
 
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             finish();

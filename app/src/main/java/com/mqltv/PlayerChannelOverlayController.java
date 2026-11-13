@@ -63,6 +63,9 @@ public final class PlayerChannelOverlayController {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
 
     private FrameLayout root;
+    private View scrim;
+    private View panel;
+    private View infoCard;
     private View header;
     private TextView categoryText;
     private RecyclerView list;
@@ -114,6 +117,9 @@ public final class PlayerChannelOverlayController {
         this.launcher = launcher;
 
         root = activity.findViewById(R.id.player_channel_overlay_root);
+        scrim = activity.findViewById(R.id.player_channel_overlay_scrim);
+        panel = activity.findViewById(R.id.player_channel_overlay_panel);
+        infoCard = activity.findViewById(R.id.player_channel_overlay_info);
         header = activity.findViewById(R.id.player_channel_overlay_header);
         categoryText = activity.findViewById(R.id.player_channel_overlay_category);
         list = activity.findViewById(R.id.player_channel_overlay_list);
@@ -218,11 +224,15 @@ public final class PlayerChannelOverlayController {
     }
 
     public boolean isVisible() {
-        return root != null && root.getVisibility() == View.VISIBLE;
+        return root != null && root.getVisibility() == View.VISIBLE && panel != null && panel.getVisibility() == View.VISIBLE;
     }
 
     public void show() {
         if (root == null) return;
+        MAIN.removeCallbacks(hideQuickInfoRunnable);
+        if (scrim != null) scrim.setVisibility(View.VISIBLE);
+        if (panel != null) panel.setVisibility(View.VISIBLE);
+        if (infoCard != null) infoCard.setVisibility(View.VISIBLE);
         root.setVisibility(View.VISIBLE);
         root.bringToFront();
         root.requestFocus();
@@ -231,6 +241,7 @@ public final class PlayerChannelOverlayController {
     }
 
     public void hide() {
+        MAIN.removeCallbacks(hideQuickInfoRunnable);
         if (root == null) return;
         root.setVisibility(View.GONE);
         
@@ -243,7 +254,81 @@ public final class PlayerChannelOverlayController {
         focusRetryCount = 0;
     }
 
+    private final Runnable hideQuickInfoRunnable = () -> {
+        if (panel == null || panel.getVisibility() != View.VISIBLE) {
+            hide();
+        }
+    };
+
+    /**
+     * Satellite TV style: briefly shows only the bottom-right channel info card without darkening
+     * the screen or showing the left channel list. Auto-hides after 3.5 seconds.
+     */
+    public void showQuickInfoBanner(@Nullable Channel c, int absoluteIndex) {
+        if (c == null || root == null) return;
+        MAIN.removeCallbacks(hideQuickInfoRunnable);
+        bindInfo(c, absoluteIndex);
+        if (scrim != null) scrim.setVisibility(View.GONE);
+        if (panel != null) panel.setVisibility(View.GONE);
+        if (infoCard != null) infoCard.setVisibility(View.VISIBLE);
+        root.setVisibility(View.VISIBLE);
+        root.bringToFront();
+        MAIN.postDelayed(hideQuickInfoRunnable, 3500);
+    }
+
+    public void showQuickInfoBannerForChannelId(int channelId) {
+        ensureLoadedThen(() -> {
+            List<Channel> targetList = currentCategoryChannels();
+            if (targetList == null || targetList.isEmpty()) targetList = allChannels;
+            if (targetList == null || targetList.isEmpty()) return;
+            for (int i = 0; i < targetList.size(); i++) {
+                if (targetList.get(i).getId() == channelId) {
+                    showQuickInfoBanner(targetList.get(i), i);
+                    return;
+                }
+            }
+        });
+    }
+
+    public void zapNextChannel() {
+        zapChannelByDelta(1);
+    }
+
+    public void zapPrevChannel() {
+        zapChannelByDelta(-1);
+    }
+
+    private void zapChannelByDelta(int delta) {
+        ensureLoadedThen(() -> {
+            List<Channel> targetList = currentCategoryChannels();
+            if (targetList == null || targetList.isEmpty()) targetList = allChannels;
+            if (targetList == null || targetList.isEmpty()) return;
+
+            int curIdx = -1;
+            for (int i = 0; i < targetList.size(); i++) {
+                if (targetList.get(i).getId() == currentId) {
+                    curIdx = i;
+                    break;
+                }
+            }
+
+            int nextIdx;
+            if (curIdx < 0) {
+                nextIdx = 0;
+            } else {
+                nextIdx = (curIdx + delta) % targetList.size();
+                if (nextIdx < 0) nextIdx += targetList.size();
+            }
+
+            Channel nextCh = targetList.get(nextIdx);
+            clearTypedNumber();
+            launcher.play(nextCh);
+            showQuickInfoBanner(nextCh, nextIdx);
+        });
+    }
+
     public void destroy() {
+        MAIN.removeCallbacks(hideQuickInfoRunnable);
         try {
             worker.shutdownNow();
         } catch (Throwable ignored) {
@@ -433,6 +518,7 @@ public final class PlayerChannelOverlayController {
         if (activeList == null || idx < 0 || idx >= activeList.size()) return;
         Channel c = activeList.get(idx);
         playChannelIfChanged(c);
+        showQuickInfoBanner(c, idx);
     }
 
     /** Returns the channel list for the currently selected category. */

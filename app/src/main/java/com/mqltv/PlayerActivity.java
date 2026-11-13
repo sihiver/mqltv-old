@@ -17,6 +17,14 @@ import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
 import androidx.fragment.app.FragmentActivity;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
+import org.json.JSONObject;
+
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.PlaybackException;
@@ -167,6 +175,10 @@ public class PlayerActivity extends FragmentActivity {
         setContentView(R.layout.activity_player);
 
         playerView = findViewById(R.id.player_view);
+        if (playerView != null) {
+            // Keep last frame visible when reset (satellite TV / Kodi freeze-frame zapping)
+            playerView.setKeepContentOnPlayerReset(true);
+        }
         loadingView = findViewById(R.id.player_loading);
 
         String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
@@ -174,17 +186,7 @@ public class PlayerActivity extends FragmentActivity {
             setTitle(title);
         }
 
-        channelOverlay = new PlayerChannelOverlayController(this, channel -> {
-            if (channel == null) return;
-            if (!LoginGuard.ensureLoggedIn(PlayerActivity.this, LoginActivity.DEST_LIVE_TV)) return;
-            if (!SubscriptionGuard.ensureNotExpired(PlayerActivity.this)) return;
-            RecentChannelsStore.record(PlayerActivity.this, channel);
-            PresenceReporter.reportOnlineLaunch(PlayerActivity.this, channel.getTitle(), channel.getUrl());
-            if (loadingView != null) loadingView.setVisibility(View.VISIBLE);
-            // Promptly release current hardware decoders before launching the next stream
-            releasePlayer();
-            PlayerIntents.launchPlayer(PlayerActivity.this, channel, this::finish);
-        });
+        channelOverlay = new PlayerChannelOverlayController(this, this::switchChannelInPlace);
     }
 
     @SuppressLint("RestrictedApi")
@@ -194,7 +196,17 @@ public class PlayerActivity extends FragmentActivity {
 
         if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
             int keyCode = event.getKeyCode();
-            if (keyCode == android.view.KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK
+            if (keyCode == android.view.KeyEvent.KEYCODE_CHANNEL_UP || keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP) {
+                if (channelOverlay != null) {
+                    channelOverlay.zapNextChannel();
+                    return true;
+                }
+            } else if (keyCode == android.view.KeyEvent.KEYCODE_CHANNEL_DOWN || keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (channelOverlay != null) {
+                    channelOverlay.zapPrevChannel();
+                    return true;
+                }
+            } else if (keyCode == android.view.KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK
                     || keyCode == android.view.KeyEvent.KEYCODE_MENU
                     || keyCode == android.view.KeyEvent.KEYCODE_PROG_RED) {
                 toggleAudioChannelMode();
@@ -246,7 +258,10 @@ public class PlayerActivity extends FragmentActivity {
         ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromIntent(getIntent());
 
         int currentId = getIntent().getIntExtra(Constants.EXTRA_CHANNEL_ID, 0);
-        if (channelOverlay != null) channelOverlay.setCurrentChannelId(currentId);
+        if (channelOverlay != null) {
+            channelOverlay.setCurrentChannelId(currentId);
+            channelOverlay.showQuickInfoBannerForChannelId(currentId);
+        }
 
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
 
@@ -318,6 +333,17 @@ public class PlayerActivity extends FragmentActivity {
 
         player.addListener(new Player.Listener() {
             @Override
+            public void onRenderedFirstFrame() {
+                isZapping = false;
+                if (player != null) {
+                    player.setVolume(1f);
+                }
+                if (loadingView != null) {
+                    loadingView.setVisibility(View.GONE);
+                }
+            }
+
+            @Override
             public void onTracksChanged(@NonNull androidx.media3.common.Tracks tracks) {
                 if (visionPlusPlayback && trackSelector != null) {
                     PlayerQualityHelper.apply(trackSelector,
@@ -384,6 +410,8 @@ public class PlayerActivity extends FragmentActivity {
                         msg = "Koneksi gagal — periksa jaringan / header_iptv channel";
                     }
                 }
+                isZapping = false;
+                if (player != null) player.setVolume(1f);
                 Toast.makeText(PlayerActivity.this, msg, Toast.LENGTH_LONG).show();
 
                 // Smart tiered fallback logic (hanya untuk non-DRM, karena player cadangan tidak mendukung lisensi DRM)
@@ -413,8 +441,12 @@ public class PlayerActivity extends FragmentActivity {
             public void onPlaybackStateChanged(int state) {
                 if (loadingView == null) return;
                 if (state == Player.STATE_BUFFERING || state == Player.STATE_IDLE) {
-                    loadingView.setVisibility(View.VISIBLE);
+                    if (!isZapping) {
+                        loadingView.setVisibility(View.VISIBLE);
+                    }
                 } else if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
+                    isZapping = false;
+                    if (player != null) player.setVolume(1f);
                     loadingView.setVisibility(View.GONE);
                     if (state == Player.STATE_READY) {
                         applyMedia3VideoDisplay();
@@ -426,6 +458,10 @@ public class PlayerActivity extends FragmentActivity {
             @Override
             public void onIsLoadingChanged(boolean isLoading) {
                 if (loadingView == null) return;
+                if (isZapping) {
+                    loadingView.setVisibility(View.GONE);
+                    return;
+                }
                 loadingView.setVisibility(isLoading ? View.VISIBLE : View.GONE);
             }
         });
@@ -512,7 +548,162 @@ public class PlayerActivity extends FragmentActivity {
         return product != null && product.contains("sdk");
     }
 
+    private boolean isZapping = false;
+    private long zapSequence = 0;
+    private static final ExecutorService ZAP_EXECUTOR = Executors.newSingleThreadExecutor();
+
+    public void switchChannelInPlace(@Nullable Channel channel) {
+        if (channel == null || isFinishing()) return;
+
+        int currentId = getIntent().getIntExtra(Constants.EXTRA_CHANNEL_ID, 0);
+        if (channel.getId() == currentId) return;
+
+        if (!LoginGuard.ensureLoggedIn(this, LoginActivity.DEST_LIVE_TV)) return;
+        if (!SubscriptionGuard.ensureNotExpired(this)) return;
+
+        RecentChannelsStore.record(this, channel);
+        PresenceReporter.reportOnlineLaunch(this, channel.getTitle(), channel.getUrl());
+
+        if (channelOverlay != null) {
+            channelOverlay.setCurrentChannelId(channel.getId());
+            channelOverlay.showQuickInfoBannerForChannelId(channel.getId());
+        }
+
+        isZapping = true;
+        final long currentZapSeq = ++zapSequence;
+
+        // Keep screen on last frame, do not show center loading spinner
+        if (loadingView != null) {
+            loadingView.setVisibility(View.GONE);
+        }
+        // Mute audio immediately so previous channel stops playing instantly
+        if (player != null) {
+            player.setVolume(0f);
+        }
+
+        final int targetId = channel.getId();
+        final String targetTitle = channel.getTitle();
+
+        ZAP_EXECUTOR.execute(() -> {
+            try {
+                String baseUrl = AuthPrefs.getBaseUrl(PlayerActivity.this);
+                String token = AuthPrefs.getAccessToken(PlayerActivity.this);
+                String url = baseUrl + "/api/channels/" + targetId + "/stream";
+                Request req = new Request.Builder()
+                        .url(url)
+                        .header("User-Agent", "MQLTV/1.0")
+                        .header("Authorization", "Bearer " + token)
+                        .build();
+
+                try (Response resp = NetworkClient.getClient().newCall(req).execute()) {
+                    ResponseBody body = resp.body();
+                    if (!resp.isSuccessful() || body == null) {
+                        int code = resp != null ? resp.code() : 0;
+                        String errorMsg = "Gagal memuat stream (HTTP " + code + ")";
+                        if (body != null) {
+                            try {
+                                JSONObject errObj = new JSONObject(body.string());
+                                String parsedErr = errObj.optString("error", "");
+                                if (!parsedErr.isEmpty()) errorMsg = parsedErr;
+                            } catch (Exception ignored) { }
+                        }
+                        final String finalErrorMsg = errorMsg;
+                        runOnUiThread(() -> {
+                            if (isFinishing() || currentZapSeq != zapSequence) return;
+                            isZapping = false;
+                            if (player != null) player.setVolume(1f);
+                            if ((code == 401 || code == 403) && finalErrorMsg.toLowerCase().contains("subscription tidak aktif")) {
+                                SubscriptionGuard.showExpired(PlayerActivity.this);
+                            } else {
+                                Toast.makeText(PlayerActivity.this, finalErrorMsg, Toast.LENGTH_LONG).show();
+                            }
+                        });
+                        return;
+                    }
+
+                    JSONObject json = new JSONObject(body.string());
+                    String streamUrl = json.optString("streamUrl", "");
+                    if (streamUrl.isEmpty()) {
+                        runOnUiThread(() -> {
+                            if (isFinishing() || currentZapSeq != zapSequence) return;
+                            isZapping = false;
+                            if (player != null) player.setVolume(1f);
+                            Toast.makeText(PlayerActivity.this, "Stream tidak tersedia", Toast.LENGTH_SHORT).show();
+                        });
+                        return;
+                    }
+
+                    JSONObject fakeMeta = new JSONObject();
+                    fakeMeta.put("drm_type", json.isNull("drmType") ? "" : json.optString("drmType", ""));
+                    fakeMeta.put("drm_key", json.isNull("drmKey") ? "" : json.optString("drmKey", ""));
+                    fakeMeta.put("user_agent", json.isNull("userAgent") ? "" : json.optString("userAgent", ""));
+                    fakeMeta.put("referer", json.isNull("referer") ? "" : json.optString("referer", ""));
+                    ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromVisionPlusObject(fakeMeta);
+
+                    runOnUiThread(() -> {
+                        if (isFinishing() || currentZapSeq != zapSequence) return;
+
+                        // Check if channel is Radio, or preferred player is MX Player or Native / VLC
+                        Class<?> target = PlayerIntents.getTargetPlayerActivity(PlayerActivity.this, meta);
+                        boolean isRadio = channel.getGroupTitle() != null && channel.getGroupTitle().toLowerCase().contains("radio");
+                        boolean useMx = PlaybackPrefs.isUseMxPlayer(PlayerActivity.this) && (meta == null || !meta.requiresExoDrm());
+
+                        if (isRadio || useMx || target != PlayerActivity.class) {
+                            releasePlayer();
+                            Intent intent = isRadio
+                                    ? PlayerIntents.createPlayIntent(PlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta)
+                                    : PlayerIntents.createPreferredPlayIntent(PlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta);
+                            startActivity(intent);
+                            finish();
+                            return;
+                        }
+
+                        if (DrmCapabilities.isDashClearKeyUnsupportedOnThisDevice(meta, streamUrl)) {
+                            isZapping = false;
+                            if (player != null) player.setVolume(1f);
+                            Toast.makeText(PlayerActivity.this, DrmCapabilities.getDashClearKeyUnsupportedMessage(), Toast.LENGTH_LONG).show();
+                            return;
+                        }
+
+                        // IN-PLACE TRANSITION: Freeze frame remains on screen, swap source seamlessly
+                        setTitle(targetTitle);
+                        getIntent().putExtra(Constants.EXTRA_CHANNEL_ID, targetId);
+                        getIntent().putExtra(Constants.EXTRA_TITLE, targetTitle);
+                        getIntent().putExtra(Constants.EXTRA_URL, streamUrl);
+                        if (meta != null) meta.putInIntent(getIntent());
+
+                        PresenceReporter.startPlayback(getApplicationContext(), targetTitle, streamUrl);
+
+                        visionPlusPlayback = meta != null && meta.isActive();
+                        if (visionPlusPlayback && trackSelector != null) {
+                            PlayerQualityHelper.apply(trackSelector, PlaybackPrefs.getVisionVideoQuality(PlayerActivity.this));
+                        }
+
+                        if (channelMixerAudioProcessor != null) {
+                            channelMixerAudioProcessor.resetDetection();
+                        }
+
+                        MediaSource mediaSource = VisionPlusPlayback.buildMedia3Source(PlayerActivity.this, Uri.parse(streamUrl), meta);
+                        if (player != null) {
+                            player.setMediaSource(mediaSource);
+                            player.prepare();
+                            player.play();
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    if (isFinishing() || currentZapSeq != zapSequence) return;
+                    isZapping = false;
+                    if (player != null) player.setVolume(1f);
+                    Toast.makeText(PlayerActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
     private void releasePlayer() {
+        isZapping = false;
         if (player != null) {
             if (playerView != null) {
                 playerView.setPlayer(null);

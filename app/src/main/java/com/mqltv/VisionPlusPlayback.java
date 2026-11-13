@@ -166,13 +166,15 @@ public final class VisionPlusPlayback {
             }
             return factory.createMediaSource(item);
         }
+        HlsMediaSource.Factory hlsFactory = new HlsMediaSource.Factory(http)
+                .setAllowChunklessPreparation(true);
         if (meta != null && meta.preferHlsSource(uri.toString())) {
-            return new HlsMediaSource.Factory(http).createMediaSource(item);
+            return hlsFactory.createMediaSource(item);
         }
 
         String path = uri.toString().toLowerCase(Locale.US);
         if (path.contains(".m3u8")) {
-            return new HlsMediaSource.Factory(http).createMediaSource(item);
+            return hlsFactory.createMediaSource(item);
         }
         if (path.contains(".mpd")) {
             DashMediaSource.Factory factory = new DashMediaSource.Factory(http);

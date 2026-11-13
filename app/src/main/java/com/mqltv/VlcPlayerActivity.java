@@ -264,6 +264,8 @@ public class VlcPlayerActivity extends FragmentActivity {
             if (!SubscriptionGuard.ensureNotExpired(VlcPlayerActivity.this)) return;
             RecentChannelsStore.record(VlcPlayerActivity.this, channel);
             PresenceReporter.reportOnlineLaunch(VlcPlayerActivity.this, channel.getTitle(), channel.getUrl());
+            if (loading != null) loading.setVisibility(View.VISIBLE);
+            releasePlayer();
             PlayerIntents.launchPlayer(VlcPlayerActivity.this, channel, this::finish);
         });
     }

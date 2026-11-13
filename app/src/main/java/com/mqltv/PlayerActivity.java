@@ -27,6 +27,7 @@ import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.ExoPlaybackException;
+import androidx.media3.exoplayer.mediacodec.MediaCodecRenderer;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.video.MediaCodecVideoDecoderException;
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
@@ -179,6 +180,9 @@ public class PlayerActivity extends FragmentActivity {
             if (!SubscriptionGuard.ensureNotExpired(PlayerActivity.this)) return;
             RecentChannelsStore.record(PlayerActivity.this, channel);
             PresenceReporter.reportOnlineLaunch(PlayerActivity.this, channel.getTitle(), channel.getUrl());
+            if (loadingView != null) loadingView.setVisibility(View.VISIBLE);
+            // Promptly release current hardware decoders before launching the next stream
+            releasePlayer();
             PlayerIntents.launchPlayer(PlayerActivity.this, channel, this::finish);
         });
     }
@@ -289,14 +293,14 @@ public class PlayerActivity extends FragmentActivity {
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
-            // Larger buffers help avoid rebuffering on unstable IPTV streams.
+            // Optimized buffer tuning: quick startup (1.5s), safe memory footprint for 1GB RAM STBs
             .setBufferDurationsMs(
-                30_000,
-                120_000,
-                2_500,
-                5_000
+                20_000,
+                50_000,
+                1_500,
+                3_000
             )
-            .setBackBuffer(10_000, true)
+            .setBackBuffer(5_000, true)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build();
 
@@ -346,17 +350,27 @@ public class PlayerActivity extends FragmentActivity {
                     cause = cause.getCause();
                 }
                 cause = error.getCause();
-                boolean codecNotSupported = false;
-                if (cause instanceof MediaCodecVideoDecoderException) {
-                    msg = "Video codec not supported on this device";
-                    codecNotSupported = true;
-                } else if (error instanceof ExoPlaybackException) {
-                    // Heuristic: common when stream is H.264 High Profile beyond emulator codec.
+                boolean isDrm = drmMeta != null && drmMeta.requiresExoDrm();
+                boolean isDecoderOrFormatError = (cause instanceof MediaCodecRenderer.DecoderInitializationException)
+                        || (cause instanceof MediaCodecVideoDecoderException)
+                        || error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED
+                        || error.errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED
+                        || error.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED
+                        || error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED
+                        || error.errorCode == PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED;
+
+                if (!isDecoderOrFormatError && error instanceof ExoPlaybackException) {
+                    // Heuristic: common when stream is H.264 High Profile beyond emulator codec or malformed TS
                     String detail = error.getMessage();
-                    if (detail != null && detail.contains("NO_EXCEEDS_CAPABILITIES")) {
-                        msg = "Stream not supported by device decoder";
-                        codecNotSupported = true;
+                    if (detail != null && (detail.contains("NO_EXCEEDS_CAPABILITIES")
+                            || detail.contains("DecoderInitException")
+                            || detail.contains("UnrecognizedInputFormatException"))) {
+                        isDecoderOrFormatError = true;
                     }
+                }
+
+                if (isDecoderOrFormatError) {
+                    msg = "Format/decoder tidak didukung player utama, beralih...";
                 }
 
                 Throwable root = error.getCause();
@@ -372,21 +386,25 @@ public class PlayerActivity extends FragmentActivity {
                 }
                 Toast.makeText(PlayerActivity.this, msg, Toast.LENGTH_LONG).show();
 
-                // Fallback logic
-                if (android.os.Build.VERSION.SDK_INT <= 19) {
-                    // Android 4.4 and below: always fall back to Native (MediaPlayer)
-                    Intent nativeIntent = new Intent(PlayerActivity.this, NativePlayerActivity.class);
-                    nativeIntent.putExtras(getIntent());
-                    startActivity(nativeIntent);
-                    finish();
-                } else if (codecNotSupported) {
-                    // Modern Android versions: fall back to VLC on codec errors
-                    int mode = PlaybackPrefs.getPlayerMode(PlayerActivity.this);
-                    if (mode != PlaybackPrefs.PLAYER_MODE_VLC) {
-                        Intent vlcIntent = new Intent(PlayerActivity.this, VlcPlayerActivity.class);
-                        vlcIntent.putExtras(getIntent());
-                        startActivity(vlcIntent);
+                // Smart tiered fallback logic (hanya untuk non-DRM, karena player cadangan tidak mendukung lisensi DRM)
+                if (!isDrm) {
+                    if (android.os.Build.VERSION.SDK_INT <= 19) {
+                        // Android 4.4 and below: always fall back to Native (MediaPlayer)
+                        releasePlayer();
+                        Intent nativeIntent = new Intent(PlayerActivity.this, NativePlayerActivity.class);
+                        nativeIntent.putExtras(getIntent());
+                        startActivity(nativeIntent);
                         finish();
+                    } else if (isDecoderOrFormatError) {
+                        // Modern Android versions: fall back to VLC on codec/format errors
+                        int mode = PlaybackPrefs.getPlayerMode(PlayerActivity.this);
+                        if (mode != PlaybackPrefs.PLAYER_MODE_VLC) {
+                            releasePlayer();
+                            Intent vlcIntent = new Intent(PlayerActivity.this, VlcPlayerActivity.class);
+                            vlcIntent.putExtras(getIntent());
+                            startActivity(vlcIntent);
+                            finish();
+                        }
                     }
                 }
             }
@@ -494,6 +512,22 @@ public class PlayerActivity extends FragmentActivity {
         return product != null && product.contains("sdk");
     }
 
+    private void releasePlayer() {
+        if (player != null) {
+            if (playerView != null) {
+                playerView.setPlayer(null);
+            }
+            try {
+                player.stop();
+                player.clearMediaItems();
+                player.release();
+            } catch (Throwable t) {
+                android.util.Log.w("PlayerActivity", "releasePlayer error", t);
+            }
+            player = null;
+        }
+    }
+
     @Override
     protected void onStop() {
         super.onStop();
@@ -501,11 +535,7 @@ public class PlayerActivity extends FragmentActivity {
         if (isFinishing()) {
             PresenceReporter.stopPlayback(getApplicationContext());
         }
-        if (player != null) {
-            playerView.setPlayer(null);
-            player.release();
-            player = null;
-        }
+        releasePlayer();
     }
 
     @Override

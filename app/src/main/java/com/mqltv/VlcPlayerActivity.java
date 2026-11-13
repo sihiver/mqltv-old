@@ -370,33 +370,31 @@ public class VlcPlayerActivity extends FragmentActivity {
         // Video scale is handled by SurfaceView/TextureView layout.
         mediaPlayer.setEventListener(event -> {
             if (event.type == MediaPlayer.Event.Buffering) {
-                if (loading != null) {
-                    if (!isZapping) {
-                        loading.setVisibility(event.getBuffering() < 100f ? View.VISIBLE : View.GONE);
-                    } else {
-                        loading.setVisibility(View.GONE);
-                    }
-                }
+                // TV-satellite style: never show center loading spinner
+                if (loading != null) loading.setVisibility(View.GONE);
             }
             if (event.type == MediaPlayer.Event.EncounteredError) {
                 isZapping = false;
+                if (loading != null) loading.setVisibility(View.GONE);
                 if (mediaPlayer != null) {
                     try { mediaPlayer.setVolume(100); } catch (Exception ignored) {}
                 }
                 Toast.makeText(VlcPlayerActivity.this, "VLC playback error", Toast.LENGTH_LONG).show();
             }
 
-            if (event.type == MediaPlayer.Event.Playing) {
+            if (event.type == MediaPlayer.Event.TimeChanged) {
+                // TimeChanged means frames are actively rendering!
                 isZapping = false;
                 if (loading != null) loading.setVisibility(View.GONE);
                 if (mediaPlayer != null) {
                     try { mediaPlayer.setVolume(100); } catch (Exception ignored) {}
                 }
                 updateUiFromPlayer();
-            } else if (event.type == MediaPlayer.Event.Paused
+            } else if (event.type == MediaPlayer.Event.Playing
+                    || event.type == MediaPlayer.Event.Paused
                     || event.type == MediaPlayer.Event.Stopped
-                    || event.type == MediaPlayer.Event.TimeChanged
                     || event.type == MediaPlayer.Event.LengthChanged) {
+                if (loading != null) loading.setVisibility(View.GONE);
                 updateUiFromPlayer();
             }
         });

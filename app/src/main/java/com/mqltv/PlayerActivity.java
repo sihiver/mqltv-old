@@ -439,15 +439,10 @@ public class PlayerActivity extends FragmentActivity {
 
             @Override
             public void onPlaybackStateChanged(int state) {
-                if (loadingView == null) return;
-                if (state == Player.STATE_BUFFERING || state == Player.STATE_IDLE) {
-                    if (!isZapping) {
-                        loadingView.setVisibility(View.VISIBLE);
-                    }
-                } else if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
+                if (loadingView != null) loadingView.setVisibility(View.GONE);
+                if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
                     isZapping = false;
                     if (player != null) player.setVolume(1f);
-                    loadingView.setVisibility(View.GONE);
                     if (state == Player.STATE_READY) {
                         applyMedia3VideoDisplay();
                         scheduleMedia3VideoDisplayRetry();
@@ -457,12 +452,7 @@ public class PlayerActivity extends FragmentActivity {
 
             @Override
             public void onIsLoadingChanged(boolean isLoading) {
-                if (loadingView == null) return;
-                if (isZapping) {
-                    loadingView.setVisibility(View.GONE);
-                    return;
-                }
-                loadingView.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+                if (loadingView != null) loadingView.setVisibility(View.GONE);
             }
         });
 

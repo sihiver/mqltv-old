@@ -324,7 +324,7 @@ public class NativePlayerActivity extends Activity {
             mp.setOnPreparedListener(player -> {
                 prepared = true;
                 // Keep loading visible until we actually see video rendering.
-                if (loading != null) loading.setVisibility(View.VISIBLE);
+                if (loading != null) loading.setVisibility(View.GONE);
                 try {
                     // Start muted only on legacy devices to avoid audio leading the first frames.
                     if (DeviceQuirks.isZteB760H() || Build.VERSION.SDK_INT <= 19) {
@@ -450,8 +450,7 @@ public class NativePlayerActivity extends Activity {
     }
 
     private void showLoading(boolean show) {
-        if (loading == null) return;
-        loading.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (loading != null) loading.setVisibility(View.GONE);
     }
 
     private void startNow(MediaPlayer player) {
@@ -548,7 +547,7 @@ public class NativePlayerActivity extends Activity {
         SurfaceHolder holder = surfaceView != null ? surfaceView.getHolder() : null;
         if (holder == null) return;
 
-        if (loading != null) loading.setVisibility(View.VISIBLE);
+        if (loading != null) loading.setVisibility(View.GONE);
         releasePlayer();
         mainHandler.postDelayed(() -> startPlayback(holder), 400);
     }

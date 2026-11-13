@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/splash_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/splash_background"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:keepScreenOn="true">
+
+    <!-- Ambient glow behind the logo for animated pulse -->
+    <View
+        android:id="@+id/splash_ambient_glow"
+        android:layout_width="440dp"
+        android:layout_height="280dp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="32dp"
+        android:background="@drawable/splash_ambient_glow"
+        android:alpha="0" />
+
+    <!-- Center content container: Logo + Subtitle + Loading bar -->
+    <LinearLayout
+        android:id="@+id/splash_content_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_marginBottom="16dp">
+
+        <!-- MQLTV Logo -->
+        <ImageView
+            android:id="@+id/splash_logo"
+            android:layout_width="380dp"
+            android:layout_height="244dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_mqltv_logo"
+            android:contentDescription="@string/app_name"
+            android:alpha="0" />
+
+        <!-- Subtitle tagline -->
+        <TextView
+            android:id="@+id/splash_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="-6dp"
+            android:text="PREMIUM LIVE TV &amp; STREAMING"
+            android:textColor="#85A2C6"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.22"
+            android:alpha="0" />
+
+        <!-- Modern Loading Bar Container -->
+        <FrameLayout
+            android:id="@+id/splash_loading_container"
+            android:layout_width="180dp"
+            android:layout_height="3dp"
+            android:layout_marginTop="26dp"
+            android:background="@drawable/splash_progress_track"
+            android:alpha="0">
+
+            <View
+                android:id="@+id/splash_loading_thumb"
+                android:layout_width="60dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/splash_progress_thumb" />
+        </FrameLayout>
+
+    </LinearLayout>
+
+    <!-- Version tag at the bottom -->
+    <TextView
+        android:id="@+id/splash_version"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="24dp"
+        android:text="MQLTV"
+        android:textColor="#33FFFFFF"
+        android:textSize="11sp"
+        android:fontFamily="sans-serif"
+        android:letterSpacing="0.08"
+        android:alpha="0" />
+
+</FrameLayout>
+

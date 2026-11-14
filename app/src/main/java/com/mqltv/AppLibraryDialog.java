@@ -1,5 +1,8 @@
 package com.mqltv;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Dialog;
@@ -21,6 +24,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
+import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
@@ -139,11 +143,23 @@ public final class AppLibraryDialog {
             }
         }
 
+        View header = dialog.findViewById(R.id.dialog_library_header);
         TextView countText = dialog.findViewById(R.id.dialog_library_count);
         RecyclerView grid = dialog.findViewById(R.id.dialog_library_grid);
 
         float density = activity.getResources().getDisplayMetrics().density;
         int spacing = Math.round(18 * density);
+
+        if (header != null) {
+            header.setAlpha(0f);
+            header.setTranslationY(18f * density);
+            header.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(240)
+                    .setInterpolator(new DecelerateInterpolator(1.6f))
+                    .start();
+        }
 
         grid.setLayoutManager(new GridLayoutManager(activity, 4) {
             @Override
@@ -187,26 +203,29 @@ public final class AppLibraryDialog {
         LibraryAdapter adapter = new LibraryAdapter(grid);
         grid.setAdapter(adapter);
 
+        // prepareEntranceTransition() ala ManjayaDrawer (VerticalGridFragment):
+        // sembunyikan anak-anak grid sampai data aplikasi selesai dimuat & siap di-layout.
+        adapter.prepareEntranceTransition();
+
         dialog.show();
 
+        final long showTimeMs = android.os.SystemClock.elapsedRealtime();
         EXECUTOR.execute(() -> {
             PackageManager pm = activity.getPackageManager();
             List<LauncherAppEntry> list = loadAllApps(pm, activity);
             Set<String> pinned = new HashSet<>(PinnedAppsStore.load(activity));
+            long elapsed = android.os.SystemClock.elapsedRealtime() - showTimeMs;
+            // ManjayaDrawer menggunakan postDelayed 100ms sebelum initAppData + createRows + startEntranceTransition()
+            long delayMs = Math.max(0L, 100L - elapsed);
 
-            mainHandler.post(() -> {
+            mainHandler.postDelayed(() -> {
                 if (dialog == null || !dialog.isShowing()) return;
                 if (countText != null) {
                     countText.setText(String.format(Locale.getDefault(), "· %d Aplikasi", list.size()));
                 }
                 adapter.setData(list, pinned);
-                if (!list.isEmpty()) {
-                    grid.post(() -> {
-                        View first = grid.getChildAt(0);
-                        if (first != null) first.requestFocus();
-                    });
-                }
-            });
+                adapter.startEntranceTransition();
+            }, delayMs);
         });
     }
 
@@ -252,13 +271,131 @@ public final class AppLibraryDialog {
 
     private final class LibraryAdapter extends RecyclerView.Adapter<LibraryVH> {
 
+        private static final int NUM_COLUMNS = 4;
+        private static final long ENTRANCE_DURATION_MS = 350L; // lb_vertical_grid_entrance_transition.xml (350ms)
+
         private final RecyclerView grid;
         private final List<LauncherAppEntry> items = new ArrayList<>();
         private final Set<String> pinnedKeys = new HashSet<>();
         private final Set<String> pinnedPackages = new HashSet<>();
+        private boolean entranceChildrenHidden = false;
 
         LibraryAdapter(RecyclerView grid) {
             this.grid = grid;
+        }
+
+        /**
+         * Setara VerticalGridFragment.prepareEntranceTransition() ->
+         * VerticalGridPresenter.setEntranceTransitionState(vh, false) ->
+         * VerticalGridView.setChildrenVisibility(View.INVISIBLE).
+         */
+        void prepareEntranceTransition() {
+            entranceChildrenHidden = true;
+            for (int i = 0, n = grid.getChildCount(); i < n; i++) {
+                View child = grid.getChildAt(i);
+                if (child != null) {
+                    child.setVisibility(View.INVISIBLE);
+                }
+            }
+        }
+
+        /**
+         * Setara VerticalGridFragment.startEntranceTransition() ->
+         * BaseFragment.onExecuteEntranceTransition() (OnPreDrawListener) ->
+         * lb_vertical_grid_entrance_transition.xml (<slide android:duration="350" android:slideEdge="bottom"/>).
+         */
+        void startEntranceTransition() {
+            if (items.isEmpty()) {
+                entranceChildrenHidden = false;
+                return;
+            }
+            final ViewTreeObserver vto = grid.getViewTreeObserver();
+            vto.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+                @Override
+                public boolean onPreDraw() {
+                    if (grid.getViewTreeObserver().isAlive()) {
+                        grid.getViewTreeObserver().removeOnPreDrawListener(this);
+                    }
+                    int childCount = grid.getChildCount();
+                    if (childCount == 0) {
+                        entranceChildrenHidden = false;
+                        return true;
+                    }
+
+                    // 1. SetEntranceTransitionState(true) -> semua child menjadi VISIBLE
+                    entranceChildrenHidden = false;
+
+                    int screenW = activity.getResources().getDisplayMetrics().widthPixels;
+                    int screenH = activity.getResources().getDisplayMetrics().heightPixels;
+                    int gridW = grid.getWidth() > 0 ? grid.getWidth() : screenW;
+                    int gridH = grid.getHeight() > 0 ? grid.getHeight() : screenH;
+
+                    // Slide(Gravity.BOTTOM) / SlideKitkat$4: goneY = view.getTranslationY() + gridHeight
+                    float slideDistance = Math.max(gridH, screenH * 0.78f);
+
+                    // Fokuskan kartu pertama seperti VerticalGridView default selection
+                    View first = grid.getChildAt(0);
+                    if (first != null && !first.hasFocus()) {
+                        first.requestFocus();
+                    }
+
+                    // SidePropagation(Gravity.BOTTOM): kartu meluncur dari batas bawah layar ke atas
+                    // dengan propagasi jarak dari titik fokus atas-tengah (epicenter) dan baris.
+                    float epicenterX = gridW * 0.5f;
+                    float maxDist = Math.max(1f, gridW + gridH);
+
+                    for (int i = 0; i < childCount; i++) {
+                        final View child = grid.getChildAt(i);
+                        if (child == null) continue;
+
+                        int pos = grid.getChildAdapterPosition(child);
+                        int row = pos != RecyclerView.NO_POSITION ? (pos / NUM_COLUMNS) : (i / NUM_COLUMNS);
+
+                        float childCenterX = (child.getLeft() + child.getRight()) * 0.5f;
+                        float childCenterY = (child.getTop() + child.getBottom()) * 0.5f;
+                        float dist = Math.abs(childCenterX - epicenterX) + Math.max(0f, childCenterY);
+
+                        // SidePropagation delay (propagationSpeed = 3.0f pada durasi 350ms) + cascade per baris
+                        long propDelay = Math.round((ENTRANCE_DURATION_MS / 3.0f) * (dist / maxDist));
+                        long delayMs = Math.min(propDelay + (row * 28L), 180L);
+
+                        Object oldAnim = child.getTag(R.id.dialog_library_grid);
+                        if (oldAnim instanceof Animator) {
+                            ((Animator) oldAnim).cancel();
+                        }
+
+                        // Posisi awal di bawah layar (INVISIBLE sampai animasi mulai agar tidak tampil di atas dulu)
+                        child.setVisibility(View.VISIBLE);
+                        child.setAlpha(1f);
+                        child.setTranslationY(slideDistance);
+
+                        ObjectAnimator slideAnim = ObjectAnimator.ofFloat(child, View.TRANSLATION_Y, slideDistance, 0f);
+                        slideAnim.setStartDelay(delayMs);
+                        slideAnim.setDuration(ENTRANCE_DURATION_MS);
+                        // lb_decelerator_4 / DecelerateInterpolator khas Leanback VerticalGrid
+                        slideAnim.setInterpolator(new DecelerateInterpolator(2.4f));
+                        slideAnim.addListener(new AnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationEnd(Animator animation) {
+                                child.setTranslationY(0f);
+                                child.setTag(R.id.dialog_library_grid, null);
+                            }
+
+                            @Override
+                            public void onAnimationCancel(Animator animation) {
+                                child.setTranslationY(0f);
+                                child.setTag(R.id.dialog_library_grid, null);
+                            }
+                        });
+                        child.setTag(R.id.dialog_library_grid, slideAnim);
+                        slideAnim.start();
+                    }
+
+                    // Return false agar frame ini digambar ulang dengan translationY = slideDistance
+                    return false;
+                }
+            });
+            grid.invalidate();
         }
 
         private boolean isEntryPinned(LauncherAppEntry entry) {
@@ -383,11 +520,49 @@ public final class AppLibraryDialog {
                             return true;
                         }
                     }
+                } else if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    // Navigasi D-pad wrap-around antar baris ala ManjayaDrawer (AppsGridFragment$7)
+                    int pos = holder.getBindingAdapterPosition();
+                    if (pos == RecyclerView.NO_POSITION) pos = position;
+                    int size = items.size();
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        if (pos % NUM_COLUMNS == NUM_COLUMNS - 1 && pos < size - 1) {
+                            int target = pos + 1;
+                            grid.smoothScrollToPosition(target);
+                            grid.post(() -> {
+                                RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(target);
+                                if (vh != null && vh.itemView != null) vh.itemView.requestFocus();
+                            });
+                            return true;
+                        }
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                        if (pos / NUM_COLUMNS > 0 && pos % NUM_COLUMNS == 0) {
+                            int target = pos - 1;
+                            grid.smoothScrollToPosition(target);
+                            grid.post(() -> {
+                                RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(target);
+                                if (vh != null && vh.itemView != null) vh.itemView.requestFocus();
+                            });
+                            return true;
+                        }
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        int rem = size % NUM_COLUMNS;
+                        int lastRowStart = (size / NUM_COLUMNS) * NUM_COLUMNS;
+                        if (rem > 0 && pos >= lastRowStart - NUM_COLUMNS && pos < lastRowStart && (pos % NUM_COLUMNS) >= rem) {
+                            int target = size - 1;
+                            grid.smoothScrollToPosition(target);
+                            grid.post(() -> {
+                                RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(target);
+                                if (vh != null && vh.itemView != null) vh.itemView.requestFocus();
+                            });
+                            return true;
+                        }
+                    }
                 }
                 return false;
             });
 
-            // Focus listener -> Scale animation & glowing stroke
+            // Focus listener -> Scale animation & glowing stroke (FocusHighlight.ZOOM_FACTOR_MEDIUM)
             GradientDrawable focusStroke = new GradientDrawable();
             focusStroke.setCornerRadius(radius);
             focusStroke.setColor(Color.TRANSPARENT);
@@ -400,9 +575,20 @@ public final class AppLibraryDialog {
                 float s = hasFocus ? 1.08f : 1.0f;
                 float z = hasFocus ? 8 * density : 0f;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    v.animate().scaleX(s).scaleY(s).translationZ(z).setDuration(160).start();
+                    v.animate()
+                            .scaleX(s)
+                            .scaleY(s)
+                            .translationZ(z)
+                            .setDuration(150)
+                            .setInterpolator(new DecelerateInterpolator(1.7f))
+                            .start();
                 } else {
-                    v.animate().scaleX(s).scaleY(s).setDuration(160).start();
+                    v.animate()
+                            .scaleX(s)
+                            .scaleY(s)
+                            .setDuration(150)
+                            .setInterpolator(new DecelerateInterpolator(1.7f))
+                            .start();
                 }
                 if (hasFocus) {
                     GradientDrawable focusBg = new GradientDrawable();
@@ -422,6 +608,28 @@ public final class AppLibraryDialog {
                     holder.title.setSelected(false);
                 }
             });
+
+            // Setara VerticalGridView.setChildrenVisibility: INVISIBLE saat prepareEntranceTransition,
+            // lalu VISIBLE ketika startEntranceTransition berjalan.
+            Object runningAnim = holder.itemView.getTag(R.id.dialog_library_grid);
+            if (!(runningAnim instanceof Animator) || !((Animator) runningAnim).isRunning()) {
+                holder.itemView.setTranslationY(0f);
+                holder.itemView.setAlpha(1f);
+            }
+            holder.itemView.setVisibility(entranceChildrenHidden ? View.INVISIBLE : View.VISIBLE);
+        }
+
+        @Override
+        public void onViewDetachedFromWindow(@NonNull LibraryVH holder) {
+            super.onViewDetachedFromWindow(holder);
+            Object runningAnim = holder.itemView.getTag(R.id.dialog_library_grid);
+            if (runningAnim instanceof Animator) {
+                ((Animator) runningAnim).cancel();
+                holder.itemView.setTag(R.id.dialog_library_grid, null);
+            }
+            holder.itemView.animate().cancel();
+            holder.itemView.setAlpha(1f);
+            holder.itemView.setTranslationY(0f);
         }
 
         @Override

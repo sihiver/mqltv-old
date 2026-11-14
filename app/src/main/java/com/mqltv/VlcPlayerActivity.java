@@ -2,6 +2,7 @@ package com.mqltv;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -27,6 +28,7 @@ import androidx.fragment.app.FragmentActivity;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import okhttp3.Call;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
@@ -272,8 +274,74 @@ public class VlcPlayerActivity extends FragmentActivity {
     }
 
     @Override
+    public void onBackPressed() {
+        if (channelOverlay != null && channelOverlay.isVisible()) {
+            channelOverlay.hide();
+            return;
+        }
+        super.onBackPressed();
+    }
+
+    private int vlcRetryCount = 0;
+    private static final int MAX_VLC_RETRIES = 3;
+    private boolean isZapping = false;
+    private long zapSequence = 0;
+    @Nullable private volatile Call activeZapCall = null;
+    private static final ExecutorService ZAP_EXECUTOR = Executors.newSingleThreadExecutor();
+
+    private final AudioManager.OnAudioFocusChangeListener audioFocusListener = focusChange -> {
+        if (mediaPlayer == null) return;
+        try {
+            if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+                mediaPlayer.setVolume(30);
+            } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
+                if (!isZapping) mediaPlayer.setVolume(100);
+            }
+        } catch (Exception ignored) {}
+    };
+
+    private void requestAudioFocus() {
+        try {
+            AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+            if (am != null) {
+                am.requestAudioFocus(audioFocusListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void abandonAudioFocus() {
+        try {
+            AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+            if (am != null) {
+                am.abandonAudioFocus(audioFocusListener);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private final Runnable vlcRetryRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing() || mediaPlayer == null || libVLC == null) return;
+            String currentUrl = getIntent().getStringExtra(Constants.EXTRA_URL);
+            if (currentUrl == null || currentUrl.isEmpty()) return;
+            ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromIntent(getIntent());
+            try {
+                mediaPlayer.stop();
+                Media media = new Media(libVLC, Uri.parse(currentUrl));
+                configureVlcMedia(media, meta);
+                mediaPlayer.setMedia(media);
+                media.release();
+                mediaPlayer.play();
+            } catch (Exception e) {
+                Log.e(TAG, "VLC retry failed", e);
+            }
+        }
+    };
+
+    @Override
     protected void onStart() {
         super.onStart();
+        released = false;
 
         if (!PlaybackAccessEnforcer.ensureAccessOrFinish(this, LoginActivity.DEST_LIVE_TV)) return;
 
@@ -285,6 +353,7 @@ public class VlcPlayerActivity extends FragmentActivity {
             return;
         }
 
+        requestAudioFocus();
         PresenceReporter.startPlayback(getApplicationContext(), title, url);
 
         int currentId = getIntent().getIntExtra(Constants.EXTRA_CHANNEL_ID, 0);
@@ -294,9 +363,10 @@ public class VlcPlayerActivity extends FragmentActivity {
         }
 
         ArrayList<String> options = new ArrayList<>();
-        // Keep logging lightweight on legacy STBs.
+        // Avoid -vvv JNI log flooding which causes severe CPU frame drops on TV STBs.
         boolean legacySdk = android.os.Build.VERSION.SDK_INT <= 19;
-        options.add(legacySdk ? "-vv" : "-vvv");
+        boolean isDebuggable = (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        options.add(isDebuggable ? "-v" : "--quiet");
 
         // Network buffering options; read from preferences.
         int cachingMs = PlaybackPrefs.getVlcNetworkCaching(this);
@@ -347,9 +417,9 @@ public class VlcPlayerActivity extends FragmentActivity {
             Log.w(TAG, "VLC vout android_surface not available; forcing android_display");
         }
         options.add("--vout=" + voutName);
-        // RV16 on legacy SoCs causes frozen video (hardware can't render it to SurfaceView).
-        // Use RV32 for Android 4.4 to ensure correct pixel format rendering.
-        options.add(legacySdk ? "--android-display-chroma=RV32" : "--android-display-chroma=RV16");
+        // Always use 32-bit chroma (RV32) to prevent 16-bit color banding on modern TV displays
+        // and prevent frozen video on legacy SoCs.
+        options.add("--android-display-chroma=RV32");
 
         if (deinterlace) {
             options.add("--deinterlace=1");
@@ -374,8 +444,16 @@ public class VlcPlayerActivity extends FragmentActivity {
                 if (loading != null) loading.setVisibility(View.GONE);
             }
             if (event.type == MediaPlayer.Event.EncounteredError) {
-                isZapping = false;
                 if (loading != null) loading.setVisibility(View.GONE);
+                if (vlcRetryCount < MAX_VLC_RETRIES) {
+                    vlcRetryCount++;
+                    long delayMs = vlcRetryCount == 1 ? 1500L : (vlcRetryCount == 2 ? 3000L : 5000L);
+                    Log.w(TAG, "VLC EncounteredError: auto-retry " + vlcRetryCount + "/" + MAX_VLC_RETRIES + " in " + delayMs + "ms");
+                    uiHandler.removeCallbacks(vlcRetryRunnable);
+                    uiHandler.postDelayed(vlcRetryRunnable, delayMs);
+                    return;
+                }
+                isZapping = false;
                 if (mediaPlayer != null) {
                     try { mediaPlayer.setVolume(100); } catch (Exception ignored) {}
                 }
@@ -385,6 +463,8 @@ public class VlcPlayerActivity extends FragmentActivity {
             if (event.type == MediaPlayer.Event.TimeChanged) {
                 // TimeChanged means frames are actively rendering!
                 isZapping = false;
+                vlcRetryCount = 0;
+                uiHandler.removeCallbacks(vlcRetryRunnable);
                 if (loading != null) loading.setVisibility(View.GONE);
                 if (mediaPlayer != null) {
                     try { mediaPlayer.setVolume(100); } catch (Exception ignored) {}
@@ -658,7 +738,7 @@ public class VlcPlayerActivity extends FragmentActivity {
             media.addOption(":avcodec-skip-idct=nonref");
             media.addOption(":clock-jitter=0");
         }
-        media.addOption(":android-display-chroma=" + (legacySdk ? "RV32" : "RV16"));
+        media.addOption(":android-display-chroma=RV32");
         if (deinterlace) {
             media.addOption(":deinterlace=1");
             media.addOption(":deinterlace-mode=yadif");
@@ -676,10 +756,6 @@ public class VlcPlayerActivity extends FragmentActivity {
         }
     }
 
-    private boolean isZapping = false;
-    private long zapSequence = 0;
-    private static final ExecutorService ZAP_EXECUTOR = Executors.newSingleThreadExecutor();
-
     public void switchChannelInPlace(@Nullable Channel channel) {
         if (channel == null || isFinishing()) return;
 
@@ -689,16 +765,27 @@ public class VlcPlayerActivity extends FragmentActivity {
         if (!LoginGuard.ensureLoggedIn(this, LoginActivity.DEST_LIVE_TV)) return;
         if (!SubscriptionGuard.ensureNotExpired(this)) return;
 
+        vlcRetryCount = 0;
+        uiHandler.removeCallbacks(vlcRetryRunnable);
+
         RecentChannelsStore.record(this, channel);
         PresenceReporter.reportOnlineLaunch(this, channel.getTitle(), channel.getUrl());
 
         if (channelOverlay != null) {
             channelOverlay.setCurrentChannelId(channel.getId());
-            channelOverlay.showQuickInfoBannerForChannelId(channel.getId());
+            if (!channelOverlay.isVisible()) {
+                channelOverlay.showQuickInfoBannerForChannelId(channel.getId());
+            }
         }
 
         isZapping = true;
         final long currentZapSeq = ++zapSequence;
+
+        // Cancel any previous in-flight HTTP request so rapid CH+/CH- doesn't queue up sequentially
+        Call prevCall = activeZapCall;
+        if (prevCall != null) {
+            try { prevCall.cancel(); } catch (Exception ignored) {}
+        }
 
         // Keep screen on last frame, do not show center loading spinner
         if (loading != null) {
@@ -712,7 +799,14 @@ public class VlcPlayerActivity extends FragmentActivity {
         final int targetId = channel.getId();
         final String targetTitle = channel.getTitle();
 
+        StreamInfoCache.Entry cached = StreamInfoCache.get(targetId);
+        if (cached != null) {
+            applyResolvedVlcStream(channel, targetId, targetTitle, cached.streamUrl, cached.meta, currentZapSeq);
+            return;
+        }
+
         ZAP_EXECUTOR.execute(() -> {
+            if (currentZapSeq != zapSequence) return;
             try {
                 String baseUrl = AuthPrefs.getBaseUrl(VlcPlayerActivity.this);
                 String token = AuthPrefs.getAccessToken(VlcPlayerActivity.this);
@@ -723,7 +817,9 @@ public class VlcPlayerActivity extends FragmentActivity {
                         .header("Authorization", "Bearer " + token)
                         .build();
 
-                try (Response resp = NetworkClient.getClient().newCall(req).execute()) {
+                Call call = NetworkClient.getClient().newCall(req);
+                activeZapCall = call;
+                try (Response resp = call.execute()) {
                     ResponseBody body = resp.body();
                     if (!resp.isSuccessful() || body == null) {
                         int code = resp != null ? resp.code() : 0;
@@ -771,54 +867,12 @@ public class VlcPlayerActivity extends FragmentActivity {
                     fakeMeta.put("user_agent", json.isNull("userAgent") ? "" : json.optString("userAgent", ""));
                     fakeMeta.put("referer", json.isNull("referer") ? "" : json.optString("referer", ""));
                     ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromVisionPlusObject(fakeMeta);
+                    StreamInfoCache.put(targetId, streamUrl, meta);
 
-                    runOnUiThread(() -> {
-                        if (isFinishing() || currentZapSeq != zapSequence) return;
-
-                        // Check if channel requires DRM (Media3/ExoPlayer), or is Radio, or preferred player is MX Player
-                        boolean isRadio = channel.getGroupTitle() != null && channel.getGroupTitle().toLowerCase().contains("radio");
-                        boolean requiresDrm = meta != null && meta.requiresExoDrm();
-                        boolean useMx = PlaybackPrefs.isUseMxPlayer(VlcPlayerActivity.this) && (meta == null || !meta.requiresExoDrm());
-
-                        if (isRadio || requiresDrm || useMx) {
-                            releasePlayer();
-                            Intent intent;
-                            if (requiresDrm) {
-                                intent = PlayerIntents.createPlayIntent(VlcPlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta);
-                            } else if (isRadio) {
-                                intent = PlayerIntents.createPlayIntent(VlcPlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta);
-                            } else {
-                                intent = PlayerIntents.createPreferredPlayIntent(VlcPlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta);
-                            }
-                            startActivity(intent);
-                            finish();
-                            return;
-                        }
-
-                        // IN-PLACE TRANSITION ON VLC
-                        setTitle(targetTitle);
-                        getIntent().putExtra(Constants.EXTRA_CHANNEL_ID, targetId);
-                        getIntent().putExtra(Constants.EXTRA_TITLE, targetTitle);
-                        getIntent().putExtra(Constants.EXTRA_URL, streamUrl);
-                        if (meta != null) meta.putInIntent(getIntent());
-
-                        PresenceReporter.startPlayback(getApplicationContext(), targetTitle, streamUrl);
-
-                        if (mediaPlayer != null && libVLC != null) {
-                            try {
-                                mediaPlayer.stop();
-                                Media media = new Media(libVLC, Uri.parse(streamUrl));
-                                configureVlcMedia(media, meta);
-                                mediaPlayer.setMedia(media);
-                                media.release();
-                                mediaPlayer.play();
-                            } catch (Exception e) {
-                                Log.e(TAG, "Error switching VLC media", e);
-                            }
-                        }
-                    });
+                    runOnUiThread(() -> applyResolvedVlcStream(channel, targetId, targetTitle, streamUrl, meta, currentZapSeq));
                 }
             } catch (Exception e) {
+                if (activeZapCall != null && activeZapCall.isCanceled()) return;
                 runOnUiThread(() -> {
                     if (isFinishing() || currentZapSeq != zapSequence) return;
                     isZapping = false;
@@ -831,8 +885,63 @@ public class VlcPlayerActivity extends FragmentActivity {
         });
     }
 
+    private void applyResolvedVlcStream(@NonNull Channel channel, int targetId, String targetTitle,
+                                        @NonNull String streamUrl, @Nullable ChannelPlaybackMeta meta,
+                                        long currentZapSeq) {
+        if (isFinishing() || currentZapSeq != zapSequence) return;
+
+        // Check if channel requires DRM (Media3/ExoPlayer), or is Radio, or preferred player is MX Player
+        boolean isRadio = channel.getGroupTitle() != null && channel.getGroupTitle().toLowerCase().contains("radio");
+        boolean requiresDrm = meta != null && meta.requiresExoDrm();
+        boolean useMx = PlaybackPrefs.isUseMxPlayer(VlcPlayerActivity.this) && (meta == null || !meta.requiresExoDrm());
+
+        if (isRadio || requiresDrm || useMx) {
+            releasePlayer();
+            Intent intent;
+            if (requiresDrm) {
+                intent = PlayerIntents.createPlayIntent(VlcPlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta);
+            } else if (isRadio) {
+                intent = PlayerIntents.createPlayIntent(VlcPlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta);
+            } else {
+                intent = PlayerIntents.createPreferredPlayIntent(VlcPlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta);
+            }
+            startActivity(intent);
+            finish();
+            return;
+        }
+
+        // IN-PLACE TRANSITION ON VLC
+        setTitle(targetTitle);
+        getIntent().putExtra(Constants.EXTRA_CHANNEL_ID, targetId);
+        getIntent().putExtra(Constants.EXTRA_TITLE, targetTitle);
+        getIntent().putExtra(Constants.EXTRA_URL, streamUrl);
+        if (meta != null) meta.putInIntent(getIntent());
+
+        PresenceReporter.startPlayback(getApplicationContext(), targetTitle, streamUrl);
+
+        if (mediaPlayer != null && libVLC != null) {
+            try {
+                mediaPlayer.stop();
+                Media media = new Media(libVLC, Uri.parse(streamUrl));
+                configureVlcMedia(media, meta);
+                mediaPlayer.setMedia(media);
+                media.release();
+                mediaPlayer.play();
+            } catch (Exception e) {
+                Log.e(TAG, "Error switching VLC media", e);
+            }
+        }
+    }
+
     private void releasePlayer() {
         isZapping = false;
+        uiHandler.removeCallbacks(vlcRetryRunnable);
+        Call prevCall = activeZapCall;
+        if (prevCall != null) {
+            try { prevCall.cancel(); } catch (Exception ignored) {}
+            activeZapCall = null;
+        }
+        abandonAudioFocus();
         if (released) return;
         released = true;
 

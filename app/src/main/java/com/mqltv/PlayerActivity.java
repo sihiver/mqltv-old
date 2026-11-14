@@ -20,15 +20,19 @@ import androidx.fragment.app.FragmentActivity;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import okhttp3.Call;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.json.JSONObject;
 
+import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.common.TrackSelectionOverride;
+import androidx.media3.common.Tracks;
 import androidx.media3.common.VideoSize;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.exoplayer.DefaultLoadControl;
@@ -216,7 +220,54 @@ public class PlayerActivity extends FragmentActivity {
         return super.dispatchKeyEvent(event);
     }
 
+    @OptIn(markerClass = UnstableApi.class)
     private void toggleAudioChannelMode() {
+        // First check if the stream exposes multiple discrete audio tracks (e.g., Track 1 Indo, Track 2 Eng)
+        if (player != null && trackSelector != null) {
+            Tracks currentTracks = player.getCurrentTracks();
+            java.util.List<Tracks.Group> audioGroups = new java.util.ArrayList<>();
+            for (Tracks.Group group : currentTracks.getGroups()) {
+                if (group.getType() == C.TRACK_TYPE_AUDIO && group.isSupported()) {
+                    audioGroups.add(group);
+                }
+            }
+            int totalDiscreteTracks = 0;
+            for (Tracks.Group g : audioGroups) {
+                totalDiscreteTracks += g.length;
+            }
+            if (totalDiscreteTracks > 1) {
+                int selectedFlatIndex = 0;
+                int flatIdx = 0;
+                for (Tracks.Group g : audioGroups) {
+                    for (int t = 0; t < g.length; t++) {
+                        if (g.isTrackSelected(t)) {
+                            selectedFlatIndex = flatIdx;
+                        }
+                        flatIdx++;
+                    }
+                }
+                int nextFlatIndex = (selectedFlatIndex + 1) % totalDiscreteTracks;
+                flatIdx = 0;
+                for (Tracks.Group g : audioGroups) {
+                    for (int t = 0; t < g.length; t++) {
+                        if (flatIdx == nextFlatIndex) {
+                            androidx.media3.common.Format fmt = g.getTrackFormat(t);
+                            String lang = fmt.language != null ? fmt.language.toUpperCase() : "";
+                            String lbl = fmt.label != null ? fmt.label : ("Track " + (nextFlatIndex + 1));
+                            String desc = !lang.isEmpty() ? (lbl + " (" + lang + ")") : lbl;
+                            trackSelector.setParameters(
+                                    trackSelector.buildUponParameters()
+                                            .setOverrideForType(new TrackSelectionOverride(g.getMediaTrackGroup(), t))
+                            );
+                            Toast.makeText(this, "Audio Track: " + desc, Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        flatIdx++;
+                    }
+                }
+            }
+        }
+
         if (channelMixerAudioProcessor == null) return;
         int currentMode = channelMixerAudioProcessor.getMode();
         int newMode;
@@ -244,6 +295,27 @@ public class PlayerActivity extends FragmentActivity {
         }
         super.onBackPressed();
     }
+
+    private int errorRetryCount = 0;
+    private static final int MAX_AUTO_RETRIES = 3;
+    private final Runnable retryRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing() || player == null) return;
+            int currentId = getIntent().getIntExtra(Constants.EXTRA_CHANNEL_ID, 0);
+            if (errorRetryCount >= 2 && currentId > 0) {
+                // Re-fetch fresh stream URL/token on 2nd+ retry in case stream token expired
+                StreamInfoCache.invalidate(currentId);
+                String title = getIntent().getStringExtra(Constants.EXTRA_TITLE);
+                Channel dummy = new Channel(currentId, title != null ? title : "Channel", "", "", false, 0);
+                refreshCurrentChannelStream(dummy);
+            } else {
+                player.seekToDefaultPosition();
+                player.prepare();
+                player.play();
+            }
+        }
+    };
 
     @OptIn(markerClass = UnstableApi.class) @Override
     protected void onStart() {
@@ -297,25 +369,29 @@ public class PlayerActivity extends FragmentActivity {
                     android.content.Context context,
                     boolean enableFloatOutput,
                     boolean enableAudioTrackPlaybackParams) {
-                return new androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
-                        .setAudioProcessors(new androidx.media3.common.audio.AudioProcessor[] { channelMixerAudioProcessor })
-                        .setEnableFloatOutput(enableFloatOutput)
-                        .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                        .build();
+                androidx.media3.exoplayer.audio.AudioSink baseSink =
+                        new androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
+                                .setAudioProcessors(new androidx.media3.common.audio.AudioProcessor[] { channelMixerAudioProcessor })
+                                .setEnableFloatOutput(enableFloatOutput)
+                                .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                                .build();
+                return new DiscontinuityIgnoringAudioSink(baseSink);
             }
         };
         renderersFactory.setEnableDecoderFallback(!DeviceQuirks.isHuaweiEc6108v9())
-            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
+                .setAllowedVideoJoiningTimeMs(5_000L)
+                .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
-            // Optimized buffer tuning: quick startup (1.5s), safe memory footprint for 1GB RAM STBs
+            // Optimized buffer tuning for live IPTV & 1GB RAM STBs:
+            // Fast start (1.2s) and capped maxBuffer (30s) to prevent OOM / GC stalls
             .setBufferDurationsMs(
-                20_000,
-                50_000,
-                1_500,
-                3_000
+                15_000,
+                30_000,
+                1_200,
+                2_500
             )
-            .setBackBuffer(5_000, true)
+            .setBackBuffer(0, false)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build();
 
@@ -335,6 +411,8 @@ public class PlayerActivity extends FragmentActivity {
             @Override
             public void onRenderedFirstFrame() {
                 isZapping = false;
+                errorRetryCount = 0;
+                idleHandler.removeCallbacks(retryRunnable);
                 if (player != null) {
                     player.setVolume(1f);
                 }
@@ -359,13 +437,27 @@ public class PlayerActivity extends FragmentActivity {
             @Override
             public void onPlayerError(@NonNull PlaybackException error) {
                 if (loadingView != null) loadingView.setVisibility(View.GONE);
+
+                // 1. Live sliding window recovery: immediately jump back to live edge without error toast
+                if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
+                    android.util.Log.w("PlayerActivity", "BehindLiveWindowException: seeking back to live edge");
+                    if (player != null) {
+                        player.seekToDefaultPosition();
+                        player.prepare();
+                        player.play();
+                    }
+                    return;
+                }
+
                 String msg = "Playback error: " + error.getErrorCodeName();
                 Throwable cause = error.getCause();
                 ChannelPlaybackMeta drmMeta = ChannelPlaybackMeta.fromIntent(getIntent());
                 String playUrl = getIntent().getStringExtra(Constants.EXTRA_URL);
+                boolean isDrmError = false;
                 while (cause != null) {
                     String cn = cause.getClass().getSimpleName();
                     if (cn.contains("Drm") || cn.contains("MediaDrm")) {
+                        isDrmError = true;
                         if (DrmCapabilities.isDashClearKeyUnsupportedOnThisDevice(drmMeta, playUrl)) {
                             msg = DrmCapabilities.getDashClearKeyUnsupportedMessage();
                         } else {
@@ -393,6 +485,29 @@ public class PlayerActivity extends FragmentActivity {
                             || detail.contains("UnrecognizedInputFormatException"))) {
                         isDecoderOrFormatError = true;
                     }
+                }
+
+                // 2. Auto-reconnect with exponential backoff for transient network/source hiccups
+                boolean isTransientNetworkOrSourceError = !isDecoderOrFormatError && !isDrmError && (
+                        error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
+                        || error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
+                        || error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS
+                        || error.errorCode == PlaybackException.ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE
+                        || error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED
+                        || error.errorCode == PlaybackException.ERROR_CODE_TIMEOUT
+                        || error.errorCode == PlaybackException.ERROR_CODE_UNSPECIFIED
+                        || error.errorCode == PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED
+                        || error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED
+                );
+
+                if (isTransientNetworkOrSourceError && errorRetryCount < MAX_AUTO_RETRIES) {
+                    errorRetryCount++;
+                    long delayMs = errorRetryCount == 1 ? 1_500L : (errorRetryCount == 2 ? 3_000L : 5_000L);
+                    android.util.Log.w("PlayerActivity", "Auto-retry (" + errorRetryCount + "/" + MAX_AUTO_RETRIES
+                            + ") in " + delayMs + "ms due to " + error.getErrorCodeName());
+                    idleHandler.removeCallbacks(retryRunnable);
+                    idleHandler.postDelayed(retryRunnable, delayMs);
+                    return;
                 }
 
                 if (isDecoderOrFormatError) {
@@ -540,7 +655,12 @@ public class PlayerActivity extends FragmentActivity {
 
     private boolean isZapping = false;
     private long zapSequence = 0;
+    @Nullable private volatile Call activeZapCall = null;
     private static final ExecutorService ZAP_EXECUTOR = Executors.newSingleThreadExecutor();
+
+    private void refreshCurrentChannelStream(@NonNull Channel channel) {
+        performChannelStreamLoad(channel, true);
+    }
 
     public void switchChannelInPlace(@Nullable Channel channel) {
         if (channel == null || isFinishing()) return;
@@ -551,16 +671,31 @@ public class PlayerActivity extends FragmentActivity {
         if (!LoginGuard.ensureLoggedIn(this, LoginActivity.DEST_LIVE_TV)) return;
         if (!SubscriptionGuard.ensureNotExpired(this)) return;
 
+        errorRetryCount = 0;
+        idleHandler.removeCallbacks(retryRunnable);
+
         RecentChannelsStore.record(this, channel);
         PresenceReporter.reportOnlineLaunch(this, channel.getTitle(), channel.getUrl());
 
         if (channelOverlay != null) {
             channelOverlay.setCurrentChannelId(channel.getId());
-            channelOverlay.showQuickInfoBannerForChannelId(channel.getId());
+            if (!channelOverlay.isVisible()) {
+                channelOverlay.showQuickInfoBannerForChannelId(channel.getId());
+            }
         }
 
+        performChannelStreamLoad(channel, false);
+    }
+
+    private void performChannelStreamLoad(@NonNull Channel channel, boolean bypassCache) {
         isZapping = true;
         final long currentZapSeq = ++zapSequence;
+
+        // Cancel any previous in-flight HTTP request so rapid CH+/CH- doesn't queue up sequentially
+        Call prevCall = activeZapCall;
+        if (prevCall != null) {
+            try { prevCall.cancel(); } catch (Exception ignored) {}
+        }
 
         // Keep screen on last frame, do not show center loading spinner
         if (loadingView != null) {
@@ -574,7 +709,16 @@ public class PlayerActivity extends FragmentActivity {
         final int targetId = channel.getId();
         final String targetTitle = channel.getTitle();
 
+        if (!bypassCache) {
+            StreamInfoCache.Entry cached = StreamInfoCache.get(targetId);
+            if (cached != null) {
+                applyResolvedChannelStream(channel, targetId, targetTitle, cached.streamUrl, cached.meta, currentZapSeq);
+                return;
+            }
+        }
+
         ZAP_EXECUTOR.execute(() -> {
+            if (currentZapSeq != zapSequence) return;
             try {
                 String baseUrl = AuthPrefs.getBaseUrl(PlayerActivity.this);
                 String token = AuthPrefs.getAccessToken(PlayerActivity.this);
@@ -585,7 +729,9 @@ public class PlayerActivity extends FragmentActivity {
                         .header("Authorization", "Bearer " + token)
                         .build();
 
-                try (Response resp = NetworkClient.getClient().newCall(req).execute()) {
+                Call call = NetworkClient.getClient().newCall(req);
+                activeZapCall = call;
+                try (Response resp = call.execute()) {
                     ResponseBody body = resp.body();
                     if (!resp.isSuccessful() || body == null) {
                         int code = resp != null ? resp.code() : 0;
@@ -629,59 +775,12 @@ public class PlayerActivity extends FragmentActivity {
                     fakeMeta.put("user_agent", json.isNull("userAgent") ? "" : json.optString("userAgent", ""));
                     fakeMeta.put("referer", json.isNull("referer") ? "" : json.optString("referer", ""));
                     ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromVisionPlusObject(fakeMeta);
+                    StreamInfoCache.put(targetId, streamUrl, meta);
 
-                    runOnUiThread(() -> {
-                        if (isFinishing() || currentZapSeq != zapSequence) return;
-
-                        // Check if channel is Radio, or preferred player is MX Player or Native / VLC
-                        Class<?> target = PlayerIntents.getTargetPlayerActivity(PlayerActivity.this, meta);
-                        boolean isRadio = channel.getGroupTitle() != null && channel.getGroupTitle().toLowerCase().contains("radio");
-                        boolean useMx = PlaybackPrefs.isUseMxPlayer(PlayerActivity.this) && (meta == null || !meta.requiresExoDrm());
-
-                        if (isRadio || useMx || target != PlayerActivity.class) {
-                            releasePlayer();
-                            Intent intent = isRadio
-                                    ? PlayerIntents.createPlayIntent(PlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta)
-                                    : PlayerIntents.createPreferredPlayIntent(PlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta);
-                            startActivity(intent);
-                            finish();
-                            return;
-                        }
-
-                        if (DrmCapabilities.isDashClearKeyUnsupportedOnThisDevice(meta, streamUrl)) {
-                            isZapping = false;
-                            if (player != null) player.setVolume(1f);
-                            Toast.makeText(PlayerActivity.this, DrmCapabilities.getDashClearKeyUnsupportedMessage(), Toast.LENGTH_LONG).show();
-                            return;
-                        }
-
-                        // IN-PLACE TRANSITION: Freeze frame remains on screen, swap source seamlessly
-                        setTitle(targetTitle);
-                        getIntent().putExtra(Constants.EXTRA_CHANNEL_ID, targetId);
-                        getIntent().putExtra(Constants.EXTRA_TITLE, targetTitle);
-                        getIntent().putExtra(Constants.EXTRA_URL, streamUrl);
-                        if (meta != null) meta.putInIntent(getIntent());
-
-                        PresenceReporter.startPlayback(getApplicationContext(), targetTitle, streamUrl);
-
-                        visionPlusPlayback = meta != null && meta.isActive();
-                        if (visionPlusPlayback && trackSelector != null) {
-                            PlayerQualityHelper.apply(trackSelector, PlaybackPrefs.getVisionVideoQuality(PlayerActivity.this));
-                        }
-
-                        if (channelMixerAudioProcessor != null) {
-                            channelMixerAudioProcessor.resetDetection();
-                        }
-
-                        MediaSource mediaSource = VisionPlusPlayback.buildMedia3Source(PlayerActivity.this, Uri.parse(streamUrl), meta);
-                        if (player != null) {
-                            player.setMediaSource(mediaSource);
-                            player.prepare();
-                            player.play();
-                        }
-                    });
+                    runOnUiThread(() -> applyResolvedChannelStream(channel, targetId, targetTitle, streamUrl, meta, currentZapSeq));
                 }
             } catch (Exception e) {
+                if (activeZapCall != null && activeZapCall.isCanceled()) return;
                 runOnUiThread(() -> {
                     if (isFinishing() || currentZapSeq != zapSequence) return;
                     isZapping = false;
@@ -692,8 +791,67 @@ public class PlayerActivity extends FragmentActivity {
         });
     }
 
+    private void applyResolvedChannelStream(@NonNull Channel channel, int targetId, String targetTitle,
+                                            @NonNull String streamUrl, @Nullable ChannelPlaybackMeta meta,
+                                            long currentZapSeq) {
+        if (isFinishing() || currentZapSeq != zapSequence) return;
+
+        // Check if channel is Radio, or preferred player is MX Player or Native / VLC
+        Class<?> target = PlayerIntents.getTargetPlayerActivity(PlayerActivity.this, meta);
+        boolean isRadio = channel.getGroupTitle() != null && channel.getGroupTitle().toLowerCase().contains("radio");
+        boolean useMx = PlaybackPrefs.isUseMxPlayer(PlayerActivity.this) && (meta == null || !meta.requiresExoDrm());
+
+        if (isRadio || useMx || target != PlayerActivity.class) {
+            releasePlayer();
+            Intent intent = isRadio
+                    ? PlayerIntents.createPlayIntent(PlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta)
+                    : PlayerIntents.createPreferredPlayIntent(PlayerActivity.this, channel.getId(), channel.getTitle(), streamUrl, meta);
+            startActivity(intent);
+            finish();
+            return;
+        }
+
+        if (DrmCapabilities.isDashClearKeyUnsupportedOnThisDevice(meta, streamUrl)) {
+            isZapping = false;
+            if (player != null) player.setVolume(1f);
+            Toast.makeText(PlayerActivity.this, DrmCapabilities.getDashClearKeyUnsupportedMessage(), Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // IN-PLACE TRANSITION: Freeze frame remains on screen, swap source seamlessly
+        setTitle(targetTitle);
+        getIntent().putExtra(Constants.EXTRA_CHANNEL_ID, targetId);
+        getIntent().putExtra(Constants.EXTRA_TITLE, targetTitle);
+        getIntent().putExtra(Constants.EXTRA_URL, streamUrl);
+        if (meta != null) meta.putInIntent(getIntent());
+
+        PresenceReporter.startPlayback(getApplicationContext(), targetTitle, streamUrl);
+
+        visionPlusPlayback = meta != null && meta.isActive();
+        if (visionPlusPlayback && trackSelector != null) {
+            PlayerQualityHelper.apply(trackSelector, PlaybackPrefs.getVisionVideoQuality(PlayerActivity.this));
+        }
+
+        if (channelMixerAudioProcessor != null) {
+            channelMixerAudioProcessor.resetDetection();
+        }
+
+        MediaSource mediaSource = VisionPlusPlayback.buildMedia3Source(PlayerActivity.this, Uri.parse(streamUrl), meta);
+        if (player != null) {
+            player.setMediaSource(mediaSource);
+            player.prepare();
+            player.play();
+        }
+    }
+
     private void releasePlayer() {
         isZapping = false;
+        idleHandler.removeCallbacks(retryRunnable);
+        Call prevCall = activeZapCall;
+        if (prevCall != null) {
+            try { prevCall.cancel(); } catch (Exception ignored) {}
+            activeZapCall = null;
+        }
         if (player != null) {
             if (playerView != null) {
                 playerView.setPlayer(null);

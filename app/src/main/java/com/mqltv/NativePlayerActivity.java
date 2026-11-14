@@ -300,9 +300,42 @@ public class NativePlayerActivity extends Activity {
         mainHandler.post(accessTick);
     }
 
+    private int nativeErrorRetryCount = 0;
+    private static final int MAX_NATIVE_RETRIES = 2;
+
+    private final AudioManager.OnAudioFocusChangeListener audioFocusListener = focusChange -> {
+        if (mediaPlayer == null) return;
+        try {
+            if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+                mediaPlayer.setVolume(0.3f, 0.3f);
+            } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN && !audioMuted) {
+                mediaPlayer.setVolume(1f, 1f);
+            }
+        } catch (Throwable ignored) {}
+    };
+
+    private void requestAudioFocus() {
+        try {
+            AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+            if (am != null) {
+                am.requestAudioFocus(audioFocusListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private void abandonAudioFocus() {
+        try {
+            AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+            if (am != null) {
+                am.abandonAudioFocus(audioFocusListener);
+            }
+        } catch (Throwable ignored) {}
+    }
+
     private void startPlayback(SurfaceHolder holder) {
         if (mediaPlayer != null) return;
 
+        requestAudioFocus();
         prepared = false;
         started = false;
         audioMuted = false;
@@ -323,6 +356,7 @@ public class NativePlayerActivity extends Activity {
 
             mp.setOnPreparedListener(player -> {
                 prepared = true;
+                nativeErrorRetryCount = 0;
                 // Keep loading visible until we actually see video rendering.
                 if (loading != null) loading.setVisibility(View.GONE);
                 try {
@@ -387,9 +421,12 @@ public class NativePlayerActivity extends Activity {
                 // MEDIA_ERROR_SERVER_DIED (100) indicates the native media server died.
                 // In that case we should release and recreate the MediaPlayer instead
                 // of finishing the Activity immediately.
-                if (what == MediaPlayer.MEDIA_ERROR_SERVER_DIED) {
-                    Toast.makeText(NativePlayerActivity.this, "Native media server died; restarting player", Toast.LENGTH_SHORT).show();
-                    // Delay a little to avoid tight restart loops.
+                if (what == MediaPlayer.MEDIA_ERROR_SERVER_DIED || nativeErrorRetryCount < MAX_NATIVE_RETRIES) {
+                    if (what != MediaPlayer.MEDIA_ERROR_SERVER_DIED) {
+                        nativeErrorRetryCount++;
+                        Log.w(TAG, "Native error retry " + nativeErrorRetryCount + "/" + MAX_NATIVE_RETRIES);
+                    }
+                    long delayMs = (what == MediaPlayer.MEDIA_ERROR_SERVER_DIED) ? 500L : 1800L;
                     mainHandler.postDelayed(() -> {
                         try {
                             SurfaceHolder sh = surfaceView != null ? surfaceView.getHolder() : null;
@@ -398,11 +435,10 @@ public class NativePlayerActivity extends Activity {
                                 startPlayback(sh);
                             }
                         } catch (Throwable t) {
-                            Log.e(TAG, "Failed to restart after MEDIA_ERROR_SERVER_DIED", t);
-                            // Fallback: finish the activity if restart fails.
+                            Log.e(TAG, "Failed to restart after error", t);
                             finish();
                         }
-                    }, 500);
+                    }, delayMs);
                     return true;
                 }
 
@@ -553,6 +589,7 @@ public class NativePlayerActivity extends Activity {
     }
 
     private void releasePlayer() {
+        abandonAudioFocus();
         MediaPlayer mp = mediaPlayer;
         mediaPlayer = null;
         prepared = false;

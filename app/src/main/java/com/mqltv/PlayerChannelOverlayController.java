@@ -191,6 +191,7 @@ public final class PlayerChannelOverlayController {
         currentId = id;
         adapter.setCurrentId(id);
         if (isVisible()) {
+            if (infoCard != null) infoCard.setVisibility(View.GONE);
             focusCurrentChannel();
         }
     }
@@ -210,16 +211,19 @@ public final class PlayerChannelOverlayController {
 
     /**
      * Switches playback only when the target differs from the active channel.
-     * Re-selecting the same channel only dismisses the overlay (no reload / no loading).
+     * Overlay stays open until the user explicitly presses BACK.
      */
     private void playChannelIfChanged(@Nullable Channel channel) {
         if (channel == null) return;
+        clearTypedNumber();
         if (isCurrentChannel(channel)) {
-            clearTypedNumber();
-            hide();
             return;
         }
-        hide();
+        currentId = channel.getId();
+        adapter.setCurrentId(currentId);
+        if (isVisible() && infoCard != null) {
+            infoCard.setVisibility(View.GONE);
+        }
         launcher.play(channel);
     }
 
@@ -267,6 +271,10 @@ public final class PlayerChannelOverlayController {
      */
     public void showQuickInfoBanner(@Nullable Channel c, int absoluteIndex) {
         if (c == null || root == null) return;
+        if (isVisible()) {
+            if (infoCard != null) infoCard.setVisibility(View.GONE);
+            return;
+        }
         MAIN.removeCallbacks(hideQuickInfoRunnable);
         bindInfo(c, absoluteIndex);
         if (scrim != null) scrim.setVisibility(View.GONE);
@@ -278,7 +286,15 @@ public final class PlayerChannelOverlayController {
     }
 
     public void showQuickInfoBannerForChannelId(int channelId) {
+        if (isVisible()) {
+            if (infoCard != null) infoCard.setVisibility(View.GONE);
+            return;
+        }
         ensureLoadedThen(() -> {
+            if (isVisible()) {
+                if (infoCard != null) infoCard.setVisibility(View.GONE);
+                return;
+            }
             List<Channel> targetList = currentCategoryChannels();
             if (targetList == null || targetList.isEmpty()) targetList = allChannels;
             if (targetList == null || targetList.isEmpty()) return;
@@ -286,6 +302,14 @@ public final class PlayerChannelOverlayController {
                 if (targetList.get(i).getId() == channelId) {
                     showQuickInfoBanner(targetList.get(i), i);
                     return;
+                }
+            }
+            if (targetList != allChannels && allChannels != null) {
+                for (int i = 0; i < allChannels.size(); i++) {
+                    if (allChannels.get(i).getId() == channelId) {
+                        showQuickInfoBanner(allChannels.get(i), i);
+                        return;
+                    }
                 }
             }
         });
@@ -354,8 +378,7 @@ public final class PlayerChannelOverlayController {
 
         int digit = digitFromKeyCode(key);
         if (digit >= 0) {
-            // Numeric channel select: show typed digits on the player (top-right) without opening the channel list.
-            if (isVisible()) hide();
+            // Numeric channel select: show typed digits on the player (top-right).
             onDigitPressed(digit);
             return true;
         }
@@ -509,17 +532,37 @@ public final class PlayerChannelOverlayController {
     private void playChannelByNumber(int channelNumber) {
         int idx = channelNumber - 1;
 
-        // Use the channel list of the currently active category (not the global allChannels list),
-        // so pressing "5" plays the 5th channel within the active category, not the 5th globally.
-        List<Channel> activeList = currentCategoryChannels();
-        if (activeList == null || activeList.isEmpty()) {
+        // When overlay is closed (or when channel number exceeds the active sub-category size, e.g. channel 29+),
+        // resolve against the full ordered allChannels list (Local -> Sports -> Rest).
+        List<Channel> activeList = isVisible() ? currentCategoryChannels() : allChannels;
+        if (activeList == null || activeList.isEmpty() || idx >= activeList.size()) {
             activeList = allChannels;
         }
 
-        if (activeList == null || idx < 0 || idx >= activeList.size()) return;
+        if (activeList == null || idx < 0 || idx >= activeList.size()) {
+            android.widget.Toast.makeText(activity, "Channel " + channelNumber + " tidak ada", android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
         Channel c = activeList.get(idx);
         playChannelIfChanged(c);
-        showQuickInfoBanner(c, idx);
+        if (isVisible()) {
+            List<Channel> curCatList = currentCategoryChannels();
+            boolean inCurrentCat = false;
+            if (curCatList != null) {
+                for (Channel ch : curCatList) {
+                    if (ch != null && ch.getId() == c.getId()) {
+                        inCurrentCat = true;
+                        break;
+                    }
+                }
+            }
+            if (!inCurrentCat) {
+                applyCategory(0);
+            }
+            focusCurrentChannel();
+        } else {
+            showQuickInfoBanner(c, idx);
+        }
     }
 
     /** Returns the channel list for the currently selected category. */
@@ -677,7 +720,8 @@ public final class PlayerChannelOverlayController {
 
             MAIN.post(() -> {
                 isLoading.set(false);
-                allChannels = filtered;
+                List<Channel> orderedAll = state.map.get("ALL CHANNELS");
+                allChannels = (orderedAll != null && !orderedAll.isEmpty()) ? orderedAll : filtered;
                 categories.clear();
                 categories.addAll(state.labels);
                 byCategory.clear();

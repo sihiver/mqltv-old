@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import okhttp3.Call;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
@@ -30,6 +31,7 @@ import okhttp3.ResponseBody;
 public final class PlayerIntents {
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
+    @Nullable private static volatile Call activeLaunchCall = null;
 
     private PlayerIntents() {}
 
@@ -45,6 +47,21 @@ public final class PlayerIntents {
     public static void launchPlayer(Context context, Channel channel, Runnable onLaunched) {
         if (channel == null || context == null) return;
 
+        StreamInfoCache.Entry cached = StreamInfoCache.get(channel.getId());
+        if (cached != null) {
+            if (DrmCapabilities.isDashClearKeyUnsupportedOnThisDevice(cached.meta, cached.streamUrl)) {
+                MAIN_HANDLER.post(() -> Toast.makeText(context, DrmCapabilities.getDashClearKeyUnsupportedMessage(), Toast.LENGTH_LONG).show());
+                return;
+            }
+            MAIN_HANDLER.post(() -> dispatchPlayIntent(context, channel, cached.streamUrl, cached.meta, onLaunched));
+            return;
+        }
+
+        Call prev = activeLaunchCall;
+        if (prev != null) {
+            try { prev.cancel(); } catch (Exception ignored) {}
+        }
+
         EXECUTOR.execute(() -> {
             try {
                 String baseUrl = AuthPrefs.getBaseUrl(context);
@@ -56,7 +73,9 @@ public final class PlayerIntents {
                         .header("Authorization", "Bearer " + token)
                         .build();
 
-                try (Response resp = NetworkClient.getClient().newCall(req).execute()) {
+                Call call = NetworkClient.getClient().newCall(req);
+                activeLaunchCall = call;
+                try (Response resp = call.execute()) {
                     ResponseBody body = resp.body();
                     if (!resp.isSuccessful()) {
                         int code = resp.code();
@@ -94,41 +113,46 @@ public final class PlayerIntents {
                     fakeMeta.put("referer", json.isNull("referer") ? "" : json.optString("referer", ""));
                     
                     ChannelPlaybackMeta meta = ChannelPlaybackMeta.fromVisionPlusObject(fakeMeta);
+                    StreamInfoCache.put(channel.getId(), streamUrl, meta);
 
                     if (DrmCapabilities.isDashClearKeyUnsupportedOnThisDevice(meta, streamUrl)) {
                         MAIN_HANDLER.post(() -> Toast.makeText(context, DrmCapabilities.getDashClearKeyUnsupportedMessage(), Toast.LENGTH_LONG).show());
                         return;
                     }
 
-                    MAIN_HANDLER.post(() -> {
-                        Intent intent;
-                        if (channel.getGroupTitle() != null && channel.getGroupTitle().toLowerCase().contains("radio")) {
-                            intent = new Intent(context, RadioPlayerActivity.class);
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
-                            intent.putExtra(Constants.EXTRA_CHANNEL_ID, channel.getId());
-                            intent.putExtra(Constants.EXTRA_TITLE, channel.getTitle());
-                            intent.putExtra(Constants.EXTRA_URL, streamUrl);
-                            intent.putExtra(Constants.EXTRA_LOGO, channel.getLogoUrl());
-                            if (meta != null) meta.putInIntent(intent);
-                        } else {
-                            intent = createPreferredPlayIntent(context, channel.getId(), channel.getTitle(), streamUrl, meta);
-                        }
-
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
-                        if (!(context instanceof Activity)) {
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        }
-                        context.startActivity(intent);
-                        if (context instanceof Activity) {
-                            ((Activity) context).overridePendingTransition(0, 0);
-                        }
-                        if (onLaunched != null) onLaunched.run();
-                    });
+                    MAIN_HANDLER.post(() -> dispatchPlayIntent(context, channel, streamUrl, meta, onLaunched));
                 }
             } catch (Exception e) {
+                if (activeLaunchCall != null && activeLaunchCall.isCanceled()) return;
                 MAIN_HANDLER.post(() -> Toast.makeText(context, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show());
             }
         });
+    }
+
+    private static void dispatchPlayIntent(Context context, Channel channel, String streamUrl,
+                                           @Nullable ChannelPlaybackMeta meta, @Nullable Runnable onLaunched) {
+        Intent intent;
+        if (channel.getGroupTitle() != null && channel.getGroupTitle().toLowerCase().contains("radio")) {
+            intent = new Intent(context, RadioPlayerActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+            intent.putExtra(Constants.EXTRA_CHANNEL_ID, channel.getId());
+            intent.putExtra(Constants.EXTRA_TITLE, channel.getTitle());
+            intent.putExtra(Constants.EXTRA_URL, streamUrl);
+            intent.putExtra(Constants.EXTRA_LOGO, channel.getLogoUrl());
+            if (meta != null) meta.putInIntent(intent);
+        } else {
+            intent = createPreferredPlayIntent(context, channel.getId(), channel.getTitle(), streamUrl, meta);
+        }
+
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        if (!(context instanceof Activity)) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        }
+        context.startActivity(intent);
+        if (context instanceof Activity) {
+            ((Activity) context).overridePendingTransition(0, 0);
+        }
+        if (onLaunched != null) onLaunched.run();
     }
 
     public static Intent createPlayIntent(Context context, int id, String title, String url) {

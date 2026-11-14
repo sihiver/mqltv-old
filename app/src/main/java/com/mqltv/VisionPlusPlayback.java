@@ -89,7 +89,17 @@ public final class VisionPlusPlayback {
 
     /** DRM config: UUID only — license is supplied via custom {@link DrmSessionManager}. */
     public static MediaItem buildMedia3Item(Uri uri, @Nullable ChannelPlaybackMeta meta) {
-        MediaItem.Builder builder = new MediaItem.Builder().setUri(uri);
+        MediaItem.Builder builder = new MediaItem.Builder()
+                .setUri(uri)
+                .setLiveConfiguration(
+                        new MediaItem.LiveConfiguration.Builder()
+                                .setTargetOffsetMs(4_000)
+                                .setMinOffsetMs(1_500)
+                                .setMaxOffsetMs(15_000)
+                                .setMaxPlaybackSpeed(1.02f)
+                                .setMinPlaybackSpeed(0.98f)
+                                .build()
+                );
         UUID drmUuid = drmUuid(meta);
         if (drmUuid != null) {
             builder.setDrmConfiguration(new MediaItem.DrmConfiguration.Builder(drmUuid).build());

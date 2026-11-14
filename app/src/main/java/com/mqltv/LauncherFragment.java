@@ -84,9 +84,16 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private String dockEditAppKey = null;
     private long ignoreClickUntilMs = 0L;
 
+    private static volatile String sCachedLiveSubtitle = "+5000 Saluran";
+    @Nullable
+    private static volatile List<LauncherAppEntry> sCachedAppRow = null;
+    @Nullable
+    private static volatile List<LauncherAppEntry> sCachedAllApps = null;
+
     private int lastSelectedCardPosition = APPS_ROW_POSITION;
     private int lastSelectedAppIndex = 0;
-    private String latestLiveSubtitle = "+5000 Saluran";
+    private String latestLiveSubtitle = sCachedLiveSubtitle;
+    private final Runnable restoreFocusabilityRunnable = this::restoreAllFocusability;
 
     private int lastSelectedRecentIndex = 0;
     @Nullable
@@ -185,15 +192,12 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             });
         }
 
-        View safeLeft = v.findViewById(R.id.launcher_safe_left);
         View scrollContent = v.findViewById(R.id.launcher_scroll_content);
-        if (safeLeft != null && scrollContent != null) {
-            v.post(() -> {
-                int left = safeLeft.getLeft();
-                if (left > 0 && scrollContent.getPaddingLeft() != left) {
-                    scrollContent.setPadding(left, scrollContent.getPaddingTop(), left, scrollContent.getPaddingBottom());
-                }
-            });
+        if (scrollContent != null) {
+            int safePad = Math.round(v.getResources().getDisplayMetrics().widthPixels * 0.04f);
+            if (safePad > 0 && scrollContent.getPaddingLeft() != safePad) {
+                scrollContent.setPadding(safePad, scrollContent.getPaddingTop(), safePad, scrollContent.getPaddingBottom());
+            }
         }
 
         ImageView ambientGlowView = v.findViewById(R.id.launcher_ambient_glow);
@@ -440,17 +444,23 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 }
             });
             appsList.setAdapter(appsAdapter);
-            appsAdapter.submit(java.util.Collections.singletonList(
-                    LauncherAppEntry.createLiveTvEntry(appContext, latestLiveSubtitle)));
+            allLaunchableAppsCache = sCachedAllApps;
+            if (sCachedAppRow != null && !sCachedAppRow.isEmpty()) {
+                appsAdapter.submit(new ArrayList<>(sCachedAppRow));
+            } else {
+                appsAdapter.submit(java.util.Collections.singletonList(
+                        LauncherAppEntry.createLiveTvEntry(appContext, latestLiveSubtitle)));
+            }
         }
+
+        // Lock non-target focusable views immediately so header pills cannot steal focus during fragment attach
+        lockFocusForRestoration(lastSelectedCardPosition);
 
         // Initial Hero state for Live TV
-        updateHero("MQLTV · LIVE ENTERTAINMENT", "MQL TV", "+5000 Saluran TV Lokal & Internasional", 0xFF8B5CF6);
+        updateHero("MQLTV · LIVE ENTERTAINMENT", "MQL TV",
+                latestLiveSubtitle != null ? latestLiveSubtitle + " TV Lokal & Internasional" : "+5000 Saluran TV Lokal & Internasional",
+                0xFF8B5CF6);
 
-        if (AuthPrefs.isLoggedIn(appContext)) {
-            loadCounts(appContext);
-        }
-        loadLauncherApps(appContext);
         return v;
     }
 
@@ -596,16 +606,26 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
     private void requestAppFocusWithRetry(int index, int attempt) {
         if (appsList == null) return;
         RecyclerView.ViewHolder vh = appsList.findViewHolderForAdapterPosition(index);
-        boolean focused = false;
-        if (vh != null && vh.itemView != null) {
+        boolean alreadyFocused = vh != null && vh.itemView != null && vh.itemView.hasFocus();
+        boolean focused = alreadyFocused;
+        if (!focused && vh != null && vh.itemView != null) {
             focused = vh.itemView.requestFocus();
         }
         if (focused) {
-            mainHandler.postDelayed(() -> restoreAllFocusability(), 120);
+            if (alreadyFocused && vh != null && vh.itemView != null) {
+                View animTarget = vh.itemView.findViewById(R.id.launcher_app_tile);
+                if (animTarget == null) animTarget = vh.itemView;
+                LauncherAppEntry entry = appsAdapter != null ? appsAdapter.getEntryAt(index) : null;
+                int color = reordering ? REORDER_ACCENT : (entry != null ? LauncherAppsAdapter.colorFromEntry(entry) : 0xFF3B82F6);
+                moveGlassToCard(animTarget, color);
+            }
+            mainHandler.removeCallbacks(restoreFocusabilityRunnable);
+            mainHandler.postDelayed(restoreFocusabilityRunnable, 120);
             return;
         }
-        if (attempt >= 6) {
-            mainHandler.postDelayed(() -> restoreAllFocusability(), 120);
+        if (attempt >= 8) {
+            mainHandler.removeCallbacks(restoreFocusabilityRunnable);
+            mainHandler.postDelayed(restoreFocusabilityRunnable, 120);
             return;
         }
         appsList.postDelayed(() -> requestAppFocusWithRetry(index, attempt + 1), 24);
@@ -1010,10 +1030,10 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             
             final int finalLiveCount = liveCount;
             latestLiveSubtitle = "+" + finalLiveCount + " Saluran";
+            sCachedLiveSubtitle = latestLiveSubtitle;
 
             mainHandler.post(() -> {
                 if (!isAdded() || getContext() == null) return;
-                loadLauncherApps(appContext);
 
                 if (appsList != null && appsList.hasFocus() && lastSelectedAppIndex == 0) {
                     updateHero("MQLTV · LIVE ENTERTAINMENT", "MQL TV", "+" + finalLiveCount + " Saluran TV Tersedia", 0xFF8B5CF6);
@@ -1212,6 +1232,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             PackageManager pm = appContext.getPackageManager();
             List<LauncherAppEntry> all = queryAllLaunchableApps(pm, appContext);
             allLaunchableAppsCache = all;
+            sCachedAllApps = all;
 
             // Load pinned (user selected). If empty, seed with a few system apps.
             List<String> pinned = PinnedAppsStore.load(appContext);
@@ -1233,16 +1254,18 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 LauncherAppEntry e = findByComponent(all, cn);
                 if (e != null) row.add(e);
             }
+            sCachedAppRow = new ArrayList<>(row);
 
             mainHandler.post(() -> {
                 if (!isAdded() || getContext() == null) return;
                 boolean wasEmpty = appsAdapter != null && appsAdapter.getAppsCount() == 0;
-                if (appsAdapter != null) appsAdapter.submit(row);
+                boolean changed = appsAdapter != null && appsAdapter.submit(row);
                 // Jika terakhir user berada di baris Apps, pastikan fokus dikembalikan (kecuali sedang membuka App Library)
                 if (lastSelectedCardPosition == APPS_ROW_POSITION && appLibraryDialog == null) {
                     int targetIdx = lastSelectedAppIndex;
                     if (targetIdx < 0 || targetIdx >= row.size()) targetIdx = 0;
-                    if (wasEmpty || appsList == null || !appsList.hasFocus() || (getView() == null || getView().findFocus() == null || getView().findFocus().getParent() == appsList)) {
+                    if (wasEmpty || changed || appsList == null || !appsList.hasFocus()) {
+                        lockFocusForRestoration(APPS_ROW_POSITION);
                         requestFocusToApp(targetIdx);
                     }
                 }
@@ -1626,6 +1649,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
         // Animate item removal in adapter
         appsAdapter.removeItem(currentPos);
+        sCachedAppRow = appsAdapter.getItemsSnapshot();
         lastSelectedAppIndex = targetFocus;
         syncAppsFocusState(targetFocus);
 
@@ -1653,6 +1677,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
     private void saveCurrentPinnedOrder(Context appContext) {
         if (appsAdapter == null) return;
+        sCachedAppRow = appsAdapter.getItemsSnapshot();
         final List<String> pinned = appsAdapter.getPinnedKeys();
         executeBackground(() -> PinnedAppsStore.save(appContext, pinned));
     }

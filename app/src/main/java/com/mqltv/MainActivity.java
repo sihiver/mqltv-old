@@ -109,7 +109,8 @@ public class MainActivity extends FragmentActivity {
             }
         }
         if (destination == NavDestination.LIVE_TV) {
-            homeFocusPosition = 0;
+            homeFocusPosition = 4;
+            homeAppsIndex = 0;
         } else if (destination == NavDestination.SHOWS) {
             homeFocusPosition = 1;
         }

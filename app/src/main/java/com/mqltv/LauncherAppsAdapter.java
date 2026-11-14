@@ -51,6 +51,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
     public LauncherAppsAdapter(Listener listener) {
         this.listener = listener;
+        setHasStableIds(true);
     }
 
     public int getAppsCount() {
@@ -60,6 +61,10 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
     public LauncherAppEntry getEntryAt(int position) {
         if (position < 0 || position >= items.size()) return null;
         return items.get(position);
+    }
+
+    public List<LauncherAppEntry> getItemsSnapshot() {
+        return new ArrayList<>(items);
     }
 
     public String keyAt(int position) {
@@ -165,35 +170,51 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         return isLibraryAt(position) ? VIEW_TYPE_LIBRARY : VIEW_TYPE_APP;
     }
 
+    @Override
+    public long getItemId(int position) {
+        if (isLibraryAt(position)) {
+            return "__library__".hashCode();
+        }
+        LauncherAppEntry e = getEntryAt(position);
+        if (e == null) return RecyclerView.NO_ID;
+        if (e.isLiveTv) return "__livetv__".hashCode();
+        if (e.isAddButton) return "__add__".hashCode();
+        if (e.component != null) return e.component.flattenToString().hashCode();
+        return e.label != null ? e.label.hashCode() : position;
+    }
+
     @SuppressLint("NotifyDataSetChanged")
-    public void submit(List<LauncherAppEntry> list) {
+    public boolean submit(List<LauncherAppEntry> list) {
         if (list == null) list = new ArrayList<>();
         
-        // Prevent flicker and focus loss if the content is exactly the same
+        // Prevent flicker, bounce, and focus loss if the app list is structurally identical
         boolean same = items.size() == list.size();
         if (same) {
             for (int i = 0; i < items.size(); i++) {
                 LauncherAppEntry oldItem = items.get(i);
                 LauncherAppEntry newItem = list.get(i);
-                String oldLabel = oldItem != null ? oldItem.label : "";
-                String newLabel = newItem != null ? newItem.label : "";
-                String oldSub = oldItem != null ? oldItem.customSubtitle : "";
-                String newSub = newItem != null ? newItem.customSubtitle : "";
+                String oldLabel = (oldItem != null && oldItem.label != null) ? oldItem.label : "";
+                String newLabel = (newItem != null && newItem.label != null) ? newItem.label : "";
                 boolean oldLive = oldItem != null && oldItem.isLiveTv;
                 boolean newLive = newItem != null && newItem.isLiveTv;
+                boolean oldAdd = oldItem != null && oldItem.isAddButton;
+                boolean newAdd = newItem != null && newItem.isAddButton;
                 String oldComp = (oldItem != null && oldItem.component != null) ? oldItem.component.flattenToString() : "";
                 String newComp = (newItem != null && newItem.component != null) ? newItem.component.flattenToString() : "";
-                if (!oldLabel.equals(newLabel) || oldLive != newLive || !oldComp.equals(newComp) || (oldSub != null && !oldSub.equals(newSub))) {
+                if (!oldLabel.equals(newLabel) || oldLive != newLive || oldAdd != newAdd || !oldComp.equals(newComp)) {
                     same = false;
                     break;
                 }
             }
         }
-        if (same) return;
+        if (same) {
+            return false;
+        }
 
         items.clear();
         items.addAll(list);
         notifyDataSetChanged();
+        return true;
     }
 
     @NonNull

@@ -194,7 +194,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
         View scrollContent = v.findViewById(R.id.launcher_scroll_content);
         if (scrollContent != null) {
-            int safePad = Math.round(v.getResources().getDisplayMetrics().widthPixels * 0.04f);
+            int safePad = Math.round(v.getResources().getDisplayMetrics().widthPixels * 0.072f);
             if (safePad > 0 && scrollContent.getPaddingLeft() != safePad) {
                 scrollContent.setPadding(safePad, scrollContent.getPaddingTop(), safePad, scrollContent.getPaddingBottom());
             }

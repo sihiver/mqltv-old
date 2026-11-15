@@ -47,18 +47,18 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
 
         int spanCount = dockSize; // 4 columns
         int column = pos % spanCount;
-        int spacing = Math.round(20 * density);
+        int spacing = Math.round(24 * density);
 
         // Column 0 left = 0 (aligns with left edge / clock), column 3 right = 0 (aligns with right edge)
         outRect.left = column * spacing / spanCount;
         outRect.right = spacing - (column + 1) * spacing / spanCount;
 
         if (pos < dockSize) {
-            outRect.top = (int) (6 * density);
-            outRect.bottom = (int) (14 * density);
+            outRect.top = (int) (14 * density);
+            outRect.bottom = (int) (34 * density);
         } else {
-            outRect.top = (int) (6 * density);
-            outRect.bottom = (int) (8 * density);
+            outRect.top = (int) (8 * density);
+            outRect.bottom = (int) (10 * density);
         }
     }
 
@@ -82,10 +82,10 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         }
         if (!any) return;
 
-        float padX = 4 * density;
-        float padY = 4 * density;
+        float padX = 14 * density;
+        float padY = 14 * density;
         rect.inset(-padX, -padY);
-        float radius = 20 * density;
+        float radius = 26 * density;
 
         c.drawRoundRect(rect, radius, radius, band);
         c.drawRoundRect(rect, radius, radius, edge);

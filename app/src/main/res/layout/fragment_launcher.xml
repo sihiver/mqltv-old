@@ -52,7 +52,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.04" />
+        app:layout_constraintGuide_percent="0.06" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/launcher_safe_bottom"
@@ -66,14 +66,14 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintGuide_percent="0.04" />
+        app:layout_constraintGuide_percent="0.072" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/launcher_safe_right"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintGuide_percent="0.96" />
+        app:layout_constraintGuide_percent="0.928" />
 
     <!-- CleanYourTV / tvOS Minimalist Header Bar (PINNED AT TOP, NEVER MOVES) -->
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -164,7 +164,8 @@
                                 android:textSize="10sp"
                                 android:fontFamily="sans-serif-medium"
                                 android:letterSpacing="0.16"
-                                android:textAllCaps="true" />
+                                android:textAllCaps="true"
+                                android:visibility="gone" />
                         </LinearLayout>
 
                     </LinearLayout>
@@ -300,7 +301,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:layout_marginStart="0dp"
-                android:layout_marginTop="225dp"
+                android:layout_marginTop="178dp"
                 android:layout_marginBottom="12dp"
                 android:clipChildren="false"
                 android:clipToPadding="false">

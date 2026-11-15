@@ -39,6 +39,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         default void onLibraryFocused(View view) {}
         default void onLibraryUp() {}
         default void onFocusLibraryRequested() {}
+        default void onAppUp(int position) {}
     }
 
     private final List<LauncherAppEntry> items = new ArrayList<>();
@@ -419,6 +420,12 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 return true;
             }
             if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP && pos < 4) {
+                if (listener != null) {
+                    listener.onAppUp(pos);
+                    return true;
+                }
+            }
             int count = items.size();
             int lastRowStart = ((count - 1) / 4) * 4;
             if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN && pos >= lastRowStart) {

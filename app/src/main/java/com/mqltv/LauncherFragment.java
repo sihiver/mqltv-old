@@ -332,6 +332,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             appsList.setClipToPadding(false);
             appsList.setClipChildren(false);
             appsList.setNestedScrollingEnabled(false);
+            appsList.setFocusable(false);
+            appsList.setFocusableInTouchMode(false);
             appsList.addItemDecoration(new DockDecoration(4, getResources().getDisplayMetrics().density));
             androidx.recyclerview.widget.RecyclerView.ItemAnimator animator2 = appsList.getItemAnimator();
             if (animator2 instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
@@ -405,6 +407,18 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
                 @Override
                 public void onFocusLibraryRequested() {
                     focusLibrary();
+                }
+
+                @Override
+                public void onAppUp(int position) {
+                    restoreAllFocusability();
+                    if (settingsButton != null && settingsButton.getVisibility() == View.VISIBLE) {
+                        settingsButton.requestFocus();
+                    } else if (networkPill != null && networkPill.getVisibility() == View.VISIBLE) {
+                        networkPill.requestFocus();
+                    } else if (profileButton != null && profileButton.getVisibility() == View.VISIBLE) {
+                        profileButton.requestFocus();
+                    }
                 }
 
                 @Override
@@ -521,27 +535,30 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
             // Restore focus based on last visited position
             if (lastSelectedCardPosition == SETTINGS_BUTTON_POSITION) {
+                restoreAllFocusability();
                 if (settingsButton != null) {
                     mainHandler.post(() -> {
-                        setHeaderButtonsFocusable(true);
+                        restoreAllFocusability();
                         settingsButton.setFocusable(true);
                         settingsButton.setFocusableInTouchMode(true);
                         settingsButton.requestFocus();
                     });
                 }
             } else if (lastSelectedCardPosition == NATIVE_SETTINGS_BUTTON_POSITION) {
+                restoreAllFocusability();
                 if (networkPill != null) {
                     mainHandler.post(() -> {
-                        setHeaderButtonsFocusable(true);
+                        restoreAllFocusability();
                         networkPill.setFocusable(true);
                         networkPill.setFocusableInTouchMode(true);
                         networkPill.requestFocus();
                     });
                 }
             } else if (lastSelectedCardPosition == PROFILE_BUTTON_POSITION) {
+                restoreAllFocusability();
                 if (profileButton != null) {
                     mainHandler.post(() -> {
-                        setHeaderButtonsFocusable(true);
+                        restoreAllFocusability();
                         profileButton.setFocusable(true);
                         profileButton.setFocusableInTouchMode(true);
                         profileButton.requestFocus();
@@ -838,6 +855,37 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (onClick != null) {
             view.setOnClickListener(v -> onClick.run());
         }
+        view.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP) {
+                return true;
+            }
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT && v == networkPill) {
+                return true;
+            }
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT && v == profileButton) {
+                return true;
+            }
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
+                restoreAllFocusability();
+                int count = appsAdapter != null ? appsAdapter.getAppsCount() : 0;
+                if (count > 0) {
+                    int target = (lastSelectedAppIndex >= 0 && lastSelectedAppIndex < Math.min(4, count))
+                            ? lastSelectedAppIndex : 0;
+                    syncAppsFocusState(target);
+                    if (appsList != null) {
+                        RecyclerView.ViewHolder vh = appsList.findViewHolderForAdapterPosition(target);
+                        if (vh != null && vh.itemView != null && vh.itemView.requestFocus()) {
+                            return true;
+                        }
+                    }
+                    requestFocusToApp(target);
+                    return true;
+                }
+                return true;
+            }
+            return false;
+        });
         view.setOnFocusChangeListener((v, hasFocus) -> {
             float s = hasFocus ? 1.08f : 1.0f;
             float z = hasFocus ? 8f : 0f;

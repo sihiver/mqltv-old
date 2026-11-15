@@ -148,7 +148,16 @@ public final class AppLibraryDialog {
         RecyclerView grid = dialog.findViewById(R.id.dialog_library_grid);
 
         float density = activity.getResources().getDisplayMetrics().density;
-        int spacing = Math.round(18 * density);
+        int safePad = Math.round(activity.getResources().getDisplayMetrics().widthPixels * 0.072f);
+        if (safePad > 0) {
+            if (header != null) {
+                header.setPadding(safePad, header.getPaddingTop(), safePad, header.getPaddingBottom());
+            }
+            if (grid != null) {
+                grid.setPadding(safePad, grid.getPaddingTop(), safePad, grid.getPaddingBottom());
+            }
+        }
+        int spacing = Math.round(24 * density);
 
         if (header != null) {
             header.setAlpha(0f);
@@ -195,8 +204,8 @@ public final class AppLibraryDialog {
                 int column = pos % 4;
                 outRect.left = column * spacing / 4;
                 outRect.right = spacing - (column + 1) * spacing / 4;
-                outRect.top = (int) (6 * density);
-                outRect.bottom = (int) (16 * density);
+                outRect.top = (int) (10 * density);
+                outRect.bottom = (int) (10 * density);
             }
         });
 

@@ -214,7 +214,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         heroTitle = v.findViewById(R.id.launcher_hero_title);
         heroSubtitle = v.findViewById(R.id.launcher_hero_subtitle);
         launcherHero = v.findViewById(R.id.launcher_hero);
-        if (launcherHero != null && !DeviceQuirks.isZteB760H()) {
+        if (launcherHero != null && !DeviceQuirks.hasLegacyTopInset()) {
             ViewGroup.MarginLayoutParams heroLp = (ViewGroup.MarginLayoutParams) launcherHero.getLayoutParams();
             if (heroLp != null) {
                 heroLp.topMargin += Math.round(21 * getResources().getDisplayMetrics().density);

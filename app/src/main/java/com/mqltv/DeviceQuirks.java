@@ -33,4 +33,11 @@ public final class DeviceQuirks {
         if (!m.contains("ZTE")) return false;
         return mo.contains("B760") || d.contains("B760");
     }
+
+    /**
+     * KitKat (API <= 19) TV devices and ZTE B760H include legacy window/Leanback top insets.
+     */
+    public static boolean hasLegacyTopInset() {
+        return isZteB760H() || Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT;
+    }
 }

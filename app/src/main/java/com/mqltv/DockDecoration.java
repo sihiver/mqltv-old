@@ -55,7 +55,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
 
         if (pos < dockSize) {
             outRect.top = (int) (14 * density);
-            int bottomGapDp = DeviceQuirks.isZteB760H() ? 34 : 30;
+            int bottomGapDp = DeviceQuirks.hasLegacyTopInset() ? 34 : 30;
             outRect.bottom = (int) (bottomGapDp * density);
         } else {
             outRect.top = (int) (8 * density);

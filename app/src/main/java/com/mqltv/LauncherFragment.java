@@ -214,6 +214,13 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         heroTitle = v.findViewById(R.id.launcher_hero_title);
         heroSubtitle = v.findViewById(R.id.launcher_hero_subtitle);
         launcherHero = v.findViewById(R.id.launcher_hero);
+        if (launcherHero != null && !DeviceQuirks.isZteB760H()) {
+            ViewGroup.MarginLayoutParams heroLp = (ViewGroup.MarginLayoutParams) launcherHero.getLayoutParams();
+            if (heroLp != null) {
+                heroLp.topMargin += Math.round(21 * getResources().getDisplayMetrics().density);
+                launcherHero.setLayoutParams(heroLp);
+            }
+        }
 
         updateHero("MQLTV · LIVE ENTERTAINMENT", "MQL TV", "+5000 Saluran TV Lokal & Internasional", 0xFF8B5CF6);
 

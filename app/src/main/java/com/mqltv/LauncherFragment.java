@@ -773,13 +773,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         addQuickSettingRow(rows, popup, anchor, R.drawable.ic_apps, "Aplikasi", false, "Kelola",
                 () -> startSystemSettingsIntent(appContext, android.provider.Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS));
 
-        // 5. Setel Dock (Baris 1) & Tata Ulang App
-        addQuickSettingRow(rows, popup, anchor, R.drawable.ic_apps, "Setel Dock (Baris 1)", false, "Tukar",
-                () -> startDockEdit(appContext));
-        addQuickSettingRow(rows, popup, anchor, R.drawable.ic_apps, "Tata Ulang App", false, "Pindah",
-                () -> toggleReorder(appContext));
-
-        // 6. Setelan Antarmuka (MQLTV)
+        // 5. Setelan Antarmuka (MQLTV)
         addQuickSettingRow(rows, popup, anchor, R.drawable.ic_home_settings, "Setelan Antarmuka", false, "MQLTV", () -> {
             if (getActivity() instanceof MainActivity) {
                 ((MainActivity) getActivity()).openSettings();

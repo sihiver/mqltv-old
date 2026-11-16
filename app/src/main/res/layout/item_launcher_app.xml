@@ -86,6 +86,16 @@
             android:visibility="gone"
             android:contentDescription="App Icon" />
 
+        <!-- Ghost / Skeleton Loading Spinner -->
+        <ProgressBar
+            android:id="@+id/launcher_app_loading"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            android:visibility="gone" />
+
     </com.mqltv.RatioFrameLayout>
 
     <!-- Row 2+ Centered Bottom Title (smaller font, centered directly under app card) -->

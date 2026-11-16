@@ -16,12 +16,17 @@ public final class LauncherAppEntry {
     public final boolean isAddButton;
     public final boolean isLiveTv;
     public final String customSubtitle;
+    public final boolean isLoadingPlaceholder;
 
     public LauncherAppEntry(String label, Drawable icon, Drawable banner, ComponentName component, boolean isAddButton) {
-        this(label, icon, banner, component, isAddButton, false, null);
+        this(label, icon, banner, component, isAddButton, false, null, false);
     }
 
     public LauncherAppEntry(String label, Drawable icon, Drawable banner, ComponentName component, boolean isAddButton, boolean isLiveTv, String customSubtitle) {
+        this(label, icon, banner, component, isAddButton, isLiveTv, customSubtitle, false);
+    }
+
+    public LauncherAppEntry(String label, Drawable icon, Drawable banner, ComponentName component, boolean isAddButton, boolean isLiveTv, String customSubtitle, boolean isLoadingPlaceholder) {
         this.label = label;
         this.icon = icon;
         this.banner = banner;
@@ -29,6 +34,11 @@ public final class LauncherAppEntry {
         this.isAddButton = isAddButton;
         this.isLiveTv = isLiveTv;
         this.customSubtitle = customSubtitle;
+        this.isLoadingPlaceholder = isLoadingPlaceholder;
+    }
+
+    public static LauncherAppEntry createLoadingPlaceholder(int slotIndex) {
+        return new LauncherAppEntry("__loading_" + slotIndex, null, null, null, false, false, null, true);
     }
 
     public static LauncherAppEntry createLiveTvEntry(android.content.Context context, String subtitle) {

@@ -65,15 +65,19 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
 
     @Override
     public void onDraw(@NonNull Canvas c, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+        RecyclerView.Adapter<?> adapter = parent.getAdapter();
+        LauncherAppsAdapter la = (adapter instanceof LauncherAppsAdapter) ? (LauncherAppsAdapter) adapter : null;
         boolean any = false;
         for (int i = 0; i < parent.getChildCount(); i++) {
             View child = parent.getChildAt(i);
             int pos = parent.getChildAdapterPosition(child);
             if (pos < 0 || pos >= dockSize) continue;
+            if (la != null && la.isLibraryAt(pos)) continue;
+            View tile = child.findViewById(R.id.launcher_app_tile);
             float l = child.getLeft();
             float t = child.getTop() + child.getTranslationY();
             float r = child.getRight();
-            float b = child.getBottom() + child.getTranslationY();
+            float b = (tile != null ? child.getTop() + tile.getBottom() : child.getBottom()) + child.getTranslationY();
             if (!any) {
                 rect.set(l, t, r, b);
                 any = true;

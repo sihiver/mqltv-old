@@ -469,8 +469,12 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
             if (sCachedAppRow != null && !sCachedAppRow.isEmpty()) {
                 appsAdapter.submit(new ArrayList<>(sCachedAppRow));
             } else {
-                appsAdapter.submit(java.util.Collections.singletonList(
-                        LauncherAppEntry.createLiveTvEntry(appContext, latestLiveSubtitle)));
+                List<LauncherAppEntry> placeholders = new ArrayList<>(8);
+                placeholders.add(LauncherAppEntry.createLiveTvEntry(appContext, latestLiveSubtitle));
+                for (int i = 1; i < 8; i++) {
+                    placeholders.add(LauncherAppEntry.createLoadingPlaceholder(i));
+                }
+                appsAdapter.submit(placeholders);
             }
         }
 

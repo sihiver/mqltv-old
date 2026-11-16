@@ -49,6 +49,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
     private boolean dockEditing = false;
     private int dockEditSlot = -1;
     private String dockEditAppKey = null;
+    private boolean revealAfterPlaceholder = false;
 
     public LauncherAppsAdapter(Listener listener) {
         this.listener = listener;
@@ -178,6 +179,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         }
         LauncherAppEntry e = getEntryAt(position);
         if (e == null) return RecyclerView.NO_ID;
+        if (e.isLoadingPlaceholder) return (e.label != null ? e.label : "__loading_" + position).hashCode();
         if (e.isLiveTv) return "__livetv__".hashCode();
         if (e.isAddButton) return "__add__".hashCode();
         if (e.component != null) return e.component.flattenToString().hashCode();
@@ -200,9 +202,11 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 boolean newLive = newItem != null && newItem.isLiveTv;
                 boolean oldAdd = oldItem != null && oldItem.isAddButton;
                 boolean newAdd = newItem != null && newItem.isAddButton;
+                boolean oldLoad = oldItem != null && oldItem.isLoadingPlaceholder;
+                boolean newLoad = newItem != null && newItem.isLoadingPlaceholder;
                 String oldComp = (oldItem != null && oldItem.component != null) ? oldItem.component.flattenToString() : "";
                 String newComp = (newItem != null && newItem.component != null) ? newItem.component.flattenToString() : "";
-                if (!oldLabel.equals(newLabel) || oldLive != newLive || oldAdd != newAdd || !oldComp.equals(newComp)) {
+                if (!oldLabel.equals(newLabel) || oldLive != newLive || oldAdd != newAdd || oldLoad != newLoad || !oldComp.equals(newComp)) {
                     same = false;
                     break;
                 }
@@ -210,6 +214,26 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         }
         if (same) {
             return false;
+        }
+
+        boolean hadPlaceholders = false;
+        for (LauncherAppEntry oldItem : items) {
+            if (oldItem != null && oldItem.isLoadingPlaceholder) {
+                hadPlaceholders = true;
+                break;
+            }
+        }
+        boolean hasPlaceholders = false;
+        for (LauncherAppEntry newItem : list) {
+            if (newItem != null && newItem.isLoadingPlaceholder) {
+                hasPlaceholders = true;
+                break;
+            }
+        }
+        revealAfterPlaceholder = hadPlaceholders && !hasPlaceholders;
+        if (revealAfterPlaceholder) {
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+                    () -> revealAfterPlaceholder = false, 450);
         }
 
         items.clear();
@@ -278,6 +302,39 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         Context ctx = holder.itemView.getContext();
         View targetCard = holder.tile != null ? holder.tile : holder.itemView;
         boolean isRow1 = position < 4;
+
+        if (e.isLoadingPlaceholder) {
+            holder.itemView.animate().cancel();
+            holder.itemView.setScaleX(1f);
+            holder.itemView.setScaleY(1f);
+            holder.itemView.setAlpha(0.90f);
+            holder.itemView.setFocusable(false);
+            holder.itemView.setFocusableInTouchMode(false);
+            holder.itemView.setClickable(false);
+            holder.itemView.setLongClickable(false);
+            holder.itemView.setOnClickListener(null);
+            holder.itemView.setOnLongClickListener(null);
+            holder.itemView.setOnFocusChangeListener(null);
+            holder.itemView.setOnKeyListener(null);
+
+            if (holder.banner != null) holder.banner.setVisibility(View.GONE);
+            if (holder.contentGroup != null) holder.contentGroup.setVisibility(View.GONE);
+            if (holder.centerIcon != null) holder.centerIcon.setVisibility(View.GONE);
+            if (holder.bottomTitle != null) holder.bottomTitle.setVisibility(View.GONE);
+            if (holder.loadingSpinner != null) holder.loadingSpinner.setVisibility(View.VISIBLE);
+
+            targetCard.setBackground(createGhostBackground(ctx));
+            if (targetCard instanceof android.widget.FrameLayout) {
+                ((android.widget.FrameLayout) targetCard).setForeground(null);
+            }
+            return;
+        }
+
+        holder.itemView.setFocusable(true);
+        holder.itemView.setFocusableInTouchMode(true);
+        holder.itemView.setClickable(true);
+        holder.itemView.setLongClickable(true);
+        if (holder.loadingSpinner != null) holder.loadingSpinner.setVisibility(View.GONE);
 
         if (holder.icon != null) holder.icon.setContentDescription(e.label);
         if (holder.title != null) holder.title.setText(e.label);
@@ -371,7 +428,24 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             ((android.widget.FrameLayout) targetCard).setForeground(createTileForeground(ctx));
         }
 
-        holder.itemView.setAlpha(tileAlpha(position));
+        holder.itemView.animate().cancel();
+        if (revealAfterPlaceholder && position > 0) {
+            holder.itemView.setAlpha(0f);
+            holder.itemView.setScaleX(0.96f);
+            holder.itemView.setScaleY(0.96f);
+            holder.itemView.animate()
+                    .alpha(tileAlpha(position))
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setStartDelay(Math.min(position * 30L, 180L))
+                    .setDuration(220)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.3f))
+                    .start();
+        } else {
+            holder.itemView.setScaleX(1f);
+            holder.itemView.setScaleY(1f);
+            holder.itemView.setAlpha(tileAlpha(position));
+        }
 
         holder.itemView.setOnClickListener(v -> {
             if (e.isAddButton) {
@@ -454,6 +528,7 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         final View contentGroup;
         final ImageView centerIcon;
         final TextView bottomTitle;
+        final android.widget.ProgressBar loadingSpinner;
 
         VH(@NonNull View itemView) {
             super(itemView);
@@ -465,6 +540,11 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             contentGroup = itemView.findViewById(R.id.launcher_app_content);
             centerIcon = itemView.findViewById(R.id.launcher_app_center_icon);
             bottomTitle = itemView.findViewById(R.id.launcher_app_bottom_title);
+            loadingSpinner = itemView.findViewById(R.id.launcher_app_loading);
+            if (loadingSpinner != null && loadingSpinner.getIndeterminateDrawable() != null) {
+                loadingSpinner.getIndeterminateDrawable().mutate()
+                        .setColorFilter(0xB3FFFFFF, android.graphics.PorterDuff.Mode.SRC_IN);
+            }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 final int radius = dp(itemView.getContext(), 14);
@@ -509,6 +589,16 @@ public class LauncherAppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 }
             }
         }
+    }
+
+    private static Drawable createGhostBackground(Context ctx) {
+        int radius = dp(ctx, 16);
+        GradientDrawable ghost = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x551F2633, 0x4012161E});
+        ghost.setCornerRadius(radius);
+        ghost.setStroke(dp(ctx, 1), 0x26FFFFFF);
+        return ghost;
     }
 
     private static Drawable createTileBackground(Context ctx, int baseColor) {

@@ -124,6 +124,19 @@ public class MainActivity extends FragmentActivity {
         showSettings();
     }
 
+    private String pendingHomeAction = null;
+
+    public void triggerHomeAction(String action) {
+        pendingHomeAction = action;
+        navigateTo(NavDestination.HOME);
+    }
+
+    public String consumePendingHomeAction() {
+        String a = pendingHomeAction;
+        pendingHomeAction = null;
+        return a;
+    }
+
     public void setHomeFocusPosition(int position) {
         homeFocusPosition = position;
         persistHomeState();
@@ -157,9 +170,9 @@ public class MainActivity extends FragmentActivity {
                 .runOnCommit(() -> {
                     View root = getWindow().getDecorView();
                     root.post(() -> {
-                        View menuGeneral = root.findViewById(R.id.menu_general);
-                        if (menuGeneral != null) {
-                            menuGeneral.requestFocus();
+                        View menuHome = root.findViewById(R.id.menu_home);
+                        if (menuHome != null) {
+                            menuHome.requestFocus();
                         }
                     });
                 })

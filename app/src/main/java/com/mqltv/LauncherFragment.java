@@ -512,6 +512,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         lastSelectedAppIndex = 0;
         if (getContext() != null) {
             Context appContext = getContext().getApplicationContext();
+            applyWallpaperDim(appContext);
             updateProfileIcon(appContext);
             loadCounts(appContext);
             loadLauncherApps(appContext);
@@ -527,6 +528,7 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (adapter != null) adapter.setHostActive(true);
         if (getContext() != null) {
             Context appContext = getContext().getApplicationContext();
+            applyWallpaperDim(appContext);
             updateProfileIcon(appContext);
             LauncherWallpaper.checkBingUpdateInBackground(appContext);
             if (AuthPrefs.isLoggedIn(appContext)) {
@@ -542,6 +544,21 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
 
             if (appLibraryDialog != null && appLibraryDialog.isShowing()) {
                 return;
+            }
+
+            if (getActivity() instanceof MainActivity) {
+                String pendingAction = ((MainActivity) getActivity()).consumePendingHomeAction();
+                if ("dock_edit".equals(pendingAction)) {
+                    mainHandler.postDelayed(() -> {
+                        if (isAdded()) startDockEdit(appContext);
+                    }, 180);
+                    return;
+                } else if ("reorder".equals(pendingAction)) {
+                    mainHandler.postDelayed(() -> {
+                        if (isAdded()) toggleReorder(appContext);
+                    }, 180);
+                    return;
+                }
             }
 
             // Restore focus based on last visited position
@@ -1006,7 +1023,8 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         if (headerTime == null) return;
         try {
             Date now = TimeSync.getDate();
-            SimpleDateFormat fmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
+            boolean use24h = getContext() == null || LauncherPrefs.isClock24Hour(getContext());
+            SimpleDateFormat fmt = new SimpleDateFormat(use24h ? "HH:mm" : "h:mm a", Locale.getDefault());
             String s = fmt.format(now);
             headerTime.setText(s != null ? s : "");
 
@@ -1332,8 +1350,27 @@ public class LauncherFragment extends Fragment implements LauncherCardAdapter.Li
         });
     }
 
+    private void applyWallpaperDim(Context appContext) {
+        View root = getView();
+        if (root == null || appContext == null) return;
+        View dimView = root.findViewById(R.id.launcher_wallpaper_dim);
+        View wpView = root.findViewById(R.id.launcher_wallpaper);
+        int level = LauncherPrefs.getWallpaperDimLevel(appContext);
+        if (dimView != null) {
+            dimView.setAlpha(level == LauncherPrefs.WALLPAPER_DIM_LIGHT ? 0.50f : 1.0f);
+        }
+        if (wpView != null && wpView.getAlpha() > 0f) {
+            wpView.setAlpha(level == LauncherPrefs.WALLPAPER_DIM_DARK ? 0.55f : 1.0f);
+        }
+    }
+
     private void loadRecentLive(Context appContext) {
         if (recentAdapter == null) return;
+        if (!LauncherPrefs.isShowRecentChannels(appContext)) {
+            if (recentTitle != null) recentTitle.setVisibility(View.GONE);
+            if (recentList != null) recentList.setVisibility(View.GONE);
+            return;
+        }
 
         executeBackground(() -> {
             PlaylistRepository repo = new PlaylistRepository();
